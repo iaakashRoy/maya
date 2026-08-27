@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "Explore a production-grade concept for supply-chain sensing, private decision intelligence, governed simulation, and measured value.";
+  "Explore a connected supply-network platform spanning global, regional, and company intelligence, five decision applications, data agents, and an operational knowledge graph.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -26,10 +26,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const socialImage = `${protocol}://${host}/og.png`;
 
   return {
-    title: "Resilience OS — Supply-chain decision intelligence",
+    title: "Resilience OS — Connected supply-network platform",
     description,
     applicationName: "Resilience OS",
-    category: "Supply-chain decision intelligence",
+    category: "Connected supply-network operations",
     robots: { index: false, follow: false },
     icons: {
       icon: "/favicon.svg",

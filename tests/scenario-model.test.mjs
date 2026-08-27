@@ -1,52 +1,54 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateScenario } from "../app/product-model.ts";
+import { applications, scopeSnapshots, solveNetworkPlan } from "../app/platform-model.ts";
 
 const baseline = {
-  supplyReduction: 38,
+  supplyLossPercent: 38,
   disruptionWeeks: 12,
-  responseBudget: 2.5,
+  budgetMillions: 2.5,
   serviceTarget: 96,
-  strategy: "Balanced recovery",
+  carbonLimitPercent: 4,
+  strategy: "Balanced",
 };
 
-test("scenario calculation is deterministic and fully synthetic", () => {
-  const first = calculateScenario(baseline);
-  const second = calculateScenario(baseline);
+test("network optimization is deterministic and returns controlled allocations", () => {
+  const first = solveNetworkPlan(baseline);
+  const second = solveNetworkPlan(baseline);
 
   assert.deepEqual(first, second);
-  assert.equal(first.synthetic, true);
-  assert.match(first.simulationId, /^SYN-balanced-/);
-  assert.ok(first.marginProtectedUsdMillions > 0);
-  assert.equal(first.recommendedActions.length, 3);
+  assert.match(first.runId, /^OR-BALANCED-/);
+  assert.ok(first.protectedMargin > 0);
+  assert.equal(first.allocations.length, 4);
 });
 
-test("scenario calculation clamps unsafe or impossible inputs", () => {
-  const result = calculateScenario({
+test("network optimization clamps unsafe or impossible inputs", () => {
+  const result = solveNetworkPlan({
     ...baseline,
-    supplyReduction: 160,
+    supplyLossPercent: 160,
     disruptionWeeks: 0,
-    responseBudget: -4,
+    budgetMillions: -4,
     serviceTarget: 120,
+    carbonLimitPercent: 40,
   });
 
-  assert.deepEqual(result.normalizedInput, {
-    ...baseline,
-    supplyReduction: 100,
-    disruptionWeeks: 1,
-    responseBudget: 0,
-    serviceTarget: 100,
-  });
-  assert.equal(result.budgetUtilizationPercent, 0);
+  assert.equal(result.totalCost, 0);
+  assert.ok(result.projectedService <= 99.5);
+  assert.ok(result.residualRisk >= 3);
   assert.ok(result.warnings.length > 0);
 });
 
 test("strategy choices produce meaningfully different modeled trade-offs", () => {
-  const fastest = calculateScenario({ ...baseline, strategy: "Fastest recovery" });
-  const lowestCash = calculateScenario({ ...baseline, strategy: "Lowest cash impact" });
+  const serviceFirst = solveNetworkPlan({ ...baseline, strategy: "Service first" });
+  const cashFirst = solveNetworkPlan({ ...baseline, strategy: "Cash first" });
 
-  assert.notEqual(fastest.simulationId, lowestCash.simulationId);
-  assert.ok(fastest.projectedOtifPercent >= lowestCash.projectedOtifPercent);
-  assert.ok(Math.abs(lowestCash.cashImpactUsdMillions) <= Math.abs(fastest.cashImpactUsdMillions));
+  assert.notEqual(serviceFirst.runId, cashFirst.runId);
+  assert.ok(serviceFirst.projectedService >= cashFirst.projectedService);
+  assert.ok(cashFirst.totalCost <= serviceFirst.totalCost);
+});
+
+test("the product model defines exactly three scopes and five task apps", () => {
+  assert.deepEqual(Object.keys(scopeSnapshots), ["global", "region", "company"]);
+  assert.equal(applications.length, 5);
+  assert.deepEqual(applications.map((app) => app.id), ["risk", "optimizer", "flow", "demand", "suppliers"]);
 });

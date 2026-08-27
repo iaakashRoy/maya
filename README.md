@@ -5,22 +5,33 @@ supply-chain intelligence platform and its services. All organizations, events,
 metrics, and recommendations shown in the experience are illustrative sample
 data. The prototype has no business-data backend and performs no real actions.
 
-## Explore the concept
+## Platform structure
 
-- **Command** — exposure, decisions, and value in one executive view.
-- **Radar** — evidence-backed signals and private exposure matching.
-- **Decision Cases** — governed ownership, approvals, execution, and value tracking.
-- **Decision Twin** — customer-controlled operational graph and impact paths.
-- **Optimizer** — deterministic disruption scenarios and constrained response options.
-- **Product DNA** — BOM, materials, should-cost, design, and compliance views.
-- **Flow Graph** — inventory, order-to-cash, and working-capital impact.
-- **Trust** — permissioned product, finance, insurance, and credential evidence.
-- **Data Fabric** — connector health, lineage, mappings, quality, and model governance.
-- **Services** — commercial modules, diagnostic offer, and adoption journey.
+The operating picture is organized at three user-controlled levels:
 
-Use the left navigation, global search, role switcher, guided tour, decision
-cases, signal cards, source-connect flow, and scenario controls to click through
-the complete signal-to-measured-value story.
+- **Global platform** — worldwide intelligence, supplier exposure, corridors,
+  vessels, cargo, open orders, money flow, and customer commitments.
+- **Regional platform** — a regional control tower for country, port, plant,
+  supplier, inventory, cash, and service decisions.
+- **Company platform** — a private company twin connecting products, materials,
+  suppliers, plants, orders, margins, and governed actions.
+
+Five task-focused applications inherit the selected scope:
+
+- **RiskRadar** — n-tier risk propagation and procurement criticality.
+- **Network Optimizer** — constrained sourcing, inventory, production, and
+  logistics optimization using a deterministic operations-research model.
+- **FlowLens** — physical movement connected to cash, working capital, margin,
+  invoicing, and collections.
+- **DemandSense** — explainable demand scenarios combining orders and external
+  drivers.
+- **SupplierGraph** — supplier dependency, performance, capability, evidence,
+  and alternative discovery.
+
+The **Data Agent Hub** shows policy-controlled ingestion agents operating
+across client systems and approved external sources. The **Operational
+Knowledge Graph** exposes resolved entities, relationships, evidence lineage,
+mapping exceptions, and the context consumed by each application.
 
 The repository intentionally excludes the original deployment binding. It can
 be developed, tested, and connected to a new deployment independently.

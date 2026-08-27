@@ -7,17 +7,18 @@ test("critical production modules retain their CSS contracts", async () => {
 
   for (const className of [
     "side-rail",
-    "context-bar",
-    "active-case",
-    "case-workspace",
-    "case-pipeline-steps",
-    "case-table",
-    "data-screen",
-    "data-table",
-    "data-lineage",
-    "data-model-grid",
-    "simulation-progress",
-    "production-palette",
+    "scope-nav",
+    "network-map",
+    "metric-grid",
+    "app-workspace",
+    "risk-matrix",
+    "optimizer-layout",
+    "waterfall-chart",
+    "forecast-chart",
+    "supplier-network",
+    "pipeline-stages",
+    "knowledge-canvas",
+    "search-dialog",
   ]) {
     assert.match(css, new RegExp(`\\.${className}(?:[\\s,{.:])`), `Missing CSS contract for .${className}`);
   }

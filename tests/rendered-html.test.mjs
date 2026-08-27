@@ -14,41 +14,44 @@ async function render() {
   );
 }
 
-test("server-renders the Resilience OS clickflow", async () => {
+test("server-renders the connected Resilience OS platform", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   assert.match(html, /<title>Resilience OS/);
-  assert.match(html, /Good morning, Maya/);
-  assert.match(html, /DEMO WORKSPACE/);
-  assert.match(html, /Graphite continuity response/);
-  assert.match(html, /Signals that matter now/);
+  assert.match(html, /Global platform/);
+  assert.match(html, /See the whole network/);
+  assert.match(html, /RiskRadar/);
+  assert.match(html, /Data Agent Hub/);
+  assert.match(html, /Global.*Region.*Company.*Decision applications/i);
   assert.match(html, /No operational backend/i);
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
-test("ships the complete concept navigation and no starter preview", async () => {
-  const [page, packageJson] = await Promise.all([
+test("ships three platform levels, five apps, and two data workspaces", async () => {
+  const [page, applications, dataOperations, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/ApplicationViews.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/DataOperations.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
   for (const moduleName of [
-    "Command",
-    "Radar",
-    "Decision Cases",
-    "Decision Twin",
-    "Optimizer",
-    "Product DNA",
-    "Flow Graph",
-    "Trust",
-    "Data Fabric",
-    "Services",
+    "Global platform",
+    "Regional platform",
+    "Company platform",
+    "RiskRadar",
+    "Network Optimizer",
+    "FlowLens",
+    "DemandSense",
+    "SupplierGraph",
+    "Data Agent Hub",
+    "Knowledge Graph",
   ]) {
-    assert.match(page, new RegExp(moduleName, "i"));
+    assert.match(`${page}\n${applications}\n${dataOperations}`, new RegExp(moduleName, "i"));
   }
   assert.doesNotMatch(page, /SkeletonPreview|react-loading-skeleton/);
   assert.doesNotMatch(packageJson, /site-creator-vinext-starter|react-loading-skeleton/);
