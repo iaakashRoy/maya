@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -31,9 +31,24 @@ test("server-renders the connected Resilience OS platform", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
+test("server and client receive the same deep-linked navigation state", async () => {
+  const response = await render("/?view=risk&scope=company");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /<div class="breadcrumb"><span>Resilience OS<\/span><i>\/<\/i><b>RiskRadar<\/b>/);
+  assert.match(html, /<option value="company" selected="">Apex Mobility<\/option>/);
+  assert.match(html, /class="app-nav active"[^>]*><span>RR<\/span><div><b>RiskRadar<\/b>/);
+  assert.doesNotMatch(html, /typeof window/);
+});
+
 test("ships three platform levels, five apps, and two data workspaces", async () => {
   const [page, applications, dataOperations, packageJson] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/PlatformShell.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/navigation.ts", import.meta.url), "utf8"),
+    ]).then((files) => files.join("\n")),
     readFile(new URL("../app/ApplicationViews.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/DataOperations.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
