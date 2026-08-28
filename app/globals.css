@@ -20,8 +20,20 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-geist-sans), Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-geist-sans), "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  font-optical-sizing: auto;
+  font-synthesis: none;
+  font-variant-ligatures: common-ligatures contextual;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 button, input, select, textarea { color: inherit; font: inherit; }
+h1, h2, h3, h4, strong, b { font-family: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(110,205,245,.65); outline-offset: 2px; }
 button { touch-action: manipulation; }
 

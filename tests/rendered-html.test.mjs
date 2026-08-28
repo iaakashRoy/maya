@@ -30,6 +30,7 @@ test("server-renders the connected Resilience OS platform", async () => {
   assert.match(html, /Scope dashboards.*Decision Inbox.*Case Workspace.*Action Room/i);
   assert.match(html, /No operational backend/i);
   assert.match(html, /og\.png/);
+  assert.match(html, /class="[^"]*__font_geist_/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 

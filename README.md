@@ -51,6 +51,9 @@ contexts. Deep links preserve the active case, for example
 `/?view=case&scope=company&case=CASE-1042`, so dashboards and applications share
 the same working context.
 
+The complete operator walkthrough is available in
+[`docs/Maya_Navigation_Guide.docx`](docs/Maya_Navigation_Guide.docx).
+
 The repository intentionally excludes the original deployment binding. It can
 be developed, tested, and connected to a new deployment independently.
 
