@@ -5,6 +5,10 @@ import test from "node:test";
 test("critical production modules retain their CSS contracts", async () => {
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
+  assert.match(css, /--font-ui:\s*"Geist",\s*"Segoe UI Variable"/);
+  assert.match(css, /\.platform-shell\s*\{\s*font-family:\s*var\(--font-ui\)/);
+  assert.doesNotMatch(css, /font-family:\s*var\(--font-geist-sans\)/);
+
   for (const className of [
     "side-rail",
     "scope-nav",

@@ -12,6 +12,10 @@
   --green: #62c889;
   --blue: #6ecdf5;
   --violet: #b6a5f7;
+  --font-ui: "Geist", "Segoe UI Variable", "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-code: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-geist-sans: var(--font-ui);
+  --font-geist-mono: var(--font-code);
   --rail-width: 260px;
   --topbar-height: 64px;
   --statusbar-height: 34px;
@@ -24,7 +28,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--paper);
-  font-family: var(--font-geist-sans), "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-ui);
   font-optical-sizing: auto;
   font-synthesis: none;
   font-variant-ligatures: common-ligatures contextual;
@@ -34,6 +38,7 @@ body {
 }
 button, input, select, textarea { color: inherit; font: inherit; }
 h1, h2, h3, h4, strong, b { font-family: inherit; }
+.platform-shell { font-family: var(--font-ui); }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(110,205,245,.65); outline-offset: 2px; }
 button { touch-action: manipulation; }
 
