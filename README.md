@@ -33,6 +33,24 @@ across client systems and approved external sources. The **Operational
 Knowledge Graph** exposes resolved entities, relationships, evidence lineage,
 mapping exceptions, and the context consumed by each application.
 
+## Governed decision clickflow
+
+The concept experience now connects every level and application through a
+shared decision-case contract:
+
+- **Decision Inbox** prioritizes work by severity, lifecycle stage, owner,
+  value, and the applications contributing evidence.
+- **Case Workspace** combines RiskRadar, Network Optimizer, FlowLens,
+  DemandSense, and SupplierGraph outputs with scenarios, L0 variables,
+  operations-research method codes, affected entities, and evidence lineage.
+- **Action Room** provides a synthetic approval matrix, released work packages,
+  scenario trade-offs, and an outcome-measurement contract.
+
+Nine richly populated synthetic cases span Global, APAC, and Apex Mobility
+contexts. Deep links preserve the active case, for example
+`/?view=case&scope=company&case=CASE-1042`, so dashboards and applications share
+the same working context.
+
 The repository intentionally excludes the original deployment binding. It can
 be developed, tested, and connected to a new deployment independently.
 

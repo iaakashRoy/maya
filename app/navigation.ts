@@ -1,4 +1,4 @@
-import type { ScopeId, ViewId } from "./platform-model";
+import { decisionCases, type ScopeId, type ViewId } from "./platform-model";
 
 export const scopeIds: ScopeId[] = ["global", "region", "company"];
 
@@ -11,6 +11,9 @@ export const viewLabels: Record<ViewId, string> = {
   flow: "FlowLens",
   demand: "DemandSense",
   suppliers: "SupplierGraph",
+  decisions: "Decision Inbox",
+  case: "Case Workspace",
+  action: "Action Room",
   agents: "Data Agent Hub",
   graph: "Knowledge Graph",
 };
@@ -20,6 +23,7 @@ type SearchValue = string | string[] | undefined;
 export type NavigationSearchParams = {
   view?: SearchValue;
   scope?: SearchValue;
+  case?: SearchValue;
 };
 
 function first(value: SearchValue) {
@@ -37,8 +41,18 @@ function isScopeId(value: string | undefined): value is ScopeId {
 export function resolveNavigation(searchParams: NavigationSearchParams = {}) {
   const requestedView = first(searchParams.view);
   const requestedScope = first(searchParams.scope);
+  const requestedCase = first(searchParams.case);
   const view: ViewId = isViewId(requestedView) ? requestedView : "global";
-  const scope: ScopeId = isScopeId(view) ? view : isScopeId(requestedScope) ? requestedScope : "global";
+  const selectedCase = decisionCases.find((item) => item.id === requestedCase);
+  const isCaseAwareView = view === "case" || view === "action" || view === "decisions" || view === "risk" || view === "optimizer" || view === "flow" || view === "demand" || view === "suppliers";
+  const scope: ScopeId = isScopeId(view)
+    ? view
+    : selectedCase && isCaseAwareView
+      ? selectedCase.scope
+      : isScopeId(requestedScope)
+        ? requestedScope
+        : "global";
+  const caseId = selectedCase?.scope === scope ? selectedCase.id : decisionCases.find((item) => item.scope === scope)?.id ?? decisionCases[0].id;
 
-  return { view, scope };
+  return { view, scope, caseId };
 }

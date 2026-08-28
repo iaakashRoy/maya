@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { solveNetworkPlan, type AppId, type OptimizationInput, type ScopeSnapshot, type StatusTone } from "./platform-model";
+import { solveNetworkPlan, type AppId, type DecisionCase, type OptimizationInput, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type ApplicationViewsProps = {
   app: AppId;
   snapshot: ScopeSnapshot;
+  activeCase: DecisionCase;
+  onOpenCase: () => void;
+  onOpenAction: () => void;
   onOpenAgents: () => void;
   onOpenGraph: () => void;
   onToast: (message: string) => void;
@@ -189,12 +192,14 @@ function SupplierGraph({ snapshot, onOpenGraph, onToast }: Pick<ApplicationViews
   );
 }
 
-export default function ApplicationViews({ app, snapshot, onOpenAgents, onOpenGraph, onToast }: ApplicationViewsProps) {
+export default function ApplicationViews({ app, snapshot, activeCase, onOpenCase, onOpenAction, onOpenAgents, onOpenGraph, onToast }: ApplicationViewsProps) {
   const workspace = app === "risk" ? <RiskRadar snapshot={snapshot} onOpenGraph={onOpenGraph} onToast={onToast} />
     : app === "optimizer" ? <Optimizer snapshot={snapshot} onToast={onToast} />
     : app === "flow" ? <FlowLens snapshot={snapshot} onToast={onToast} />
     : app === "demand" ? <DemandSense snapshot={snapshot} onToast={onToast} />
     : <SupplierGraph snapshot={snapshot} onOpenGraph={onOpenGraph} onToast={onToast} />;
 
-  return <div className="application-container"><button className="app-data-context" type="button" onClick={onOpenAgents}><Dot tone="healthy" /><span><b>Connected data context</b><small>5 agents running · private graph refreshed 18 sec ago</small></span><em>Inspect Agent Hub →</em></button>{workspace}</div>;
+  const contribution = activeCase.contributions.find((item) => item.app === app);
+
+  return <div className="application-container"><section className="case-context-strip"><div><span className={`severity-${activeCase.severity.toLowerCase()}`} /><p><small>ACTIVE DECISION CONTEXT · {activeCase.id}</small><b>{activeCase.title}</b></p></div><dl><div><dt>This app contributes</dt><dd>{contribution?.value ?? "Connected"} · {contribution?.method ?? "Shared case"}</dd></div><div><dt>Lifecycle</dt><dd>{activeCase.stage} · {activeCase.status}</dd></div></dl><div><button type="button" onClick={onOpenCase}>Open case</button><button className="primary-action" type="button" onClick={onOpenAction}>Action Room →</button></div></section><button className="app-data-context" type="button" onClick={onOpenAgents}><Dot tone="healthy" /><span><b>Connected data context</b><small>5 agents running · private graph refreshed 18 sec ago</small></span><em>Inspect Agent Hub →</em></button>{workspace}</div>;
 }

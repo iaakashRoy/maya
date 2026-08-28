@@ -24,8 +24,10 @@ test("server-renders the connected Resilience OS platform", async () => {
   assert.match(html, /Global platform/);
   assert.match(html, /See the whole network/);
   assert.match(html, /RiskRadar/);
+  assert.match(html, /Decision Inbox/);
+  assert.match(html, /Action Room/);
   assert.match(html, /Data Agent Hub/);
-  assert.match(html, /Global.*Region.*Company.*Decision applications/i);
+  assert.match(html, /Scope dashboards.*Decision Inbox.*Case Workspace.*Action Room/i);
   assert.match(html, /No operational backend/i);
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
@@ -42,7 +44,27 @@ test("server and client receive the same deep-linked navigation state", async ()
   assert.doesNotMatch(html, /typeof window/);
 });
 
-test("ships three platform levels, five apps, and two data workspaces", async () => {
+test("server-renders persistent decision case and action-room deep links", async () => {
+  const caseResponse = await render("/?view=case&scope=company&case=CASE-1042");
+  assert.equal(caseResponse.status, 200);
+  const caseHtml = await caseResponse.text();
+  assert.match(caseHtml, /<div class="breadcrumb"><span>Resilience OS<\/span><i>\/<\/i><b>Case Workspace<\/b>/);
+  assert.match(caseHtml, /CASE-1042/);
+  assert.match(caseHtml, /Secure alternate graphite volume/);
+  assert.match(caseHtml, /What each application contributes/);
+  assert.match(caseHtml, /Balanced response/);
+  assert.match(caseHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
+
+  const actionResponse = await render("/?view=action&scope=global&case=CASE-1042");
+  assert.equal(actionResponse.status, 200);
+  const actionHtml = await actionResponse.text();
+  assert.match(actionHtml, /Action Room/);
+  assert.match(actionHtml, /Decision authority/);
+  assert.match(actionHtml, /Approve recommendation/);
+  assert.match(actionHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
+});
+
+test("ships three platform levels, three workflow surfaces, five apps, and two data workspaces", async () => {
   const [page, applications, dataOperations, packageJson] = await Promise.all([
     Promise.all([
       readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -58,6 +80,9 @@ test("ships three platform levels, five apps, and two data workspaces", async ()
     "Global platform",
     "Regional platform",
     "Company platform",
+    "Decision Inbox",
+    "Case Workspace",
+    "Action Room",
     "RiskRadar",
     "Network Optimizer",
     "FlowLens",

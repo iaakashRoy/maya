@@ -1,7 +1,8 @@
 export type ScopeId = "global" | "region" | "company";
 export type AppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers";
 export type DataViewId = "agents" | "graph";
-export type ViewId = ScopeId | AppId | DataViewId;
+export type WorkflowViewId = "decisions" | "case" | "action";
+export type ViewId = ScopeId | AppId | DataViewId | WorkflowViewId;
 export type StatusTone = "healthy" | "watch" | "critical" | "opportunity" | "info";
 
 export type Metric = {
@@ -262,6 +263,176 @@ export const dataAgents: readonly DataAgent[] = [
   { id: "public", name: "Market intelligence swarm", source: "Web · filings · news · trade data", mode: "Continuous evidence crawl", status: "running", freshness: "2 min", records: "84.2M", entities: "Events · companies · commodities", quality: 91, boundary: "Platform" },
   { id: "mail", name: "Unstructured operations agent", source: "Approved mailboxes + files", mode: "Policy-scoped extraction", status: "paused", freshness: "Paused", records: "184K", entities: "Commitments · exceptions · actions", quality: 89, boundary: "Client VPC" },
 ];
+
+export type DecisionStage = "Detect" | "Validate" | "Simulate" | "Approve" | "Execute" | "Measure";
+export type DecisionStatus = "New" | "In analysis" | "Awaiting approval" | "Approved" | "Executing" | "Monitoring" | "Closed";
+export type DecisionSeverity = "Critical" | "High" | "Medium" | "Opportunity";
+
+export type AppContribution = {
+  app: AppId;
+  headline: string;
+  value: string;
+  detail: string;
+  method: string;
+  freshness: string;
+  tone: StatusTone;
+  state: "Ready" | "Review" | "Running";
+};
+
+export type DecisionScenario = {
+  id: string;
+  name: string;
+  posture: string;
+  cost: string;
+  service: string;
+  protectedValue: string;
+  cashImpact: string;
+  residualRisk: number;
+  carbonDelta: string;
+  recommended: boolean;
+};
+
+export type CaseEvidence = {
+  id: string;
+  source: string;
+  fact: string;
+  confidence: number;
+  observed: string;
+  kind: "Observed" | "Corroborated" | "Inferred";
+};
+
+export type ExecutionTask = {
+  id: string;
+  title: string;
+  owner: string;
+  due: string;
+  status: "Ready" | "In progress" | "Blocked" | "Complete";
+};
+
+export type DecisionCase = {
+  id: string;
+  scope: ScopeId;
+  title: string;
+  summary: string;
+  severity: DecisionSeverity;
+  status: DecisionStatus;
+  stage: DecisionStage;
+  owner: string;
+  ownerInitials: string;
+  due: string;
+  updated: string;
+  value: string;
+  serviceExposure: string;
+  confidence: number;
+  primaryEntity: string;
+  affectedEntities: readonly string[];
+  variableIds: readonly string[];
+  methodCodes: readonly string[];
+  recommendation: string;
+  contributions: readonly AppContribution[];
+  scenarios: readonly DecisionScenario[];
+  evidence: readonly CaseEvidence[];
+  tasks: readonly ExecutionTask[];
+  outcome: {
+    baseline: string;
+    target: string;
+    realized: string;
+    measurementWindow: string;
+  };
+};
+
+function buildContributions(values: {
+  exposure: string;
+  dependency: string;
+  demand: string;
+  plan: string;
+  financial: string;
+  riskTone?: StatusTone;
+}): readonly AppContribution[] {
+  return [
+    { app: "risk", headline: "Exposure path quantified", value: values.exposure, detail: "Probability, recoverability, propagation path, and business interruption range are linked to the case.", method: "M-16 · M-22 · M-23", freshness: "2 min ago", tone: values.riskTone ?? "critical", state: "Ready" },
+    { app: "suppliers", headline: "Dependency and optionality resolved", value: values.dependency, detail: "Ownership, capability, qualification, site, tier, and alternative-source evidence are connected.", method: "M-04 · M-25 · M-29", freshness: "7 min ago", tone: "watch", state: "Ready" },
+    { app: "demand", headline: "Demand to protect", value: values.demand, detail: "Consensus, downside, upside, and constrained-supply scenarios are reconciled at the case grain.", method: "M-02 · M-03 · M-20", freshness: "11 min ago", tone: "info", state: "Review" },
+    { app: "optimizer", headline: "Feasible response portfolio", value: values.plan, detail: "Hard constraints, objective posture, solver evidence, warnings, and fallback actions are retained.", method: "M-06 · M-12 · M-20 · M-24", freshness: "18 min ago", tone: "opportunity", state: "Ready" },
+    { app: "flow", headline: "Financial consequence", value: values.financial, detail: "Inventory, premium freight, revenue, margin, receivables, and working-capital effects are reconciled.", method: "M-01 · M-16 · M-24", freshness: "21 min ago", tone: "healthy", state: "Ready" },
+  ];
+}
+
+function buildScenarios(id: string, protectedValues: readonly [string, string, string], services: readonly [string, string, string]): readonly DecisionScenario[] {
+  return [
+    { id: `${id}-A`, name: "Hold current plan", posture: "Lowest immediate spend", cost: "$0.4M", service: services[0], protectedValue: protectedValues[0], cashImpact: "+$0.2M", residualRisk: 72, carbonDelta: "0.0%", recommended: false },
+    { id: `${id}-B`, name: "Balanced response", posture: "Margin, service, and stability", cost: "$1.8M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$0.8M", residualRisk: 18, carbonDelta: "+0.6%", recommended: true },
+    { id: `${id}-C`, name: "Service-first response", posture: "Maximum customer protection", cost: "$3.1M", service: services[2], protectedValue: protectedValues[2], cashImpact: "−$2.3M", residualRisk: 9, carbonDelta: "+2.4%", recommended: false },
+  ];
+}
+
+const commonEvidence = (prefix: string): readonly CaseEvidence[] => [
+  { id: `${prefix}-EV-01`, source: "ERP + order promise", fact: "Open demand, inventory, allocation, customer value, and committed service dates reconciled.", confidence: 99, observed: "18 sec ago", kind: "Observed" },
+  { id: `${prefix}-EV-02`, source: "Supplier + contract evidence", fact: "Capacity, qualification, lead-time, commercial terms, and recovery commitments validated.", confidence: 94, observed: "7 min ago", kind: "Corroborated" },
+  { id: `${prefix}-EV-03`, source: "Operational Knowledge Graph", fact: "Material-to-product-to-order exposure path resolved with retained source lineage.", confidence: 92, observed: "2 min ago", kind: "Inferred" },
+  { id: `${prefix}-EV-04`, source: "External intelligence", fact: "Market, logistics, policy, weather, and company signals deduplicated across approved sources.", confidence: 89, observed: "12 min ago", kind: "Corroborated" },
+];
+
+const commonTasks = (prefix: string, primaryOwner: string): readonly ExecutionTask[] => [
+  { id: `${prefix}-T1`, title: "Release approved commercial reservation", owner: primaryOwner, due: "Today · 14:00", status: "Ready" },
+  { id: `${prefix}-T2`, title: "Update allocation and customer promise", owner: "Network planning", due: "Today · 16:00", status: "Ready" },
+  { id: `${prefix}-T3`, title: "Publish execution package to operators", owner: "Control tower", due: "Tomorrow · 09:00", status: "Blocked" },
+  { id: `${prefix}-T4`, title: "Measure service, margin, cash, and overrides", owner: "Finance control", due: "Month end", status: "In progress" },
+];
+
+export const decisionCases: readonly DecisionCase[] = [
+  {
+    id: "CASE-1042", scope: "company", title: "Secure alternate graphite volume", summary: "Protect four priority mobility programs from tightening merchant graphite capacity without violating qualification, cash, or carbon limits.", severity: "Critical", status: "Awaiting approval", stage: "Approve", owner: "Maya Rao", ownerInitials: "MR", due: "2h remaining", updated: "8 min ago", value: "$4.2M margin exposed", serviceExposure: "428 priority orders", confidence: 92, primaryEntity: "Graphite G-142",
+    affectedEntities: ["NeoGraph Materials", "Graphite G-142", "AX-4 drive unit", "Pune Plant 02", "428 customer orders"], variableIds: ["L0-044", "L0-046", "L0-047", "L0-155", "L0-269", "L0-287", "L0-428"], methodCodes: ["M-06", "M-16", "M-20", "M-22", "M-23", "M-24"], recommendation: "Reserve 18% alternate capacity, rebalance Monterrey inventory, and protect high-margin orders through the approved allocation rule.",
+    contributions: buildContributions({ exposure: "$4.2M · 428 orders", dependency: "92% · 3 options", demand: "6,840 t P90", plan: "3 feasible plans", financial: "$3.6M protected" }), scenarios: buildScenarios("1042", ["$0.8M", "$3.6M", "$4.0M"], ["89.4%", "96.2%", "98.1%"]), evidence: commonEvidence("1042"), tasks: commonTasks("1042", "Category management"), outcome: { baseline: "$4.2M margin exposure", target: "$3.6M protected", realized: "Measurement pending", measurementWindow: "12 weeks" },
+  },
+  {
+    id: "CASE-1041", scope: "company", title: "Reroute priority ocean orders", summary: "Select the least-disruptive route and inventory response for orders affected by rising Singapore terminal dwell.", severity: "High", status: "In analysis", stage: "Simulate", owner: "Jon Bell", ownerInitials: "JB", due: "7h remaining", updated: "32 min ago", value: "$1.85M revenue exposed", serviceExposure: "11 priority orders", confidence: 94, primaryEntity: "Singapore → Chennai corridor",
+    affectedEntities: ["MV Meridian Star", "Singapore terminal", "Chennai port", "Pune Plant 02", "11 priority orders"], variableIds: ["L0-203", "L0-214", "L0-217", "L0-227", "L0-265", "L0-269"], methodCodes: ["M-05", "M-10", "M-11", "M-16", "M-17", "M-20"], recommendation: "Transfer protected stock from Monterrey and reroute only two residual lots through air, keeping premium freight below 2%.",
+    contributions: buildContributions({ exposure: "$1.85M · 11 orders", dependency: "2 routes · 4 nodes", demand: "11 orders · 3 dates", plan: "4 route plans", financial: "$1.62M protected", riskTone: "watch" }), scenarios: buildScenarios("1041", ["$0.5M", "$1.62M", "$1.78M"], ["86.0%", "96.7%", "98.9%"]), evidence: commonEvidence("1041"), tasks: commonTasks("1041", "Logistics control"), outcome: { baseline: "3.4 days late", target: "All 11 orders protected", realized: "Simulation in progress", measurementWindow: "21 days" },
+  },
+  {
+    id: "CASE-1038", scope: "company", title: "Qualify regional casting capacity", summary: "Validate engineering, quality, capacity, cost, and continuity fit for a new regional casting source.", severity: "Opportunity", status: "In analysis", stage: "Validate", owner: "Anika Shah", ownerInitials: "AS", due: "6d remaining", updated: "2 hr ago", value: "$620K annual savings", serviceExposure: "3 product families", confidence: 84, primaryEntity: "Apex Castings expansion line",
+    affectedEntities: ["Apex Castings", "AX-4 housing", "Chennai supplier cluster", "3 product platforms"], variableIds: ["L0-043", "L0-052", "L0-053", "L0-057", "L0-061", "L0-136"], methodCodes: ["M-04", "M-06", "M-24", "M-25", "M-30"], recommendation: "Advance two part families to process audit while retaining the current source until capability evidence reaches the release threshold.",
+    contributions: buildContributions({ exposure: "$1.1M dependency", dependency: "64% · 2 candidates", demand: "420K units/year", plan: "2 qualification waves", financial: "$620K savings", riskTone: "opportunity" }), scenarios: buildScenarios("1038", ["$0.1M", "$0.62M", "$0.71M"], ["94.1%", "96.4%", "97.0%"]), evidence: commonEvidence("1038"), tasks: commonTasks("1038", "Supplier quality"), outcome: { baseline: "Single regional source", target: "Two released sources", realized: "Audit evidence pending", measurementWindow: "2 quarters" },
+  },
+  {
+    id: "CASE-1035", scope: "company", title: "Close EU carbon evidence gaps", summary: "Collect and validate missing supplier declarations before two EU-bound product families reach their next filing gate.", severity: "High", status: "Executing", stage: "Execute", owner: "Elena Ward", ownerInitials: "EW", due: "2d remaining", updated: "24 min ago", value: "$18.7M revenue dependent", serviceExposure: "12 suppliers · 48 fields", confidence: 97, primaryEntity: "EU-bound steel programs",
+    affectedEntities: ["42CrMo4 steel", "12 suppliers", "18 parts", "2 EU programs"], variableIds: ["L0-135", "L0-142", "L0-374", "L0-398", "L0-402", "L0-419"], methodCodes: ["M-04", "M-21", "M-25", "M-28", "M-30"], recommendation: "Issue evidence requests by critical-path order, validate supplier claims, and quarantine incomplete lots before the filing cut-off.",
+    contributions: buildContributions({ exposure: "$18.7M gated", dependency: "12 suppliers · 18 parts", demand: "2 filing cohorts", plan: "4 evidence waves", financial: "$18.7M enabled", riskTone: "watch" }), scenarios: buildScenarios("1035", ["$4.1M", "$18.1M", "$18.7M"], ["76.0%", "97.2%", "99.0%"]), evidence: commonEvidence("1035"), tasks: commonTasks("1035", "Trade compliance"), outcome: { baseline: "12 incomplete packs", target: "100% filing readiness", realized: "7 of 12 complete", measurementWindow: "30 days" },
+  },
+  {
+    id: "CASE-1032", scope: "region", title: "Protect APAC controller service stock", summary: "Rebalance controller inventory before lead-time divergence reaches committed service demand across APAC.", severity: "Medium", status: "Monitoring", stage: "Measure", owner: "Noah Chen", ownerInitials: "NC", due: "22h remaining", updated: "3 hr ago", value: "$1.24M inventory rebalanced", serviceExposure: "842 service orders", confidence: 88, primaryEntity: "MCU family X7",
+    affectedEntities: ["MCU family X7", "APAC service network", "5 warehouses", "842 service orders"], variableIds: ["L0-005", "L0-016", "L0-155", "L0-161", "L0-163", "L0-269"], methodCodes: ["M-02", "M-07", "M-13", "M-20", "M-22"], recommendation: "Maintain the approved regional transfer and measure fill rate, aged stock, expedites, and customer recovery over six weeks.",
+    contributions: buildContributions({ exposure: "$2.1M service revenue", dependency: "5 nodes · 2 sources", demand: "842 orders P90", plan: "1 approved allocation", financial: "$1.24M rebalanced", riskTone: "info" }), scenarios: buildScenarios("1032", ["$0.4M", "$1.24M", "$1.48M"], ["91.0%", "97.1%", "98.4%"]), evidence: commonEvidence("1032"), tasks: commonTasks("1032", "Service planning"), outcome: { baseline: "91.0% fill rate", target: "97.0% fill rate", realized: "96.8% after 3 weeks", measurementWindow: "6 weeks" },
+  },
+  {
+    id: "CASE-1029", scope: "region", title: "Shift APAC port capacity", summary: "Reallocate bookings across three APAC gateways as congestion and weather reduce effective weekly capacity.", severity: "High", status: "Approved", stage: "Execute", owner: "Priya Menon", ownerInitials: "PM", due: "Today · 17:00", updated: "41 min ago", value: "$8.6M shipment value protected", serviceExposure: "146 containers", confidence: 90, primaryEntity: "APAC gateway portfolio",
+    affectedEntities: ["Singapore", "Port Klang", "Chennai", "146 containers", "38 customer orders"], variableIds: ["L0-217", "L0-218", "L0-221", "L0-227", "L0-243", "L0-253"], methodCodes: ["M-05", "M-10", "M-11", "M-17", "M-20", "M-22"], recommendation: "Shift 23% of new bookings, protect regulated cargo in Singapore, and freeze executed vessel legs.",
+    contributions: buildContributions({ exposure: "$8.6M · 38 orders", dependency: "3 gateways · 6 sailings", demand: "146 containers", plan: "5 booking portfolios", financial: "$7.9M protected", riskTone: "watch" }), scenarios: buildScenarios("1029", ["$2.8M", "$7.9M", "$8.4M"], ["88.2%", "95.8%", "97.6%"]), evidence: commonEvidence("1029"), tasks: commonTasks("1029", "Regional logistics"), outcome: { baseline: "17 containers late", target: "≤3 late containers", realized: "Execution active", measurementWindow: "4 weeks" },
+  },
+  {
+    id: "CASE-1026", scope: "region", title: "Release APAC inventory cash", summary: "Reduce slow-moving inventory without weakening protected service levels or increasing obsolescence risk.", severity: "Opportunity", status: "Monitoring", stage: "Measure", owner: "Diego Santos", ownerInitials: "DS", due: "Quarter end", updated: "5 hr ago", value: "$18.6M cash opportunity", serviceExposure: "5 inventory pools", confidence: 86, primaryEntity: "APAC working-capital portfolio",
+    affectedEntities: ["5 inventory pools", "1,842 SKUs", "APAC warehouses", "Customer service policy"], variableIds: ["L0-155", "L0-163", "L0-166", "L0-167", "L0-288", "L0-291"], methodCodes: ["M-01", "M-07", "M-13", "M-20", "M-24"], recommendation: "Transfer excess controller and casting stock, reduce three replenishment parameters, and protect A-class service constraints.",
+    contributions: buildContributions({ exposure: "$18.6M trapped cash", dependency: "1,842 SKUs · 5 pools", demand: "13-week distribution", plan: "6 inventory policies", financial: "$14.2M realizable", riskTone: "opportunity" }), scenarios: buildScenarios("1026", ["$3.2M", "$14.2M", "$16.4M"], ["96.0%", "95.8%", "94.1%"]), evidence: commonEvidence("1026"), tasks: commonTasks("1026", "Inventory excellence"), outcome: { baseline: "42 days on hand", target: "35 days on hand", realized: "37.4 days after 8 weeks", measurementWindow: "1 quarter" },
+  },
+  {
+    id: "CASE-1024", scope: "global", title: "Protect Red Sea customer commitments", summary: "Evaluate corridor, inventory, production, and customer-allocation responses to a compound maritime disruption.", severity: "Critical", status: "In analysis", stage: "Detect", owner: "Olivia Hart", ownerInitials: "OH", due: "4h remaining", updated: "6 min ago", value: "$34M customer value exposed", serviceExposure: "312 orders · 19 lanes", confidence: 91, primaryEntity: "Red Sea corridor",
+    affectedEntities: ["Red Sea corridor", "19 lanes", "8 plants", "312 customer orders", "4 product families"], variableIds: ["L0-214", "L0-217", "L0-227", "L0-252", "L0-265", "L0-359"], methodCodes: ["M-05", "M-10", "M-16", "M-20", "M-22", "M-23"], recommendation: "Open a global case, validate affected customer paths, and compare Cape rerouting, air bridge, and regional inventory options.",
+    contributions: buildContributions({ exposure: "$34M · 312 orders", dependency: "19 lanes · 8 plants", demand: "4 product families P95", plan: "Solver queued", financial: "$28M protectable" }), scenarios: buildScenarios("1024", ["$8M", "$28M", "$32M"], ["82.0%", "94.6%", "97.8%"]), evidence: commonEvidence("1024"), tasks: commonTasks("1024", "Global control tower"), outcome: { baseline: "$34M value exposed", target: "≥$28M protected", realized: "Decision pending", measurementWindow: "10 weeks" },
+  },
+  {
+    id: "CASE-1019", scope: "global", title: "Absorb copper and energy price volatility", summary: "Coordinate sourcing, production, pricing, and cash responses under correlated copper, electricity, and freight scenarios.", severity: "Medium", status: "In analysis", stage: "Validate", owner: "Marcus Lee", ownerInitials: "ML", due: "3d remaining", updated: "1 hr ago", value: "$12.4M margin range", serviceExposure: "7 product portfolios", confidence: 82, primaryEntity: "Copper and energy cost basket",
+    affectedEntities: ["Copper cathode", "Electricity contracts", "7 product portfolios", "Global sourcing"], variableIds: ["L0-061", "L0-121", "L0-287", "L0-293", "L0-300", "L0-463"], methodCodes: ["M-02", "M-04", "M-20", "M-22", "M-23", "M-24"], recommendation: "Validate the joint price scenario, then optimize contract coverage, production allocation, and approved price pass-through.",
+    contributions: buildContributions({ exposure: "$12.4M margin range", dependency: "14 contracts · 7 portfolios", demand: "3 macro regimes", plan: "Scenario set incomplete", financial: "$8.7M protectable", riskTone: "info" }), scenarios: buildScenarios("1019", ["$2.1M", "$8.7M", "$10.2M"], ["93.0%", "95.4%", "96.2%"]), evidence: commonEvidence("1019"), tasks: commonTasks("1019", "Global sourcing"), outcome: { baseline: "$12.4M downside", target: "≤$3.7M residual", realized: "Validation active", measurementWindow: "2 quarters" },
+  },
+];
+
+export const decisionStageOrder: readonly DecisionStage[] = ["Detect", "Validate", "Simulate", "Approve", "Execute", "Measure"];
+
+export function getCasesForScope(scope: ScopeId): readonly DecisionCase[] {
+  return decisionCases.filter((item) => item.scope === scope);
+}
 
 export type OptimizationInput = {
   supplyLossPercent: number;

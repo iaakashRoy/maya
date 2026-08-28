@@ -1,16 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { NetworkNode, ScopeSnapshot, StatusTone } from "./platform-model";
+import { applications, type DecisionCase, type NetworkNode, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type ScopeDashboardProps = {
   snapshot: ScopeSnapshot;
+  cases: readonly DecisionCase[];
   horizon: string;
   category: string;
   onHorizonChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onOpenRisk: () => void;
   onOpenOptimizer: () => void;
+  onOpenCase: (caseId: string) => void;
+  onOpenDecisions: () => void;
 };
 
 function ToneDot({ tone }: { tone: StatusTone }) {
@@ -32,7 +35,7 @@ function MapNodeButton({ node, selected, onSelect }: { node: NetworkNode; select
   );
 }
 
-export default function ScopeDashboard({ snapshot, horizon, category, onHorizonChange, onCategoryChange, onOpenRisk, onOpenOptimizer }: ScopeDashboardProps) {
+export default function ScopeDashboard({ snapshot, cases, horizon, category, onHorizonChange, onCategoryChange, onOpenRisk, onOpenOptimizer, onOpenCase, onOpenDecisions }: ScopeDashboardProps) {
   const [selectedNodeId, setSelectedNodeId] = useState(snapshot.nodes[0]?.id ?? "");
   const [movementMode, setMovementMode] = useState("All movements");
   const [moneyMode, setMoneyMode] = useState("Cash position");
@@ -74,6 +77,18 @@ export default function ScopeDashboard({ snapshot, horizon, category, onHorizonC
             <small>{metric.trend}</small>
           </article>
         ))}
+      </section>
+
+      <section className="decision-brief panel" aria-labelledby="decisions-in-motion-title">
+        <header className="panel-header"><div><p className="kicker">DECISIONS IN MOTION</p><h2 id="decisions-in-motion-title">From signal to measured outcome</h2><span>Cases combine the five decision apps, shared variables, OR methods, evidence, and execution ownership.</span></div><button type="button" onClick={onOpenDecisions}>Open Decision Inbox →</button></header>
+        <div className="decision-brief-grid">
+          {cases.slice(0, 3).map((item) => <button className="decision-brief-card" type="button" key={item.id} onClick={() => onOpenCase(item.id)}>
+            <header><span><i className={`severity-${item.severity.toLowerCase()}`} />{item.id}</span><em>{item.stage} · {item.status}</em></header>
+            <h3>{item.title}</h3><p>{item.summary}</p>
+            <div className="decision-brief-meta"><span><small>VALUE</small><b>{item.value}</b></span><span><small>OWNER / DUE</small><b>{item.owner} · {item.due}</b></span></div>
+            <footer><span>{item.contributions.map((contribution) => applications.find((app) => app.id === contribution.app)?.icon).join(" · ")}</span><b>Open case →</b></footer>
+          </button>)}
+        </div>
       </section>
 
       <section className="map-card panel" aria-labelledby="network-map-title">
