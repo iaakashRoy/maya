@@ -14,7 +14,7 @@ type DecisionWorkspacesProps = {
   cases: readonly DecisionCase[];
   activeCase: DecisionCase;
   onOpenCase: (caseId: string, destination?: "case" | "action") => void;
-  onOpenApp: (app: AppId) => void;
+  onOpenApp: (destination: AppId | "graph") => void;
   onUpdateCase: (caseId: string, patch: Partial<DecisionCase>, message: string) => void;
   onToast: (message: string) => void;
 };
@@ -84,10 +84,10 @@ function DecisionInbox({ cases, activeCase, onOpenCase }: DecisionWorkspacesProp
   );
 }
 
-function CaseWorkspace({ activeCase, onOpenCase, onOpenApp, onToast }: DecisionWorkspacesProps) {
+function CaseWorkspace({ activeCase, onOpenCase, onOpenApp }: DecisionWorkspacesProps) {
   return (
     <section className="decision-workspace" aria-labelledby="case-workspace-heading">
-      <CaseHero item={activeCase} eyebrow="CASE WORKSPACE" titleId="case-workspace-heading" actions={<><button className="secondary-action" type="button" onClick={() => onToast("Evidence graph opened for review.")}>Open evidence graph</button><button className="primary-action" type="button" onClick={() => onOpenCase(activeCase.id, "action")}>Open Action Room</button></>} />
+      <CaseHero item={activeCase} eyebrow="CASE WORKSPACE" titleId="case-workspace-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenApp("graph")}>Open evidence graph</button><button className="primary-action" type="button" onClick={() => onOpenCase(activeCase.id, "action")}>Open Action Room</button></>} />
       <StageRail item={activeCase} />
 
       <section className="panel case-section">
@@ -115,20 +115,48 @@ function CaseWorkspace({ activeCase, onOpenCase, onOpenApp, onToast }: DecisionW
 function ActionRoom({ activeCase, onOpenCase, onUpdateCase, onToast }: DecisionWorkspacesProps) {
   const approvalsComplete = activeCase.status === "Approved" || activeCase.status === "Executing" || activeCase.status === "Monitoring" || activeCase.status === "Closed";
   const recommended = activeCase.scenarios.find((scenario) => scenario.recommended) ?? activeCase.scenarios[0];
+  const evidenceReady = activeCase.evidence.length > 0 && activeCase.confidence >= 80;
+  const recommendationReady = recommended.feasibility === "Inside hard envelope";
+  const approvalStatusReady = activeCase.status === "Awaiting approval";
+  const approvalStageReached = decisionStageOrder.indexOf(activeCase.stage) >= decisionStageOrder.indexOf("Approve");
+  const canRelease = activeCase.stage === "Approve" && approvalStatusReady && !approvalsComplete && evidenceReady && recommendationReady;
+  const releaseGate = approvalsComplete
+    ? "This synthetic case has already passed approval."
+    : activeCase.stage !== "Approve"
+      ? `Blocked until the case completes ${activeCase.stage} and enters Approve.`
+      : !approvalStatusReady
+        ? `Blocked while case status is ${activeCase.status}; Awaiting approval is required.`
+      : !recommendationReady
+        ? "Blocked until the recommended scenario is inside the hard decision envelope."
+        : !evidenceReady
+          ? "Blocked until governed evidence confidence reaches the review threshold."
+          : "Ready for the named human approver; approval updates this concept session only.";
 
-  const release = () => onUpdateCase(activeCase.id, { stage: "Execute", status: "Executing", updated: "Just now" }, `${activeCase.id} approved and released to execution.`);
-  const requestChanges = () => onUpdateCase(activeCase.id, { stage: "Simulate", status: "In analysis", updated: "Just now" }, `${activeCase.id} returned to simulation with reviewer comments.`);
+  const release = () => {
+    if (!canRelease) {
+      onToast(`${activeCase.id} cannot be released: ${releaseGate}`);
+      return;
+    }
+    onUpdateCase(activeCase.id, { stage: "Execute", status: "Executing", updated: "Just now" }, `${activeCase.id} approved in this synthetic session; no operational write-back occurred.`);
+  };
+  const requestChanges = () => {
+    if (activeCase.stage !== "Approve" || approvalsComplete) {
+      onToast(`${activeCase.id} remains in ${activeCase.stage}; no lifecycle stage was changed.`);
+      return;
+    }
+    onUpdateCase(activeCase.id, { stage: "Simulate", status: "In analysis", updated: "Just now" }, `${activeCase.id} returned to simulation in this synthetic session; no operational write-back occurred.`);
+  };
 
   return (
     <section className="decision-workspace" aria-labelledby="action-room-heading">
-      <CaseHero item={activeCase} eyebrow="CONTROLLED EXECUTION" titleId="action-room-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenCase(activeCase.id)}>Back to case</button><button className="primary-action" type="button" onClick={release} disabled={approvalsComplete}>{approvalsComplete ? "Released to execution" : "Approve and release"}</button></>} />
+      <CaseHero item={activeCase} eyebrow="CONTROLLED EXECUTION" titleId="action-room-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenCase(activeCase.id)}>Back to case</button><button className="primary-action" type="button" onClick={release} disabled={!canRelease}>{approvalsComplete ? "Released to execution" : canRelease ? "Approve and release" : "Release gate blocked"}</button></>} />
       <StageRail item={activeCase} />
 
-      <section className="action-summary panel"><div><p className="kicker">RECOMMENDED RESPONSE</p><h2>{recommended.name}</h2><p>{activeCase.recommendation}</p></div><dl><div><dt>Protected value</dt><dd>{recommended.protectedValue}</dd></div><div><dt>Service</dt><dd>{recommended.service}</dd></div><div><dt>Cost</dt><dd>{recommended.cost}</dd></div><div><dt>Residual risk</dt><dd>{recommended.residualRisk}%</dd></div></dl></section>
+      <section className="action-summary panel"><div><p className="kicker">RECOMMENDED RESPONSE</p><h2>{recommended.name}</h2><p>{activeCase.recommendation}</p><p><b>Release gate:</b> {releaseGate}</p></div><dl><div><dt>Protected value</dt><dd>{recommended.protectedValue}</dd></div><div><dt>Service</dt><dd>{recommended.service}</dd></div><div><dt>Cost</dt><dd>{recommended.cost}</dd></div><div><dt>Residual risk</dt><dd>{recommended.residualRisk}%</dd></div></dl></section>
 
       <div className="action-grid">
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">APPROVAL MATRIX</p><h2>Decision authority</h2></div><span className={approvalsComplete ? "approval-ready" : "approval-pending"}>{approvalsComplete ? "Released" : "1 pending"}</span></header><div className="approval-list"><Approval authorityRole="Supply chain owner" person={activeCase.owner} state="Signed" /><Approval authorityRole="Finance controller" person="Elena Voss" state="Verified" /><Approval authorityRole="COO delegate" person="Maya Rao" state={approvalsComplete ? "Approved" : "Pending"} /></div><div className="approval-actions"><button type="button" onClick={requestChanges}>Request changes</button><button type="button" className="primary-action" onClick={release} disabled={approvalsComplete}>{approvalsComplete ? "Execution active" : "Approve recommendation"}</button></div></section>
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EXECUTION PLAN</p><h2>Released work packages</h2></div><button className="text-action" type="button" onClick={() => onToast("Task ownership matrix copied to the operations queue.")}>Copy plan</button></header><div className="task-list">{activeCase.tasks.map((task) => <article key={task.id}><i className={`task-${task.status.toLowerCase().replace(" ", "-")}`} /><div><b>{task.title}</b><span>{task.owner} · {task.due}</span></div><em>{task.status}</em></article>)}</div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">APPROVAL MATRIX</p><h2>Decision authority</h2></div><span className={approvalsComplete || canRelease ? "approval-ready" : "approval-pending"}>{approvalsComplete ? "Released" : canRelease ? "1 pending" : "Gate blocked"}</span></header><div className="approval-list"><Approval authorityRole="Supply chain owner" person={activeCase.owner} state={approvalStageReached ? "Signed" : "Not ready"} /><Approval authorityRole="Finance controller" person="Elena Voss" state={approvalStageReached ? "Verified" : "Not ready"} /><Approval authorityRole="COO delegate" person="Maya Rao" state={approvalsComplete ? "Approved" : canRelease ? "Pending" : "Blocked"} /></div><div className="approval-actions"><button type="button" onClick={requestChanges} disabled={activeCase.stage !== "Approve" || approvalsComplete}>Request changes</button><button type="button" className="primary-action" onClick={release} disabled={!canRelease}>{approvalsComplete ? "Execution active" : canRelease ? "Approve recommendation" : "Approval unavailable"}</button></div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EXECUTION PLAN</p><h2>Released work packages</h2></div><button className="text-action" type="button" onClick={() => onToast("Synthetic task plan copied inside this concept session; no operations queue was written.")}>Copy concept plan</button></header><div className="task-list">{activeCase.tasks.map((task) => <article key={task.id}><i className={`task-${task.status.toLowerCase().replace(" ", "-")}`} /><div><b>{task.title}</b><span>{task.owner} · {task.due}</span></div><em>{task.status}</em></article>)}</div></section>
       </div>
 
       <ScenarioComparison item={activeCase} compact />
@@ -146,7 +174,7 @@ function StageRail({ item }: { item: DecisionCase }) {
 }
 
 function ScenarioComparison({ item, compact = false }: { item: DecisionCase; compact?: boolean }) {
-  return <section className={`panel case-section scenario-section ${compact ? "compact" : ""}`}><header className="panel-heading"><div><p className="kicker">OR SCENARIO LAB</p><h2>Feasible response comparison</h2><p>Optimization outputs remain explainable against service, cost, cash, risk, and carbon.</p></div><span>{item.scenarios.length} feasible plans</span></header><div className="scenario-grid">{item.scenarios.map((scenario) => <article className={`scenario-card ${scenario.recommended ? "scenario-recommended" : ""}`} key={scenario.id}><header><div><small>{scenario.posture}</small><h3>{scenario.name}</h3></div>{scenario.recommended && <b>RECOMMENDED</b>}</header><dl><div><dt>Protected value</dt><dd>{scenario.protectedValue}</dd></div><div><dt>Service</dt><dd>{scenario.service}</dd></div><div><dt>Incremental cost</dt><dd>{scenario.cost}</dd></div><div><dt>Cash impact</dt><dd>{scenario.cashImpact}</dd></div><div><dt>Residual risk</dt><dd>{scenario.residualRisk}%</dd></div><div><dt>Carbon delta</dt><dd>{scenario.carbonDelta}</dd></div></dl></article>)}</div></section>;
+  return <section className={`panel case-section scenario-section ${compact ? "compact" : ""}`}><header className="panel-heading"><div><p className="kicker">OR SCENARIO LAB · SYNTHETIC COMPARISON</p><h2>Response alternatives across the hard decision envelope</h2><p>Each alternative retains method stack, feasibility state, service, cost, cash, risk, carbon, and the action delta.</p></div><span>{item.scenarios.length} alternatives · {item.scenarios.filter((scenario) => scenario.feasibility === "Inside hard envelope").length} inside envelope</span></header><div className="scenario-grid">{item.scenarios.map((scenario) => <article className={`scenario-card ${scenario.recommended ? "scenario-recommended" : ""}`} key={scenario.id}><header><div><small>{scenario.posture}</small><h3>{scenario.name}</h3></div>{scenario.recommended && <b>RECOMMENDED</b>}</header><div className={`scenario-feasibility scenario-${scenario.feasibility.toLowerCase().replaceAll(" ", "-")}`}>{scenario.feasibility}</div><dl><div><dt>Protected value</dt><dd>{scenario.protectedValue}</dd></div><div><dt>Service</dt><dd>{scenario.service}</dd></div><div><dt>Incremental cost</dt><dd>{scenario.cost}</dd></div><div><dt>Cash impact</dt><dd>{scenario.cashImpact}</dd></div><div><dt>Residual risk</dt><dd>{scenario.residualRisk}%</dd></div><div><dt>Carbon delta</dt><dd>{scenario.carbonDelta}</dd></div></dl><footer><span>{scenario.methodStack}</span><p>{scenario.change}</p></footer></article>)}</div></section>;
 }
 
 function Metric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
@@ -154,7 +182,7 @@ function Metric({ label, value, detail, tone }: { label: string; value: string; 
 }
 
 function Approval({ authorityRole, person, state }: { authorityRole: string; person: string; state: string }) {
-  return <article><span>{person.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span><div><b>{authorityRole}</b><small>{person}</small></div><em className={`approval-${state.toLowerCase()}`}>{state}</em></article>;
+  return <article><span>{person.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span><div><b>{authorityRole}</b><small>{person}</small></div><em className={`approval-${state.toLowerCase().replaceAll(" ", "-")}`}>{state}</em></article>;
 }
 
 function sumDisplayedValue(cases: readonly DecisionCase[]) {

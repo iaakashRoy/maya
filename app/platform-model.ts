@@ -235,7 +235,7 @@ export const scopeSnapshots: Record<ScopeId, ScopeSnapshot> = {
 
 export const applications: readonly { id: AppId; name: string; shortName: string; description: string; outcome: string; icon: string; accent: string }[] = [
   { id: "risk", name: "RiskRadar", shortName: "Risk", description: "Trace disruptions through the n-tier supply network and rank procurement criticality.", outcome: "Know what can stop production", icon: "RR", accent: "#ff715b" },
-  { id: "optimizer", name: "Network Optimizer", shortName: "Optimize", description: "Solve sourcing, inventory, production, and logistics decisions with explicit constraints.", outcome: "Choose the best feasible response", icon: "NO", accent: "#d7ff38" },
+  { id: "optimizer", name: "Network Optimizer", shortName: "Optimize", description: "Frame, calculate, and compare sourcing, inventory, production, and logistics responses with explicit constraints.", outcome: "Choose the best-evidenced response", icon: "NO", accent: "#d7ff38" },
   { id: "flow", name: "FlowLens", shortName: "Flow", description: "Connect material movement to cash, working capital, revenue, and margin.", outcome: "See where money is trapped", icon: "FL", accent: "#6ed0ff" },
   { id: "demand", name: "DemandSense", shortName: "Demand", description: "Combine orders, market signals, consumption, and customer behavior into demand scenarios.", outcome: "Plan demand before it surprises you", icon: "DS", accent: "#b8a4ff" },
   { id: "suppliers", name: "SupplierGraph", shortName: "Suppliers", description: "Understand n-tier suppliers, alternatives, performance, capabilities, and evidence.", outcome: "Find dependency and optionality", icon: "SG", accent: "#77d59c" },
@@ -262,6 +262,12 @@ export const dataAgents: readonly DataAgent[] = [
   { id: "supplier", name: "Supplier portal agent", source: "Portals + EDI + documents", mode: "API + document extraction", status: "attention", freshness: "26 min", records: "742K", entities: "Suppliers · capacity · evidence", quality: 87, boundary: "Client VPC" },
   { id: "public", name: "Market intelligence swarm", source: "Web · filings · news · trade data", mode: "Continuous evidence crawl", status: "running", freshness: "2 min", records: "84.2M", entities: "Events · companies · commodities", quality: 91, boundary: "Platform" },
   { id: "mail", name: "Unstructured operations agent", source: "Approved mailboxes + files", mode: "Policy-scoped extraction", status: "paused", freshness: "Paused", records: "184K", entities: "Commitments · exceptions · actions", quality: 89, boundary: "Client VPC" },
+  { id: "wms", name: "Warehouse execution agent", source: "WMS + yard + labor systems", mode: "Events + bounded polling", status: "running", freshness: "36 sec", records: "9.8M", entities: "Receipts · picks · doors · inventory age", quality: 97, boundary: "Client VPC" },
+  { id: "qms", name: "Quality evidence agent", source: "QMS + laboratory + audit packs", mode: "Events + governed documents", status: "attention", freshness: "19 min", records: "1.1M", entities: "Lots · defects · certificates · CAPA", quality: 92, boundary: "Client VPC" },
+  { id: "crm", name: "Demand signal agent", source: "CRM + order portal + channel inventory", mode: "CDC + approved signals", status: "running", freshness: "3 min", records: "6.7M", entities: "Opportunities · orders · programs · overrides", quality: 95, boundary: "Client VPC" },
+  { id: "finance", name: "Financial flow agent", source: "ERP finance + treasury + tariff books", mode: "CDC + daily controls", status: "running", freshness: "54 sec", records: "12.6M", entities: "Invoices · payables · receivables · margin", quality: 98, boundary: "Client VPC" },
+  { id: "carbon", name: "Resource and carbon agent", source: "Metering + carrier factors + declarations", mode: "Hourly + evidence event", status: "attention", freshness: "47 min", records: "886K", entities: "Energy · carbon · water · product evidence", quality: 84, boundary: "Hybrid" },
+  { id: "customs", name: "Trade and customs agent", source: "Broker milestones + declarations + policy", mode: "Event stream + policy rules", status: "running", freshness: "6 min", records: "2.3M", entities: "Entries · holds · duties · market access", quality: 93, boundary: "Hybrid" },
 ];
 
 export type DecisionStage = "Detect" | "Validate" | "Simulate" | "Approve" | "Execute" | "Measure";
@@ -290,6 +296,9 @@ export type DecisionScenario = {
   residualRisk: number;
   carbonDelta: string;
   recommended: boolean;
+  methodStack: string;
+  feasibility: "Inside hard envelope" | "Conditional" | "Fails hard constraint";
+  change: string;
 };
 
 export type CaseEvidence = {
@@ -353,16 +362,21 @@ function buildContributions(values: {
     { app: "risk", headline: "Exposure path quantified", value: values.exposure, detail: "Probability, recoverability, propagation path, and business interruption range are linked to the case.", method: "M-16 · M-22 · M-23", freshness: "2 min ago", tone: values.riskTone ?? "critical", state: "Ready" },
     { app: "suppliers", headline: "Dependency and optionality resolved", value: values.dependency, detail: "Ownership, capability, qualification, site, tier, and alternative-source evidence are connected.", method: "M-04 · M-25 · M-29", freshness: "7 min ago", tone: "watch", state: "Ready" },
     { app: "demand", headline: "Demand to protect", value: values.demand, detail: "Consensus, downside, upside, and constrained-supply scenarios are reconciled at the case grain.", method: "M-02 · M-03 · M-20", freshness: "11 min ago", tone: "info", state: "Review" },
-    { app: "optimizer", headline: "Feasible response portfolio", value: values.plan, detail: "Hard constraints, objective posture, solver evidence, warnings, and fallback actions are retained.", method: "M-06 · M-12 · M-20 · M-24", freshness: "18 min ago", tone: "opportunity", state: "Ready" },
+    { app: "optimizer", headline: "Illustrative response portfolio", value: values.plan, detail: "Hard checks, objective posture, evidence kind, warnings, and fallback actions are retained; concept calculations make no solver or optimality claim.", method: "M-06 · M-12 · M-20 · M-24", freshness: "18 min ago", tone: "opportunity", state: "Ready" },
     { app: "flow", headline: "Financial consequence", value: values.financial, detail: "Inventory, premium freight, revenue, margin, receivables, and working-capital effects are reconciled.", method: "M-01 · M-16 · M-24", freshness: "21 min ago", tone: "healthy", state: "Ready" },
   ];
 }
 
 function buildScenarios(id: string, protectedValues: readonly [string, string, string], services: readonly [string, string, string]): readonly DecisionScenario[] {
+  const serviceValues = services.map((value) => Number.parseFloat(value));
+  const serviceFirst = `${Math.min(99.9, Math.max(...serviceValues, serviceValues[1] + .8)).toFixed(1)}%`;
   return [
-    { id: `${id}-A`, name: "Hold current plan", posture: "Lowest immediate spend", cost: "$0.4M", service: services[0], protectedValue: protectedValues[0], cashImpact: "+$0.2M", residualRisk: 72, carbonDelta: "0.0%", recommended: false },
-    { id: `${id}-B`, name: "Balanced response", posture: "Margin, service, and stability", cost: "$1.8M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$0.8M", residualRisk: 18, carbonDelta: "+0.6%", recommended: true },
-    { id: `${id}-C`, name: "Service-first response", posture: "Maximum customer protection", cost: "$3.1M", service: services[2], protectedValue: protectedValues[2], cashImpact: "−$2.3M", residualRisk: 9, carbonDelta: "+2.4%", recommended: false },
+    { id: `${id}-A`, name: "Hold current plan", posture: "Lowest immediate spend", cost: "$0.4M", service: services[0], protectedValue: protectedValues[0], cashImpact: "+$0.2M", residualRisk: 72, carbonDelta: "0.0%", recommended: false, methodStack: "M-01 baseline · M-16 stress", feasibility: "Fails hard constraint", change: "No network action; exposes the avoidable-loss baseline." },
+    { id: `${id}-B`, name: "Balanced response", posture: "Margin, service, and stability", cost: "$1.8M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$0.8M", residualRisk: 18, carbonDelta: "+0.6%", recommended: true, methodStack: "M-06 · M-20 · M-23 · M-24", feasibility: "Inside hard envelope", change: "Balances alternate capacity, inventory, transport, and order priority." },
+    { id: `${id}-C`, name: "Service-first response", posture: "Maximum customer protection", cost: "$3.1M", service: serviceFirst, protectedValue: protectedValues[2], cashImpact: "−$2.3M", residualRisk: 9, carbonDelta: "+2.4%", recommended: false, methodStack: "M-06 · M-21 · M-23", feasibility: "Conditional", change: "Adds expedite and protected stock; requires higher cash and carbon authority." },
+    { id: `${id}-D`, name: "Robust reserve", posture: "Worst-case feasibility", cost: "$2.4M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$1.4M", residualRisk: 12, carbonDelta: "+0.4%", recommended: false, methodStack: "M-22 · M-23 · M-24", feasibility: "Inside hard envelope", change: "Reserves capacity against joint lead-time and supply deviations." },
+    { id: `${id}-E`, name: "Low-carbon recovery", posture: "Carbon-first within service floor", cost: "$2.1M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$1.0M", residualRisk: 24, carbonDelta: "−1.8%", recommended: false, methodStack: "M-05 · M-10 · M-24", feasibility: "Conditional", change: "Shifts emergency air to rail/ocean and moves the recovery date." },
+    { id: `${id}-F`, name: "Adaptive staged response", posture: "Commit now; preserve later options", cost: "$1.5M", service: services[1], protectedValue: protectedValues[1], cashImpact: "−$0.6M", residualRisk: 21, carbonDelta: "+0.2%", recommended: false, methodStack: "M-20 · M-26 · M-09 fallback", feasibility: "Inside hard envelope", change: "Stages commitments and replays after the next evidence threshold." },
   ];
 }
 
@@ -371,6 +385,8 @@ const commonEvidence = (prefix: string): readonly CaseEvidence[] => [
   { id: `${prefix}-EV-02`, source: "Supplier + contract evidence", fact: "Capacity, qualification, lead-time, commercial terms, and recovery commitments validated.", confidence: 94, observed: "7 min ago", kind: "Corroborated" },
   { id: `${prefix}-EV-03`, source: "Operational Knowledge Graph", fact: "Material-to-product-to-order exposure path resolved with retained source lineage.", confidence: 92, observed: "2 min ago", kind: "Inferred" },
   { id: `${prefix}-EV-04`, source: "External intelligence", fact: "Market, logistics, policy, weather, and company signals deduplicated across approved sources.", confidence: 89, observed: "12 min ago", kind: "Corroborated" },
+  { id: `${prefix}-EV-05`, source: "Synthetic OR calculation manifest", fact: `Case ${prefix} retains the decision grain, objective hierarchy, 12-family check state, scenario probabilities, candidate-space index, and input fingerprint without claiming a solver run or mathematical optimality.`, confidence: 100, observed: "18 min ago", kind: "Observed" },
+  { id: `${prefix}-EV-06`, source: "Outcome and override ledger", fact: "Expected service, value, cash, carbon, owner changes, overrides, and the measurement window are versioned for later realized-outcome comparison.", confidence: 97, observed: "24 min ago", kind: "Corroborated" },
 ];
 
 const commonTasks = (prefix: string, primaryOwner: string): readonly ExecutionTask[] => [
@@ -378,6 +394,8 @@ const commonTasks = (prefix: string, primaryOwner: string): readonly ExecutionTa
   { id: `${prefix}-T2`, title: "Update allocation and customer promise", owner: "Network planning", due: "Today · 16:00", status: "Ready" },
   { id: `${prefix}-T3`, title: "Publish execution package to operators", owner: "Control tower", due: "Tomorrow · 09:00", status: "Blocked" },
   { id: `${prefix}-T4`, title: "Measure service, margin, cash, and overrides", owner: "Finance control", due: "Month end", status: "In progress" },
+  { id: `${prefix}-T5`, title: "Reconcile actual outcome against scenario forecast", owner: "Decision analytics", due: "Measurement window", status: "Ready" },
+  { id: `${prefix}-T6`, title: "Review model drift and retire expired assumptions", owner: "Model risk", due: "Next governance cycle", status: "Ready" },
 ];
 
 export const decisionCases: readonly DecisionCase[] = [
@@ -419,7 +437,7 @@ export const decisionCases: readonly DecisionCase[] = [
   {
     id: "CASE-1024", scope: "global", title: "Protect Red Sea customer commitments", summary: "Evaluate corridor, inventory, production, and customer-allocation responses to a compound maritime disruption.", severity: "Critical", status: "In analysis", stage: "Detect", owner: "Olivia Hart", ownerInitials: "OH", due: "4h remaining", updated: "6 min ago", value: "$34M customer value exposed", serviceExposure: "312 orders · 19 lanes", confidence: 91, primaryEntity: "Red Sea corridor",
     affectedEntities: ["Red Sea corridor", "19 lanes", "8 plants", "312 customer orders", "4 product families"], variableIds: ["L0-214", "L0-217", "L0-227", "L0-252", "L0-265", "L0-359"], methodCodes: ["M-05", "M-10", "M-16", "M-20", "M-22", "M-23"], recommendation: "Open a global case, validate affected customer paths, and compare Cape rerouting, air bridge, and regional inventory options.",
-    contributions: buildContributions({ exposure: "$34M · 312 orders", dependency: "19 lanes · 8 plants", demand: "4 product families P95", plan: "Solver queued", financial: "$28M protectable" }), scenarios: buildScenarios("1024", ["$8M", "$28M", "$32M"], ["82.0%", "94.6%", "97.8%"]), evidence: commonEvidence("1024"), tasks: commonTasks("1024", "Global control tower"), outcome: { baseline: "$34M value exposed", target: "≥$28M protected", realized: "Decision pending", measurementWindow: "10 weeks" },
+    contributions: buildContributions({ exposure: "$34M · 312 orders", dependency: "19 lanes · 8 plants", demand: "4 product families P95", plan: "Response study queued", financial: "$28M protectable" }), scenarios: buildScenarios("1024", ["$8M", "$28M", "$32M"], ["82.0%", "94.6%", "97.8%"]), evidence: commonEvidence("1024"), tasks: commonTasks("1024", "Global control tower"), outcome: { baseline: "$34M value exposed", target: "≥$28M protected", realized: "Decision pending", measurementWindow: "10 weeks" },
   },
   {
     id: "CASE-1019", scope: "global", title: "Absorb copper and energy price volatility", summary: "Coordinate sourcing, production, pricing, and cash responses under correlated copper, electricity, and freight scenarios.", severity: "Medium", status: "In analysis", stage: "Validate", owner: "Marcus Lee", ownerInitials: "ML", due: "3d remaining", updated: "1 hr ago", value: "$12.4M margin range", serviceExposure: "7 product portfolios", confidence: 82, primaryEntity: "Copper and energy cost basket",
@@ -443,21 +461,68 @@ export type OptimizationInput = {
   strategy: "Balanced" | "Service first" | "Cash first" | "Lowest carbon";
 };
 
+export type OptimizationContext = {
+  scope: ScopeId;
+  caseId: string;
+  entityContext: string;
+  patternId: string;
+  horizon: string;
+  methodStack: readonly string[];
+  scenarioSetId: string;
+};
+
+export type ConstraintCheck = {
+  id: `C-${string}`;
+  name: string;
+  hard: boolean;
+  state: "Satisfied" | "Binding" | "Violated" | "Advisory";
+  residual: string;
+  evidence: string;
+};
+
 export type OptimizationResult = {
   runId: string;
+  status: "Reviewable synthetic estimate" | "Blocked synthetic estimate";
+  releasable: boolean;
+  hardViolations: readonly string[];
+  inputFingerprint: string;
+  candidateSpaceIndex: number;
+  context: OptimizationContext;
+  constraintChecks: readonly ConstraintCheck[];
   protectedMargin: number;
   totalCost: number;
   projectedService: number;
   residualRisk: number;
   carbonDelta: number;
+  objectiveBreakdown: readonly { label: string; value: number; unit: "$M" | "points" }[];
   allocations: readonly { action: string; volume: string; timing: string; owner: string; cost: string }[];
   warnings: readonly string[];
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const round = (value: number, digits = 1) => Number(value.toFixed(digits));
+const fingerprint = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0).toString(16).padStart(8, "0").toUpperCase();
+};
 
-export function solveNetworkPlan(input: OptimizationInput): OptimizationResult {
+const defaultOptimizationContext: OptimizationContext = {
+  scope: "company",
+  caseId: "CASE-1042",
+  entityContext: "network:unscoped",
+  patternId: "sourcing",
+  horizon: "Tactical · 3–24 months",
+  methodStack: ["M-06", "M-20", "M-22", "M-23", "M-24", "M-09"],
+  scenarioSetId: "JOINT-S12-V1",
+};
+
+const checkState = (headroom: number, bindingThreshold = 2): ConstraintCheck["state"] => headroom < 0 ? "Violated" : headroom <= bindingThreshold ? "Binding" : "Satisfied";
+
+export function solveNetworkPlan(input: OptimizationInput, context: OptimizationContext = defaultOptimizationContext): OptimizationResult {
   const normalized = {
     supplyLossPercent: clamp(input.supplyLossPercent, 0, 100),
     disruptionWeeks: clamp(input.disruptionWeeks, 1, 52),
@@ -466,29 +531,84 @@ export function solveNetworkPlan(input: OptimizationInput): OptimizationResult {
     carbonLimitPercent: clamp(input.carbonLimitPercent, -20, 20),
     strategy: input.strategy,
   };
+  const normalizedContext: OptimizationContext = {
+    scope: ["global", "region", "company"].includes(context.scope) ? context.scope : "company",
+    caseId: context.caseId || defaultOptimizationContext.caseId,
+    entityContext: context.entityContext || defaultOptimizationContext.entityContext,
+    patternId: context.patternId || defaultOptimizationContext.patternId,
+    horizon: context.horizon || defaultOptimizationContext.horizon,
+    methodStack: context.methodStack.length ? [...context.methodStack] : [...defaultOptimizationContext.methodStack],
+    scenarioSetId: context.scenarioSetId || defaultOptimizationContext.scenarioSetId,
+  };
   const strategyFactor = { Balanced: 0.84, "Service first": 0.94, "Cash first": 0.72, "Lowest carbon": 0.78 }[normalized.strategy];
   const spendFactor = clamp(normalized.budgetMillions / 4, 0, 1);
-  const stress = normalized.supplyLossPercent * (normalized.disruptionWeeks / 12);
-  const mitigation = clamp(strategyFactor * (0.62 + spendFactor * 0.38), 0.2, 0.97);
-  const totalCost = Math.min(normalized.budgetMillions, 0.6 + stress * 0.065 * (normalized.strategy === "Cash first" ? 0.72 : 1));
-  const projectedService = clamp(normalized.serviceTarget - stress * 0.18 * (1 - mitigation), 68, 99.5);
+  const scopeComplexity = { global: 1.08, region: 1.03, company: 1 }[normalizedContext.scope];
+  const horizonComplexity = normalizedContext.horizon.startsWith("Strategic") ? 1.09 : normalizedContext.horizon.startsWith("Tactical") ? 1.04 : normalizedContext.horizon.startsWith("Operational") ? 1 : .96;
+  const patternAdjustment = .98 + (Number.parseInt(fingerprint(normalizedContext.patternId).slice(-2), 16) % 7) / 100;
+  const caseAdjustment = .99 + (Number.parseInt(fingerprint(normalizedContext.caseId).slice(-2), 16) % 5) / 100;
+  const entityAdjustment = .99 + (Number.parseInt(fingerprint(normalizedContext.entityContext).slice(-2), 16) % 5) / 100;
+  const scenarioAdjustment = .99 + (Number.parseInt(fingerprint(normalizedContext.scenarioSetId).slice(-2), 16) % 4) / 100;
+  const methodIdentityAdjustment = .99 + (Number.parseInt(fingerprint(normalizedContext.methodStack.join("|")).slice(-2), 16) % 4) / 100;
+  const methodBreadth = clamp(normalizedContext.methodStack.length, 1, 10);
+  const stress = normalized.supplyLossPercent * (normalized.disruptionWeeks / 12) * scopeComplexity * caseAdjustment * entityAdjustment * scenarioAdjustment;
+  const mitigation = clamp(strategyFactor * (0.62 + spendFactor * 0.38) * (1 + (methodBreadth - 4) * .006) * methodIdentityAdjustment, 0.2, 0.97);
+  const totalCost = Math.min(normalized.budgetMillions, (0.6 + stress * 0.065 * (normalized.strategy === "Cash first" ? 0.72 : 1)) * horizonComplexity * patternAdjustment * caseAdjustment);
+  const projectedService = clamp(92 + mitigation * 8 - stress * 0.04 * horizonComplexity, 68, 99.5);
   const residualRisk = clamp(100 - mitigation * 100, 3, 78);
   const carbonDelta = normalized.strategy === "Lowest carbon" ? -2.8 : round(normalized.supplyLossPercent * 0.055 + (normalized.strategy === "Service first" ? 1.2 : 0));
   const protectedMargin = (1.8 + stress * 0.21) * mitigation;
   const alternateShare = round(clamp(normalized.supplyLossPercent * mitigation * 0.58, 4, 34));
   const transferTons = Math.round(clamp(stress * 0.9, 8, 74));
+  const materialHeadroom = 100 - normalized.supplyLossPercent * (1 - mitigation) - 70;
+  const supplierHeadroom = 34 - alternateShare;
+  const laneHeadroom = 70 - transferTons;
+  const handlingHeadroom = 64 - transferTons;
+  const serviceHeadroom = projectedService - normalized.serviceTarget;
+  const ageHeadroom = 21 - normalized.disruptionWeeks;
+  const carbonHeadroom = normalized.carbonLimitPercent - carbonDelta;
+  const budgetHeadroom = normalized.budgetMillions >= .75 ? normalized.budgetMillions - totalCost : normalized.budgetMillions - .75;
+  const constraintChecks: readonly ConstraintCheck[] = [
+    { id: "C-01", name: "Inventory flow balance", hard: true, state: "Satisfied", residual: "0.0 modeled-unit residual", evidence: "The constructed response preserves opening + receipts − demand − shipments = closing state." },
+    { id: "C-02", name: "Production & material balance", hard: true, state: checkState(materialHeadroom), residual: `${round(materialHeadroom)} points effective-supply headroom`, evidence: "Synthetic yield-adjusted supply is tested against the governed 70-point conversion floor." },
+    { id: "C-03", name: "Supplier & allocation capacity", hard: true, state: checkState(supplierHeadroom), residual: `${round(supplierHeadroom)} points qualified-allocation headroom`, evidence: "Alternate awards are restricted to the qualified 34% candidate capacity band." },
+    { id: "C-04", name: "Lane & asset capacity", hard: true, state: checkState(laneHeadroom, 4), residual: `${round(laneHeadroom)} t bridge-capacity headroom`, evidence: "Transfer demand is checked against the 70 t protected multimodal bridge." },
+    { id: "C-05", name: "Storage & handling", hard: true, state: checkState(handlingHeadroom, 4), residual: `${round(handlingHeadroom)} t handling headroom`, evidence: "Illustrative receiving, staging, and labor capacity is capped at 64 t in the decision window." },
+    { id: "C-06", name: "Customer service", hard: true, state: checkState(serviceHeadroom, .5), residual: `${round(serviceHeadroom)} OTIF points above floor`, evidence: `Projected ${round(projectedService)}% is tested against the ${normalized.serviceTarget}% governed floor.` },
+    { id: "C-07", name: "MOQ, batch & setup", hard: false, state: alternateShare % 2 === 0 ? "Satisfied" : "Advisory", residual: `${alternateShare}% award before lot-size repair`, evidence: "A deterministic repair rounds released awards to approved supplier batch multiples." },
+    { id: "C-08", name: "Shelf life & age", hard: true, state: checkState(ageHeadroom, 2), residual: `${round(ageHeadroom)} weeks before governed age limit`, evidence: "The concept checks disruption duration against a 21-week representative usable-life boundary." },
+    { id: "C-09", name: "Authorization & market access", hard: true, state: "Satisfied", residual: "0 unauthorized combinations represented", evidence: "The response fixture is allow-list constrained to synthetic qualified part–supplier–site–market paths." },
+    { id: "C-10", name: "Carbon & resource", hard: true, state: checkState(carbonHeadroom, .5), residual: `${round(carbonHeadroom)} carbon points below envelope`, evidence: `Projected ${round(carbonDelta)}% is tested against the ${normalized.carbonLimitPercent}% change envelope.` },
+    { id: "C-11", name: "Cash & budget", hard: true, state: checkState(budgetHeadroom, .15), residual: `$${round(budgetHeadroom, 2)}M authority headroom`, evidence: "Response cost plus the minimum executable qualification package is checked against delegated authority." },
+    { id: "C-12", name: "Non-anticipativity", hard: true, state: "Satisfied", residual: "0 scenario-specific first-stage fields", evidence: `One fixed response is evaluated across ${normalizedContext.scenarioSetId}; future scenario labels do not alter first-stage fields.` },
+  ];
   const warnings: string[] = [];
-  if (totalCost >= normalized.budgetMillions && normalized.budgetMillions < 3) warnings.push("Budget is binding; the solver leaves service below the requested target.");
+  if (totalCost >= normalized.budgetMillions && normalized.budgetMillions < 3) warnings.push("Budget is binding; the deterministic response estimate may leave service below the requested target.");
   if (projectedService < normalized.serviceTarget) warnings.push(`Projected service is ${round(normalized.serviceTarget - projectedService)} points below target.`);
   if (carbonDelta > normalized.carbonLimitPercent) warnings.push("The fastest feasible route exceeds the selected carbon envelope.");
+  const hardViolations = constraintChecks.filter((check) => check.hard && check.state === "Violated").map((check) => `${check.id} ${check.name}: ${check.residual}.`);
+  const inputFingerprint = fingerprint(JSON.stringify({ input: normalized, context: normalizedContext }));
+  const releasable = hardViolations.length === 0;
 
   return {
-    runId: `OR-${normalized.strategy.replace(/\s/g, "").toUpperCase()}-${normalized.supplyLossPercent}-${normalized.disruptionWeeks}-${normalized.budgetMillions}`,
+    runId: `ESTIMATE-${inputFingerprint}`,
+    status: releasable ? "Reviewable synthetic estimate" : "Blocked synthetic estimate",
+    releasable,
+    hardViolations,
+    inputFingerprint,
+    candidateSpaceIndex: Math.round((384 + normalized.supplyLossPercent * 11 + normalized.disruptionWeeks * 17 + normalized.budgetMillions * 23) * scopeComplexity * horizonComplexity * (1 + methodBreadth * .018)),
+    context: normalizedContext,
+    constraintChecks,
     protectedMargin: round(protectedMargin, 2),
     totalCost: round(totalCost, 2),
     projectedService: round(projectedService),
     residualRisk: round(residualRisk),
     carbonDelta: round(carbonDelta),
+    objectiveBreakdown: [
+      { label: "Transport + expedite", value: round(totalCost * .38, 2), unit: "$M" },
+      { label: "Qualification + capacity", value: round(totalCost * .42, 2), unit: "$M" },
+      { label: "Inventory + handling", value: round(totalCost * .2, 2), unit: "$M" },
+      { label: "Residual service penalty", value: round(Math.max(0, normalized.serviceTarget - projectedService) * 1.7, 1), unit: "points" },
+    ],
     allocations: [
       { action: `Reserve ${alternateShare}% alternate graphite capacity`, volume: `${Math.round(alternateShare * 18)} t`, timing: "Week 1", owner: "Category lead", cost: `$${round(totalCost * .48, 2)}M` },
       { action: "Reallocate Monterrey safety stock", volume: `${transferTons} t`, timing: "48 hours", owner: "Network planning", cost: `$${round(totalCost * .22, 2)}M` },

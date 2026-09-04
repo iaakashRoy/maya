@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { applicationBlueprints, type ApplicationDetailId } from "./application-catalog";
+import { getApplicationChanges, learningContracts } from "./application-change-model";
 
-type SectionId = "operating" | "methods" | "data" | "measure";
+type SectionId = "operating" | "methods" | "data" | "measure" | "change";
 
 const sections: readonly { id: SectionId; label: string; detail: string }[] = [
   { id: "operating", label: "Operating model", detail: "Decision and workflow" },
   { id: "methods", label: "Methods", detail: "Logic and validation" },
   { id: "data", label: "Data & controls", detail: "Contracts and governance" },
   { id: "measure", label: "Measure & hand off", detail: "KPIs and execution" },
+  { id: "change", label: "Change & learning", detail: "Before, now, forecast" },
 ];
 
 function BlueprintNav({ active, onChange }: { active: SectionId; onChange: (section: SectionId) => void }) {
@@ -30,6 +32,42 @@ function BlueprintNav({ active, onChange }: { active: SectionId; onChange: (sect
           <div><b>{section.label}</b><small>{section.detail}</small></div>
         </button>
       ))}
+    </div>
+  );
+}
+
+function ChangeLearningPanel({ id }: { id: ApplicationDetailId }) {
+  const changes = getApplicationChanges(id);
+  const learning = learningContracts[id];
+  const [horizon, setHorizon] = useState("All horizons");
+  const filtered = changes.filter((change) => horizon === "All horizons" || change.horizon === horizon);
+  const [selectedId, setSelectedId] = useState(changes[0].id);
+  const selected = filtered.find((change) => change.id === selectedId) ?? filtered[0] ?? changes[0];
+  const changeHorizon = (nextHorizon: string) => {
+    const nextChanges = changes.filter((change) => nextHorizon === "All horizons" || change.horizon === nextHorizon);
+    setHorizon(nextHorizon);
+    setSelectedId((current) => nextChanges.some((change) => change.id === current) ? current : (nextChanges[0]?.id ?? changes[0].id));
+  };
+
+  return (
+    <div className="blueprint-change-layout">
+      <section className="change-register">
+        <div className="blueprint-subhead change-subhead"><div><span>CAUSAL CHANGE LEDGER · DETERMINISTIC SYNTHETIC DATA</span><h3>What changed, why it changed, and which decision moves next</h3><p>Every event retains an as-of time, before/current/forecast values, provenance, confidence, trigger, and accountable owner.</p></div><label>Horizon<select value={horizon} onChange={(event) => changeHorizon(event.target.value)}><option>All horizons</option>{["Now", "24 hours", "7 days", "30 days", "90 days"].map((item) => <option key={item}>{item}</option>)}</select></label></div>
+        <div className="change-event-list">{filtered.map((change) => <button className={selected.id === change.id ? "active" : ""} type="button" key={change.id} onClick={() => setSelectedId(change.id)}><i className={`tone-dot tone-${change.tone}`} /><span className="change-time"><b>{change.horizon}</b><small>{change.asOf}</small></span><div><b>{change.title}</b><small>{change.entity} · {change.metric}</small></div><strong>{change.delta}</strong><em>{change.confidence}%</em></button>)}</div>
+      </section>
+      <aside className="change-inspector">
+        <header><i className={`tone-dot tone-${selected.tone}`} /><div><p className="kicker">SELECTED CHANGE · {selected.id}</p><h3>{selected.title}</h3><span>{selected.entity} · {selected.asOf}</span></div></header>
+        <div className="before-now-forecast"><article><span>BEFORE</span><b>{selected.previous}</b></article><i>→</i><article className="current"><span>CURRENT</span><b>{selected.current}</b></article><i>→</i><article><span>FORECAST</span><b>{selected.forecast}</b></article></div>
+        <section><span>WHY IT CHANGED</span><p>{selected.cause}</p></section>
+        <section><span>EVIDENCE + CONFIDENCE</span><p>{selected.evidence}</p><div className="change-confidence"><i style={{ width: `${selected.confidence}%` }} /><b>{selected.confidence}%</b></div></section>
+        <section><span>DECISION TRIGGER</span><p>{selected.decisionTrigger}</p></section>
+        <dl><div><dt>Accountable owner</dt><dd>{selected.owner}</dd></div><div><dt>Downstream handoff</dt><dd>{selected.downstream}</dd></div></dl>
+      </aside>
+      <section className="learning-loop">
+        <header><div><p className="kicker">CLOSED-LOOP LEARNING CONTRACT</p><h3>Expected versus realized outcomes feed the next decision</h3></div><span>Shadow mode · human governed</span></header>
+        <div className="learning-flow"><article><span>01</span><div><b>Predict</b><small>Champion · {learning.champion}</small></div></article><i>→</i><article><span>02</span><div><b>Decide + record</b><small>Retain inputs, version, rationale, approval, and fallback.</small></div></article><i>→</i><article><span>03</span><div><b>Observe outcome</b><small>{learning.outcomeWindow}</small></div></article><i>→</i><article><span>04</span><div><b>Challenge + improve</b><small>Challenger · {learning.challenger}</small></div></article></div>
+        <dl><div><dt>Last validation</dt><dd>{learning.lastValidation}</dd></div><div><dt>Next review</dt><dd>{learning.nextReview}</dd></div><div><dt>Drift trigger</dt><dd>{learning.driftTrigger}</dd></div><div><dt>Feedback destination</dt><dd>{learning.feedbackDestination}</dd></div></dl>
+      </section>
     </div>
   );
 }
@@ -145,6 +183,8 @@ export default function ApplicationOperatingModel({ id }: { id: ApplicationDetai
             </section>
           </div>
         )}
+
+        {active === "change" && <ChangeLearningPanel id={id} key={id} />}
       </div>
     </section>
   );

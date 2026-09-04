@@ -5,6 +5,7 @@ import ApplicationViews from "./ApplicationViews";
 import DataOperations from "./DataOperations";
 import DecisionWorkspaces from "./DecisionWorkspaces";
 import ScopeDashboard from "./ScopeDashboard";
+import type { MapSelectionContext } from "./WorldNetworkMap";
 import { resolveNavigation, scopeIds, viewLabels } from "./navigation";
 import {
   applications,
@@ -19,7 +20,7 @@ import {
 } from "./platform-model";
 
 const dataViews = [
-  { id: "agents" as const, label: "Data Agent Hub", icon: "DA", detail: "6 agents · 1 attention" },
+  { id: "agents" as const, label: "Data Agent Hub", icon: "DA", detail: "12 agents · 3 attention" },
   { id: "graph" as const, label: "Knowledge Graph", icon: "KG", detail: "8.4M entities" },
 ];
 
@@ -48,6 +49,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [networkSelection, setNetworkSelection] = useState<MapSelectionContext | null>(null);
   const [toast, setToast] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -78,6 +80,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     const nextScope = scopeIds.includes(next as ScopeId) ? next as ScopeId : scope;
     const nextCaseId = scopeIds.includes(next as ScopeId) ? cases.find((item) => item.scope === nextScope)?.id ?? selectedCaseId : selectedCaseId;
     setScope(nextScope);
+    if (scopeIds.includes(next as ScopeId) && nextScope !== scope) setNetworkSelection(null);
     setSelectedCaseId(nextCaseId);
     setView(next);
     setMobileOpen(false);
@@ -88,6 +91,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
 
   const openCase = (caseId: string, destination: "case" | "action" = "case") => {
     const item = cases.find((candidate) => candidate.id === caseId) ?? activeCase;
+    if (item.scope !== scope) setNetworkSelection(null);
     setSelectedCaseId(item.id);
     setScope(item.scope);
     setView(destination);
@@ -109,7 +113,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     setScope(next);
     setView(nextView);
     setSelectedCaseId(nextCaseId);
+    setNetworkSelection(null);
     pushNavigation(nextView, next, nextCaseId);
+  };
+
+  const openFromNetwork = (next: AppId, selection: MapSelectionContext) => {
+    setNetworkSelection(selection);
+    setToast(`${selection.label} retained as shared ${selection.kind} context for ${viewLabels[next]}`);
+    go(next);
   };
 
   useEffect(() => {
@@ -123,6 +134,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       setView(navigation.view);
       setScope(navigation.scope);
       setSelectedCaseId(navigation.caseId);
+      setNetworkSelection(null);
       setMobileOpen(false);
       setSearchOpen(false);
       setNotificationsOpen(false);
@@ -191,7 +203,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         </nav>
 
         <footer className="rail-footer">
-          <button type="button" onClick={() => go("agents")}><i className="status-live" /><span><b>Data plane live</b><small>5/6 agents running</small></span><em>→</em></button>
+          <button type="button" onClick={() => go("agents")}><i className="status-live" /><span><b>Data plane live</b><small>8/12 agents running</small></span><em>→</em></button>
           <p>CONCEPT WORKSPACE · SYNTHETIC DATA</p>
         </footer>
       </aside>
@@ -209,7 +221,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           {notificationsOpen && <aside className="notification-panel"><header><div><p className="kicker">ATTENTION REQUIRED</p><h2>Three decisions need you</h2></div><button type="button" onClick={() => setNotificationsOpen(false)}>×</button></header>{[
             ["critical", "Graphite response is ready for approval", "$4.2M margin · due in 2 hours", "CASE-1042"],
             ["watch", "Singapore delay now affects 11 priority orders", "Inventory transfer is feasible", "CASE-1041"],
-            ["opportunity", "Mexico stock can protect Detroit service", "$1.8M value · no premium freight", "CASE-1038"],
+            ["opportunity", "Regional casting qualification is ready for validation", "$620K annual savings · two part families", "CASE-1038"],
           ].map((item) => <button type="button" key={item[1]} onClick={() => openCase(item[3])}><i className={`tone-${item[0]}`} /><span><b>{item[1]}</b><small>{item[2]}</small></span><em>→</em></button>)}</aside>}
         </header>
 
@@ -217,11 +229,11 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
 
         <main className="main-content">
           {scopeIds.includes(view as ScopeId) ? (
-            <ScopeDashboard snapshot={snapshot} cases={scopeCases} horizon={horizon} category={category} onHorizonChange={setHorizon} onCategoryChange={setCategory} onOpenRisk={() => go("risk")} onOpenOptimizer={() => go("optimizer")} onOpenCase={openCase} onOpenDecisions={() => go("decisions")} />
+            <ScopeDashboard key={snapshot.id} snapshot={snapshot} cases={scopeCases} horizon={horizon} category={category} onHorizonChange={setHorizon} onCategoryChange={setCategory} onOpenRisk={(selection) => selection ? openFromNetwork("risk", selection) : go("risk")} onOpenOptimizer={(selection) => selection ? openFromNetwork("optimizer", selection) : go("optimizer")} onOpenFlow={(selection) => selection ? openFromNetwork("flow", selection) : go("flow")} onOpenSupplier={() => go("suppliers")} onOpenCase={openCase} onOpenDecisions={() => go("decisions")} onRefresh={() => setToast("Fixed synthetic snapshot reconciled · no source systems contacted")} />
           ) : workflowViews.some((item) => item.id === view) ? (
             <DecisionWorkspaces view={view as WorkflowViewId} cases={scopeCases} activeCase={activeCase} onOpenCase={openCase} onOpenApp={(app) => go(app)} onUpdateCase={updateCase} onToast={setToast} />
           ) : applications.some((item) => item.id === view) ? (
-            <ApplicationViews app={view as AppId} snapshot={snapshot} activeCase={activeCase} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={setToast} />
+            <ApplicationViews app={view as AppId} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={setToast} />
           ) : (
             <DataOperations view={view as DataViewId} snapshot={snapshot} onOpenApp={(app) => go(app)} onToast={setToast} />
           )}

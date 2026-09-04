@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { applications, type DecisionCase, type NetworkNode, type ScopeSnapshot, type StatusTone } from "./platform-model";
+import WorldNetworkMap, { type MapSelectionContext } from "./WorldNetworkMap";
+import { getNetworkView, networkLocations, type MapLayer, type NetworkFrameId } from "./network-operations-model";
+import { applications, type DecisionCase, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type ScopeDashboardProps = {
   snapshot: ScopeSnapshot;
@@ -10,38 +12,39 @@ type ScopeDashboardProps = {
   category: string;
   onHorizonChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
-  onOpenRisk: () => void;
-  onOpenOptimizer: () => void;
+  onOpenRisk: (selection?: MapSelectionContext) => void;
+  onOpenOptimizer: (selection?: MapSelectionContext) => void;
+  onOpenFlow: (selection?: MapSelectionContext) => void;
+  onOpenSupplier: () => void;
   onOpenCase: (caseId: string) => void;
   onOpenDecisions: () => void;
+  onRefresh: () => void;
 };
 
 function ToneDot({ tone }: { tone: StatusTone }) {
   return <i className={`tone-dot tone-${tone}`} aria-hidden="true" />;
 }
 
-function MapNodeButton({ node, selected, onSelect }: { node: NetworkNode; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      className={`map-node map-node-${node.kind} map-node-${node.tone} ${selected ? "selected" : ""}`}
-      style={{ left: `${node.x}%`, top: `${node.y}%` }}
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-    >
-      <i aria-hidden="true" />
-      <span><b>{node.name}</b><small>{node.kind}</small></span>
-    </button>
-  );
-}
+export default function ScopeDashboard({ snapshot, cases, horizon, category, onHorizonChange, onCategoryChange, onOpenRisk, onOpenOptimizer, onOpenFlow, onOpenSupplier, onOpenCase, onOpenDecisions, onRefresh }: ScopeDashboardProps) {
+  const [movementMode, setMovementMode] = useState<"All movements" | "At risk" | "Arriving">("All movements");
+  const [moneyMode, setMoneyMode] = useState<"Cash position" | "Working capital" | "Margin">("Cash position");
+  const [currency, setCurrency] = useState(snapshot.currency);
+  const [reconciled, setReconciled] = useState(false);
 
-export default function ScopeDashboard({ snapshot, cases, horizon, category, onHorizonChange, onCategoryChange, onOpenRisk, onOpenOptimizer, onOpenCase, onOpenDecisions }: ScopeDashboardProps) {
-  const [selectedNodeId, setSelectedNodeId] = useState(snapshot.nodes[0]?.id ?? "");
-  const [movementMode, setMovementMode] = useState("All movements");
-  const [moneyMode, setMoneyMode] = useState("Cash position");
-
-  const selectedNode = snapshot.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.nodes[0];
-  const nodeIndex = useMemo(() => new Map(snapshot.nodes.map((node) => [node.id, node])), [snapshot.nodes]);
+  const nodeIndex = useMemo(() => new Map(networkLocations.map((node) => [node.id, node])), []);
+  const dashboardFrame: NetworkFrameId = horizon === "7 days" ? "t+7d" : horizon === "30 days" ? "t+30d" : horizon === "90 days" ? "t+90d" : "live";
+  const movementRows = useMemo(() => {
+    const layers = new Set<MapLayer>(["Ocean", "Air", "Road", "Rail", "Transfer", "Assets", "Cargo", "Locations"]);
+    const view = getNetworkView({ scope: snapshot.id, frame: dashboardFrame, scenario: "trajectory", category, movement: movementMode, layers });
+    return view.corridors.map((corridor) => ({ corridor, asset: view.assets.find((candidate) => candidate.corridorId === corridor.id) }));
+  }, [category, dashboardFrame, movementMode, snapshot.id]);
+  const currencyRate = currency === "EUR" ? .92 : currency === "INR" ? 83.8 : 1;
+  const formatMoney = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency, notation: "compact", maximumFractionDigits: 1 }).format(value * currencyRate);
+  const moneyFocus = {
+    "Cash position": { record: snapshot.money[0], lens: "Capital physically committed to the active network", change: "Reconciles movement value, payment timing, and release exposure." },
+    "Working capital": { record: snapshot.money[2] ?? snapshot.money[1], lens: "Inventory and timing pressure across the current scope", change: "Surfaces dwell, days-on-hand, receivables, and feasible cash release." },
+    Margin: { record: snapshot.money[3] ?? snapshot.money[0], lens: "Contribution margin connected to disruption decisions", change: "Connects service protection, premium freight, duty, and avoidable loss." },
+  }[moneyMode];
 
   return (
     <div className="scope-dashboard">
@@ -61,11 +64,11 @@ export default function ScopeDashboard({ snapshot, cases, horizon, category, onH
       <section className="control-strip" aria-label="Dashboard filters">
         <div className="filter-group">
           <span>Time horizon</span>
-          {["Live", "7 days", "30 days", "90 days"].map((item) => <button className={horizon === item ? "active" : ""} type="button" key={item} onClick={() => onHorizonChange(item)}>{item}</button>)}
+          {["Live", "7 days", "30 days", "90 days"].map((item) => <button className={horizon === item ? "active" : ""} type="button" key={item} onClick={() => { setReconciled(false); onHorizonChange(item); }}>{item}</button>)}
         </div>
-        <label>Category<select value={category} onChange={(event) => onCategoryChange(event.target.value)}><option>All categories</option><option>Critical materials</option><option>Electronics</option><option>Logistics</option><option>Direct materials</option></select></label>
-        <label>Currency<select defaultValue={snapshot.currency}><option>USD</option><option>EUR</option><option>INR</option><option>Local currency</option></select></label>
-        <button className="control-refresh" type="button">Refresh intelligence ↻</button>
+        <label>Category<select value={category} onChange={(event) => { setReconciled(false); onCategoryChange(event.target.value); }}><option>All categories</option><option>Critical materials</option><option>Electronics</option><option>Logistics</option><option>Direct materials</option></select></label>
+        <label>Map currency<select value={currency} onChange={(event) => setCurrency(event.target.value)}><option>USD</option><option>EUR</option><option>INR</option></select></label>
+        <button className="control-refresh" type="button" onClick={() => { setReconciled(true); onRefresh(); }}>{reconciled ? "Snapshot reconciled ✓" : "Reconcile fixed snapshot ↻"}</button>
       </section>
 
       <section className="metric-grid" aria-label={`${snapshot.label} summary metrics`}>
@@ -91,66 +94,46 @@ export default function ScopeDashboard({ snapshot, cases, horizon, category, onH
         </div>
       </section>
 
-      <section className="map-card panel" aria-labelledby="network-map-title">
-        <header className="panel-header map-header">
-          <div><p className="kicker">NETWORK MAP</p><h2 id="network-map-title">Value, material, and commitments in motion</h2><span>Click a node to inspect orders, cargo, suppliers, and exposure.</span></div>
-          <div className="map-legend"><span><ToneDot tone="healthy" />On plan</span><span><ToneDot tone="watch" />Watch</span><span><ToneDot tone="critical" />Critical</span><span><ToneDot tone="opportunity" />Opportunity</span></div>
-        </header>
-        <div className="map-layout">
-          <div className={`network-map network-map-${snapshot.id}`}>
-            <span className="map-region map-region-americas">AMERICAS</span>
-            <span className="map-region map-region-europe">EUROPE</span>
-            <span className="map-region map-region-asia">ASIA PACIFIC</span>
-            <span className="map-region map-region-africa">MEA</span>
-            {snapshot.routes.map((route) => {
-              const from = nodeIndex.get(route.from);
-              const to = nodeIndex.get(route.to);
-              if (!from || !to) return null;
-              const dx = to.x - from.x;
-              const dy = to.y - from.y;
-              const length = Math.sqrt(dx * dx + dy * dy);
-              const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-              return <i key={route.id} className={`route-line route-${route.status}`} style={{ left: `${from.x}%`, top: `${from.y}%`, width: `${length}%`, transform: `rotate(${angle}deg)` }} aria-hidden="true"><em /></i>;
-            })}
-            {snapshot.nodes.map((node) => <MapNodeButton node={node} selected={node.id === selectedNode?.id} onSelect={() => setSelectedNodeId(node.id)} key={node.id} />)}
-            <div className="map-scale"><span>LIVE NETWORK TWIN</span><b>{snapshot.routes.length} active corridors shown</b></div>
-          </div>
-          {selectedNode && (
-            <aside className="node-inspector" aria-live="polite">
-              <div className="node-inspector-title"><span className={`node-kind node-kind-${selectedNode.kind}`}>{selectedNode.kind.slice(0, 2).toUpperCase()}</span><div><p className="kicker">SELECTED NODE</p><h3>{selectedNode.name}</h3></div><ToneDot tone={selectedNode.tone} /></div>
-              <p>{selectedNode.detail}</p>
-              <dl><div><dt>Open demand</dt><dd>{selectedNode.orders}</dd></div><div><dt>Value connected</dt><dd>{selectedNode.value}</dd></div><div><dt>Current state</dt><dd>{selectedNode.tone}</dd></div></dl>
-              <div className="inspector-routes"><p className="kicker">CONNECTED MOVEMENTS</p>{snapshot.routes.filter((route) => route.from === selectedNode.id || route.to === selectedNode.id).slice(0, 3).map((route) => <button type="button" key={route.id}><ToneDot tone={route.status} /><span><b>{route.asset}</b><small>{route.mode} · {route.volume} · {route.eta}</small></span><em>→</em></button>)}</div>
-              <button className="primary-action" type="button" onClick={onOpenRisk}>Trace dependencies in RiskRadar →</button>
-            </aside>
-          )}
-        </div>
+      <section className="map-card panel" aria-label="Interactive global logistics radar">
+        <WorldNetworkMap
+          category={category}
+          currency={currency}
+          horizon={horizon}
+          key={`${snapshot.id}-${horizon}`}
+          movement={movementMode}
+          onMovementChange={setMovementMode}
+          onOpenOptimizer={onOpenOptimizer}
+          onOpenFlow={onOpenFlow}
+          onOpenRisk={onOpenRisk}
+          scope={snapshot.id}
+        />
       </section>
 
       <div className="dashboard-grid dashboard-grid-primary">
         <section className="panel intel-panel" aria-labelledby="intel-title">
-          <header className="panel-header"><div><p className="kicker">MOST IMPORTANT INTELLIGENCE</p><h2 id="intel-title">What changed—and why it matters here</h2></div><button type="button" onClick={onOpenRisk}>Open RiskRadar →</button></header>
-          <div className="intel-list">{snapshot.intel.map((intel, index) => <article key={intel.id}><span className={`intel-rank intel-rank-${intel.tone}`}>0{index + 1}</span><div><div className="intel-meta"><span>{intel.source}</span><b>{intel.confidence}% confidence</b><em>{intel.horizon}</em></div><h3>{intel.title}</h3><p>{intel.detail}</p></div><strong>{intel.impact}</strong><button type="button" aria-label={`Open ${intel.title}`}>→</button></article>)}</div>
+          <header className="panel-header"><div><p className="kicker">MOST IMPORTANT INTELLIGENCE</p><h2 id="intel-title">What changed—and why it matters here</h2></div><button type="button" onClick={() => onOpenRisk()}>Open RiskRadar →</button></header>
+          <div className="intel-list">{snapshot.intel.map((intel, index) => <article key={intel.id}><span className={`intel-rank intel-rank-${intel.tone}`}>0{index + 1}</span><div><div className="intel-meta"><span>{intel.source}</span><b>{intel.confidence}% confidence</b><em>{intel.horizon}</em></div><h3>{intel.title}</h3><p>{intel.detail}</p></div><strong>{intel.impact}</strong><button type="button" aria-label={`Open ${intel.title}`} onClick={() => onOpenRisk()}>→</button></article>)}</div>
         </section>
 
         <section className="panel money-panel" aria-labelledby="money-title">
           <header className="panel-header"><div><p className="kicker">MONEY FLOW</p><h2 id="money-title">Cash connected to operations</h2></div></header>
-          <div className="segmented-control">{["Cash position", "Working capital", "Margin"].map((item) => <button className={moneyMode === item ? "active" : ""} type="button" key={item} onClick={() => setMoneyMode(item)}>{item}</button>)}</div>
+          <div className="segmented-control">{(["Cash position", "Working capital", "Margin"] as const).map((item) => <button className={moneyMode === item ? "active" : ""} type="button" key={item} onClick={() => setMoneyMode(item)}>{item}</button>)}</div>
+          {moneyFocus && <article className="money-mode-focus"><div><span>{moneyMode.toUpperCase()} LENS</span><b>{moneyFocus.record.value}</b></div><strong>{moneyFocus.lens}</strong><small>{moneyFocus.record.detail} · {moneyFocus.change}</small></article>}
           <div className="money-list">{snapshot.money.map((item) => <article key={item.label}><div><span>{item.label}</span><strong>{item.value}</strong></div><div className="progress-track"><i className={`fill-${item.tone}`} style={{ width: `${item.percent}%` }} /></div><small>{item.detail}</small></article>)}</div>
-          <button className="text-action" type="button">Open FlowLens →</button>
+          <button className="text-action" type="button" onClick={() => onOpenFlow()}>Open FlowLens →</button>
         </section>
       </div>
 
       <div className="dashboard-grid dashboard-grid-secondary">
         <section className="panel movement-panel" aria-labelledby="movement-title">
-          <header className="panel-header"><div><p className="kicker">MOVEMENTS + CARGO</p><h2 id="movement-title">Ships, lanes, cargo, and committed orders</h2></div><div className="segmented-control compact">{["All movements", "At risk", "Arriving"].map((item) => <button className={movementMode === item ? "active" : ""} type="button" key={item} onClick={() => setMovementMode(item)}>{item}</button>)}</div></header>
-          <div className="table-scroll"><table><thead><tr><th>Asset / lane</th><th>Mode</th><th>Cargo volume</th><th>Order value</th><th>ETA / state</th><th /></tr></thead><tbody>{snapshot.routes.slice(0, 6).map((route) => <tr key={route.id}><td><span className="asset-cell"><ToneDot tone={route.status} /><span><b>{route.asset}</b><small>{nodeIndex.get(route.from)?.name} → {nodeIndex.get(route.to)?.name}</small></span></span></td><td>{route.mode}</td><td>{route.volume}</td><td>{route.value}</td><td><b>{route.eta}</b></td><td><button type="button" aria-label={`Inspect ${route.asset}`}>Inspect</button></td></tr>)}</tbody></table></div>
+          <header className="panel-header"><div><p className="kicker">MOVEMENTS + CARGO · SHARED RADAR MODEL</p><h2 id="movement-title">Ships, lanes, cargo, and committed orders</h2><span>{dashboardFrame.toUpperCase()} · current trajectory · same filtered corridor records as the map</span></div><div className="segmented-control compact">{(["All movements", "At risk", "Arriving"] as const).map((item) => <button className={movementMode === item ? "active" : ""} type="button" key={item} onClick={() => setMovementMode(item)}>{item}</button>)}</div></header>
+          <div className="table-scroll"><table><thead><tr><th>Asset / corridor</th><th>Mode</th><th>Committed volume</th><th>Goods value</th><th>ETA / reliability</th><th /></tr></thead><tbody>{movementRows.slice(0, 6).map(({ corridor, asset }) => <tr key={corridor.id}><td><span className="asset-cell"><ToneDot tone={corridor.status} /><span><b>{asset?.demoIdentifier ?? corridor.service}</b><small>{nodeIndex.get(corridor.from)?.name} → {nodeIndex.get(corridor.to)?.name}</small></span></span></td><td>{corridor.mode}</td><td>{corridor.committedUnits.toLocaleString()} {corridor.capacityUom}</td><td>{formatMoney(corridor.goodsValueUsd)}</td><td><b>{corridor.etaVarianceHours > 0 ? `+${corridor.etaVarianceHours}h` : `${corridor.etaVarianceHours}h`} · {corridor.reliabilityPercent}%</b></td><td><button type="button" aria-label={`Inspect ${corridor.service}`} onClick={() => onOpenRisk({ kind: "corridor", id: corridor.id, label: `${nodeIndex.get(corridor.from)?.code ?? corridor.from} → ${nodeIndex.get(corridor.to)?.code ?? corridor.to}`, frame: dashboardFrame, scenario: "trajectory" })}>Trace</button></td></tr>)}</tbody></table>{movementRows.length === 0 && <div className="empty-table-state">No corridors match the current scope, horizon, category, and movement filters.</div>}</div>
         </section>
 
         <section className="panel supplier-panel" aria-labelledby="supplier-title">
-          <header className="panel-header"><div><p className="kicker">SUPPLIER CRITICALITY</p><h2 id="supplier-title">Dependencies requiring attention</h2></div><button type="button">SupplierGraph →</button></header>
+          <header className="panel-header"><div><p className="kicker">SUPPLIER CRITICALITY</p><h2 id="supplier-title">Dependencies requiring attention</h2></div><button type="button" onClick={onOpenSupplier}>SupplierGraph →</button></header>
           <div className="supplier-list">{snapshot.suppliers.map((supplier) => <article key={supplier.name}><div className="supplier-head"><ToneDot tone={supplier.risk} /><span><b>{supplier.name}</b><small>{supplier.category} · {supplier.region}</small></span><em>{supplier.tier}</em></div><div><span>Dependency <b>{supplier.dependency}%</b></span><div className="progress-track"><i className={`fill-${supplier.risk}`} style={{ width: `${supplier.dependency}%` }} /></div><strong>{supplier.spend}</strong></div></article>)}</div>
-          <button className="secondary-action" type="button" onClick={onOpenOptimizer}>Optimize sourcing response</button>
+          <button className="secondary-action" type="button" onClick={() => onOpenOptimizer()}>Optimize sourcing response</button>
         </section>
       </div>
     </div>

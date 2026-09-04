@@ -27,6 +27,9 @@ test("server-renders the connected Resilience OS platform", async () => {
   assert.match(html, /Decision Inbox/);
   assert.match(html, /Action Room/);
   assert.match(html, /Data Agent Hub/);
+  assert.match(html, /GLOBAL NETWORK RADAR/);
+  assert.match(html, /Natural Earth 1:110m land/);
+  assert.match(html, />Cargo<\/button>/);
   assert.match(html, /Scope dashboards.*Decision Inbox.*Case Workspace.*Action Room/i);
   assert.match(html, /No operational backend/i);
   assert.match(html, /og\.png/);
@@ -63,6 +66,22 @@ test("server-renders persistent decision case and action-room deep links", async
   assert.match(actionHtml, /Decision authority/);
   assert.match(actionHtml, /Approve recommendation/);
   assert.match(actionHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
+});
+
+test("action room renders an explicit lifecycle gate before approval", async () => {
+  const blockedResponse = await render("/?view=action&scope=global&case=CASE-1024");
+  assert.equal(blockedResponse.status, 200);
+  const blockedHtml = await blockedResponse.text();
+  assert.match(blockedHtml, /Release gate blocked/);
+  assert.match(blockedHtml, /Blocked until the case completes Detect and enters Approve/);
+  assert.match(blockedHtml, /Approval unavailable/);
+
+  const readyResponse = await render("/?view=action&scope=company&case=CASE-1042");
+  assert.equal(readyResponse.status, 200);
+  const readyHtml = await readyResponse.text();
+  assert.match(readyHtml, /Ready for the named human approver/);
+  assert.match(readyHtml, /Approve and release/);
+  assert.match(readyHtml, /Approve recommendation/);
 });
 
 test("every application exposes a decision-specific operating model", async () => {

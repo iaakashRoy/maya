@@ -108,15 +108,15 @@ export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBluep
     primaryUsers: "Network planning · manufacturing · logistics · procurement · finance",
     cadence: "On demand for cases · nightly tactical solve · monthly design cycle",
     horizon: "Hours to 36 months",
-    authority: "Planner configures · solver recommends · functional owners validate · delegated authority approves",
+    authority: "Planner configures · deterministic synthetic calculator demonstrates · functional owners validate · delegated authority approves",
     workflow: [
       { phase: "Frame", activity: "Select decision variables, horizon, scenarios, baseline, objective weights, and non-negotiable business constraints.", accountable: "Decision modeler", exitCriteria: "Signed model scope and baseline version." },
-      { phase: "Solve", activity: "Generate feasible allocations across suppliers, plants, inventory pools, lanes, products, and customers.", accountable: "Network planner", exitCriteria: "Solver status, gap, runtime, and feasibility diagnostics recorded." },
-      { phase: "Challenge", activity: "Inspect binding constraints, shadow prices, scenario regret, sensitivities, and excluded alternatives.", accountable: "Cross-functional review", exitCriteria: "Assumptions accepted or rerun requests captured." },
+      { phase: "Calculate", activity: "Generate one deterministic synthetic response fixture across suppliers, plants, inventory pools, lanes, products, and customers.", accountable: "Network planner", exitCriteria: "Evidence kind, candidate-space index, all 12 family checks, runtime class, and decision-contract fingerprint recorded." },
+      { phase: "Challenge", activity: "Inspect illustrative binding checks, scenario regret, sensitivities, and excluded alternatives without claiming solver execution or mathematical optimality.", accountable: "Cross-functional review", exitCriteria: "Assumptions accepted or recalculation requests captured." },
       { phase: "Release", activity: "Convert the selected solution into reservations, transfers, production changes, bookings, and customer actions.", accountable: "Decision authority", exitCriteria: "Approved execution package with system-of-record write-back owners." },
     ],
     methods: [
-      { name: "Mixed-integer linear programming", family: "Exact optimization", purpose: "Selects discrete sources, lanes, shifts, and qualification choices while allocating continuous volume.", formulation: "min cᵀx + penalties, subject to Ax ≤ b, flow balance, service, capacity, and binary activation.", validation: "Report optimality gap, solve time, binding constraints, and deterministic replay hash." },
+      { name: "Mixed-integer linear programming", family: "Exact optimization", purpose: "Selects discrete sources, lanes, shifts, and qualification choices while allocating continuous volume; the current concept teaches the formulation but does not execute a MILP solver.", formulation: "min cᵀx + penalties, subject to Ax ≤ b, flow balance, service, capacity, and binary activation.", validation: "A production solver must report legitimate incumbent, bound, gap, residuals, runtime, and deterministic replay hash." },
       { name: "Multi-stage stochastic programming", family: "Optimization under uncertainty", purpose: "Chooses actions that remain valuable across demand, lead-time, price, and disruption scenarios.", formulation: "Minimize expected cost plus risk penalty with non-anticipativity across scenario stages.", validation: "Test scenario reduction, probability calibration, and value of stochastic solution." },
       { name: "Robust optimization", family: "Uncertainty sets", purpose: "Builds plans that remain feasible when critical parameters deviate inside governed ranges.", formulation: "Optimize worst-case or budgeted uncertainty over capacity, transit, yield, and demand sets.", validation: "Publish price of robustness and compare against historical extreme conditions." },
       { name: "Greedy repair heuristic", family: "Rapid response", purpose: "Produces a transparent near-feasible plan when exact solve time is incompatible with an urgent decision clock.", formulation: "Rank moves by protected contribution per constrained resource, then repair violated constraints.", validation: "Benchmark objective loss and constraint violations against solved historical instances." },
@@ -129,7 +129,7 @@ export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBluep
     ],
     controls: [
       { name: "Hard-constraint protection", rule: "Safety, regulatory, qualification, and contractual prohibitions cannot be traded for objective value.", owner: "Model governance", evidence: "Constraint catalog + release", tone: "critical" },
-      { name: "Feasibility certificate", rule: "No plan can be labeled optimal unless solver status and residual violations are retained.", owner: "Network planning", evidence: "Solver log + model fingerprint", tone: "healthy" },
+      { name: "Feasibility and claim integrity", rule: "No plan can be labeled solved or optimal unless real solver status, bounds, gaps, and residuals are retained; the concept exposes only deterministic synthetic checks.", owner: "Network planning", evidence: "Evidence-kind manifest + decision-contract fingerprint", tone: "healthy" },
       { name: "Manual override disclosure", rule: "Every planner override records value impact, rationale, approver, and expiry.", owner: "Planning leader", evidence: "Override ledger", tone: "watch" },
       { name: "Scenario approval", rule: "Material probability and uncertainty-set changes require dual review.", owner: "Finance + operations", evidence: "Scenario version history", tone: "info" },
     ],
