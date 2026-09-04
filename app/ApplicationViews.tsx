@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ApplicationOperatingModel from "./ApplicationOperatingModel";
 import { solveNetworkPlan, type AppId, type DecisionCase, type OptimizationInput, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type ApplicationViewsProps = {
@@ -201,5 +202,19 @@ export default function ApplicationViews({ app, snapshot, activeCase, onOpenCase
 
   const contribution = activeCase.contributions.find((item) => item.app === app);
 
-  return <div className="application-container"><section className="case-context-strip"><div><span className={`severity-${activeCase.severity.toLowerCase()}`} /><p><small>ACTIVE DECISION CONTEXT · {activeCase.id}</small><b>{activeCase.title}</b></p></div><dl><div><dt>This app contributes</dt><dd>{contribution?.value ?? "Connected"} · {contribution?.method ?? "Shared case"}</dd></div><div><dt>Lifecycle</dt><dd>{activeCase.stage} · {activeCase.status}</dd></div></dl><div><button type="button" onClick={onOpenCase}>Open case</button><button className="primary-action" type="button" onClick={onOpenAction}>Action Room →</button></div></section><button className="app-data-context" type="button" onClick={onOpenAgents}><Dot tone="healthy" /><span><b>Connected data context</b><small>5 agents running · private graph refreshed 18 sec ago</small></span><em>Inspect Agent Hub →</em></button>{workspace}</div>;
+  return (
+    <div className="application-container">
+      <section className="case-context-strip application-commandbar">
+        <div className="commandbar-case"><span className={`severity-${activeCase.severity.toLowerCase()}`} /><p><small>ACTIVE DECISION · {activeCase.id}</small><b>{activeCase.title}</b></p></div>
+        <div className="commandbar-facts">
+          <div><small>Application contribution</small><b>{contribution?.value ?? "Connected"} · {contribution?.method ?? "Shared case"}</b></div>
+          <div><small>Decision lifecycle</small><b>{activeCase.stage} · {activeCase.status}</b></div>
+          <button className="commandbar-data" type="button" onClick={onOpenAgents}><Dot tone="healthy" /><span><small>Governed data context</small><b>5 agents · graph merged 18 sec ago</b></span><em>Inspect →</em></button>
+        </div>
+        <div><button type="button" onClick={onOpenCase}>Open case</button><button className="primary-action" type="button" onClick={onOpenAction}>Action Room →</button></div>
+      </section>
+      {workspace}
+      <ApplicationOperatingModel id={app} />
+    </div>
+  );
 }

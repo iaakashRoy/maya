@@ -65,6 +65,30 @@ test("server-renders persistent decision case and action-room deep links", async
   assert.match(actionHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
 });
 
+test("every application exposes a decision-specific operating model", async () => {
+  const applicationRoutes = [
+    ["risk", "RiskRadar", /Which emerging dependency can stop customer commitments/],
+    ["optimizer", "Network Optimizer", /What combination of sourcing, production, inventory, logistics/],
+    ["flow", "FlowLens", /Where is cash or margin trapped in the physical network/],
+    ["demand", "DemandSense", /What is the credible demand range/],
+    ["suppliers", "SupplierGraph", /Which supplier capability, ownership, site, or sub-tier dependency matters/],
+    ["agents", "Data Agent Hub", /Is the evidence feeding each decision app current, complete, permitted/],
+    ["graph", "Operational Knowledge Graph", /What entities and relationships explain this operational condition/],
+  ];
+
+  for (const [view, name, decisionQuestion] of applicationRoutes) {
+    const response = await render(`/?view=${view}&scope=company&case=CASE-1042`);
+    assert.equal(response.status, 200, `${name} should render`);
+    const html = await response.text();
+    assert.match(html, new RegExp(`How[\\s\\S]*?${name}[\\s\\S]*?turns evidence into action`));
+    assert.match(html, /APPLICATION OPERATING MODEL/);
+    assert.match(html, /THE DECISION THIS APP EXISTS TO IMPROVE/);
+    assert.match(html, decisionQuestion);
+    assert.match(html, /workflow gates/);
+    assert.match(html, /data contracts/);
+  }
+});
+
 test("ships three platform levels, three workflow surfaces, five apps, and two data workspaces", async () => {
   const [page, applications, dataOperations, packageJson] = await Promise.all([
     Promise.all([

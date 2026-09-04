@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ApplicationOperatingModel from "./ApplicationOperatingModel";
 import { dataAgents, type AgentStatus, type DataViewId, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type DataOperationsProps = {
@@ -77,6 +78,10 @@ function KnowledgeGraph({ snapshot, onOpenApp, onToast }: Omit<DataOperationsPro
 }
 
 export default function DataOperations({ view, snapshot, onOpenApp, onToast }: DataOperationsProps) {
-  if (view === "agents") return <AgentHub snapshot={snapshot} onToast={onToast} />;
-  return <KnowledgeGraph snapshot={snapshot} onOpenApp={onOpenApp} onToast={onToast} />;
+  return (
+    <div className="data-operation-stack">
+      {view === "agents" ? <AgentHub snapshot={snapshot} onToast={onToast} /> : <KnowledgeGraph snapshot={snapshot} onOpenApp={onOpenApp} onToast={onToast} />}
+      <ApplicationOperatingModel id={view} />
+    </div>
+  );
 }

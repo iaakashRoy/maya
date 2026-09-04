@@ -33,6 +33,19 @@ across client systems and approved external sources. The **Operational
 Knowledge Graph** exposes resolved entities, relationships, evidence lineage,
 mapping exceptions, and the context consumed by each application.
 
+Each of the seven application and data surfaces includes a common four-part
+operating model that keeps implementation depth available without crowding the
+working dashboard:
+
+- **Operating model** documents the decision question, users, cadence,
+  authority, workflow gates, and exit criteria.
+- **Methods** explains four application-specific analytical or
+  operations-research methods, their formulation, and their validation gate.
+- **Data & controls** defines governed data contracts and the controls that
+  prevent unsafe automation.
+- **Measure & hand off** connects value and model-health KPIs to downstream
+  execution artifacts and explicit interpretation limits.
+
 ## Governed decision clickflow
 
 The concept experience now connects every level and application through a
