@@ -13,6 +13,9 @@ type DecisionWorkspacesProps = {
   view: WorkflowViewId;
   cases: readonly DecisionCase[];
   activeCase: DecisionCase;
+  scopeLabel: string;
+  financeReviewer: string;
+  executiveReviewer: string;
   onOpenCase: (caseId: string, destination?: "case" | "action") => void;
   onOpenApp: (destination: AppId | "graph") => void;
   onUpdateCase: (caseId: string, patch: Partial<DecisionCase>, message: string) => void;
@@ -27,7 +30,7 @@ export default function DecisionWorkspaces(props: DecisionWorkspacesProps) {
   return <CaseWorkspace {...props} />;
 }
 
-function DecisionInbox({ cases, activeCase, onOpenCase }: DecisionWorkspacesProps) {
+function DecisionInbox({ cases, activeCase, scopeLabel, onOpenCase, onToast }: DecisionWorkspacesProps) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const visibleCases = useMemo(() => {
@@ -51,14 +54,14 @@ function DecisionInbox({ cases, activeCase, onOpenCase }: DecisionWorkspacesProp
     <section className="decision-workspace" aria-labelledby="decision-inbox-heading">
       <header className="workflow-intro">
         <div><p className="kicker">GOVERNED DECISION OPERATIONS</p><h1 id="decision-inbox-heading" data-page-heading tabIndex={-1}>Decision Inbox</h1><p>One prioritized queue for signals, simulations, approvals, execution, and measured outcomes across every connected application.</p></div>
-        <div className="workflow-intro-context"><span>ACTIVE SCOPE</span><b>{cases[0]?.scope === "company" ? "Apex Mobility" : cases[0]?.scope === "region" ? "APAC region" : "Global network"}</b><small>{cases.length} governed cases</small></div>
+        <div className="workflow-intro-context"><span>ACTIVE SCOPE</span><b>{scopeLabel}</b><small>{cases.length} governed cases</small></div>
       </header>
 
       <div className="workflow-metrics" aria-label="Decision queue summary">
-        <Metric label="Open value" value={sumDisplayedValue(cases)} detail="protected or recoverable" tone="opportunity" />
-        <Metric label="Awaiting approval" value={String(approvalCount)} detail="executive decisions" tone={approvalCount ? "critical" : "healthy"} />
-        <Metric label="In execution" value={String(executionCount)} detail="actions released" tone="info" />
-        <Metric label="Measuring" value={String(measuredCount)} detail="outcomes tracked" tone="healthy" />
+        <Metric label="Open value" value={sumDisplayedValue(cases)} detail="protected or recoverable" tone="opportunity" onTrace={onToast} />
+        <Metric label="Awaiting approval" value={String(approvalCount)} detail="executive decisions" tone={approvalCount ? "critical" : "healthy"} onTrace={onToast} />
+        <Metric label="In execution" value={String(executionCount)} detail="actions released" tone="info" onTrace={onToast} />
+        <Metric label="Measuring" value={String(measuredCount)} detail="outcomes tracked" tone="healthy" onTrace={onToast} />
       </div>
 
       <section className="decision-register panel">
@@ -84,7 +87,7 @@ function DecisionInbox({ cases, activeCase, onOpenCase }: DecisionWorkspacesProp
   );
 }
 
-function CaseWorkspace({ activeCase, onOpenCase, onOpenApp }: DecisionWorkspacesProps) {
+function CaseWorkspace({ activeCase, onOpenCase, onOpenApp, onToast }: DecisionWorkspacesProps) {
   return (
     <section className="decision-workspace" aria-labelledby="case-workspace-heading">
       <CaseHero item={activeCase} eyebrow="CASE WORKSPACE" titleId="case-workspace-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenApp("graph")}>Open evidence graph</button><button className="primary-action" type="button" onClick={() => onOpenCase(activeCase.id, "action")}>Open Action Room</button></>} />
@@ -100,19 +103,19 @@ function CaseWorkspace({ activeCase, onOpenCase, onOpenApp }: DecisionWorkspaces
         </div>
       </section>
 
-      <ScenarioComparison item={activeCase} />
+      <ScenarioComparison item={activeCase} onTrace={onToast} />
 
       <div className="case-detail-grid">
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">TRACEABILITY</p><h2>Variables and affected network</h2></div></header><h3 className="detail-label">Affected entities</h3><div className="entity-chip-row">{activeCase.affectedEntities.map((entity) => <span key={entity}>{entity}</span>)}</div><h3 className="detail-label">L0 decision variables</h3><div className="code-chip-row">{activeCase.variableIds.map((id) => <code key={id}>{id}</code>)}</div><h3 className="detail-label">OR methods invoked</h3><div className="code-chip-row method-chips">{activeCase.methodCodes.map((code) => <code key={code}>{code}</code>)}</div></section>
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EVIDENCE LEDGER</p><h2>Facts behind the recommendation</h2></div><span>{activeCase.evidence.length} records</span></header><div className="evidence-list">{activeCase.evidence.map((evidence) => <article key={evidence.id}><i className={`evidence-${evidence.kind.toLowerCase()}`} /><div><header><b>{evidence.source}</b><span>{evidence.kind} · {evidence.confidence}%</span></header><p>{evidence.fact}</p><small>{evidence.id} · {evidence.observed}</small></div></article>)}</div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">TRACEABILITY</p><h2>Variables and affected network</h2></div></header><h3 className="detail-label">Affected entities</h3><div className="entity-chip-row">{activeCase.affectedEntities.map((entity) => <span key={entity}>{entity}</span>)}</div><h3 className="detail-label">L0 decision variables</h3><div className="code-chip-row">{activeCase.variableIds.map((id) => <code key={id}>{id}</code>)}</div><h3 className="detail-label">Handbook method references</h3><div className="code-chip-row method-chips">{activeCase.methodCodes.map((code) => <code key={code}>{code}</code>)}</div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EVIDENCE LEDGER</p><h2>Facts behind the recommendation</h2></div><span>{activeCase.evidence.length} records</span></header><div className="evidence-list">{activeCase.evidence.map((evidence) => <button data-action-id={`case.evidence.${evidence.id}`} type="button" key={evidence.id} onClick={() => onToast(`${evidence.id} reference receipt opened: ${evidence.fact} Source ${evidence.source}; ${evidence.confidence}% synthetic case confidence; observed ${evidence.observed}. No source system was contacted.`)}><i className={`evidence-${evidence.kind.toLowerCase()}`} /><div><header><b>{evidence.source}</b><span>{evidence.kind} · {evidence.confidence}%</span></header><p>{evidence.fact}</p><small>{evidence.id} · {evidence.observed} · Open receipt →</small></div></button>)}</div></section>
       </div>
 
-      <section className="panel outcome-strip"><div><p className="kicker">OUTCOME CONTRACT</p><h2>{activeCase.outcome.target}</h2><span>{activeCase.outcome.measurementWindow}</span></div><dl><div><dt>Baseline</dt><dd>{activeCase.outcome.baseline}</dd></div><div><dt>Realized</dt><dd>{activeCase.outcome.realized}</dd></div></dl></section>
+      <section className="panel outcome-strip"><div><p className="kicker">OUTCOME CONTRACT</p><h2>{activeCase.outcome.target}</h2><span>{activeCase.outcome.measurementWindow}</span><button data-action-id="case.outcome-receipt" type="button" onClick={() => onToast(`${activeCase.id} outcome receipt opened: baseline ${activeCase.outcome.baseline}; target ${activeCase.outcome.target}; realized ${activeCase.outcome.realized}; window ${activeCase.outcome.measurementWindow}. Values are synthetic case fixtures.`)}>Trace outcome receipt ◇</button></div><dl><div><dt>Baseline</dt><dd>{activeCase.outcome.baseline}</dd></div><div><dt>Realized</dt><dd>{activeCase.outcome.realized}</dd></div></dl></section>
     </section>
   );
 }
 
-function ActionRoom({ activeCase, onOpenCase, onUpdateCase, onToast }: DecisionWorkspacesProps) {
+function ActionRoom({ activeCase, financeReviewer, executiveReviewer, onOpenCase, onUpdateCase, onToast }: DecisionWorkspacesProps) {
   const approvalsComplete = activeCase.status === "Approved" || activeCase.status === "Executing" || activeCase.status === "Monitoring" || activeCase.status === "Closed";
   const recommended = activeCase.scenarios.find((scenario) => scenario.recommended) ?? activeCase.scenarios[0];
   const evidenceReady = activeCase.evidence.length > 0 && activeCase.confidence >= 80;
@@ -152,14 +155,14 @@ function ActionRoom({ activeCase, onOpenCase, onUpdateCase, onToast }: DecisionW
       <CaseHero item={activeCase} eyebrow="CONTROLLED EXECUTION" titleId="action-room-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenCase(activeCase.id)}>Back to case</button><button className="primary-action" type="button" onClick={release} disabled={!canRelease}>{approvalsComplete ? "Released to execution" : canRelease ? "Approve and release" : "Release gate blocked"}</button></>} />
       <StageRail item={activeCase} />
 
-      <section className="action-summary panel"><div><p className="kicker">RECOMMENDED RESPONSE</p><h2>{recommended.name}</h2><p>{activeCase.recommendation}</p><p><b>Release gate:</b> {releaseGate}</p></div><dl><div><dt>Protected value</dt><dd>{recommended.protectedValue}</dd></div><div><dt>Service</dt><dd>{recommended.service}</dd></div><div><dt>Cost</dt><dd>{recommended.cost}</dd></div><div><dt>Residual risk</dt><dd>{recommended.residualRisk}%</dd></div></dl></section>
+      <section className="action-summary panel"><div><p className="kicker">RECOMMENDED RESPONSE</p><h2>{recommended.name}</h2><p>{activeCase.recommendation}</p><p><b>Release gate:</b> {releaseGate}</p><button data-action-id="action.recommendation-receipt" type="button" onClick={() => onToast(`${activeCase.id} recommendation receipt opened: ${recommended.name}; protected value ${recommended.protectedValue}; service ${recommended.service}; cost ${recommended.cost}; residual risk ${recommended.residualRisk}%. This is a synthetic scenario record.`)}>Trace recommendation receipt ◇</button></div><dl><div><dt>Protected value</dt><dd>{recommended.protectedValue}</dd></div><div><dt>Service</dt><dd>{recommended.service}</dd></div><div><dt>Cost</dt><dd>{recommended.cost}</dd></div><div><dt>Residual risk</dt><dd>{recommended.residualRisk}%</dd></div></dl></section>
 
       <div className="action-grid">
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">APPROVAL MATRIX</p><h2>Decision authority</h2></div><span className={approvalsComplete || canRelease ? "approval-ready" : "approval-pending"}>{approvalsComplete ? "Released" : canRelease ? "1 pending" : "Gate blocked"}</span></header><div className="approval-list"><Approval authorityRole="Supply chain owner" person={activeCase.owner} state={approvalStageReached ? "Signed" : "Not ready"} /><Approval authorityRole="Finance controller" person="Elena Voss" state={approvalStageReached ? "Verified" : "Not ready"} /><Approval authorityRole="COO delegate" person="Maya Rao" state={approvalsComplete ? "Approved" : canRelease ? "Pending" : "Blocked"} /></div><div className="approval-actions"><button type="button" onClick={requestChanges} disabled={activeCase.stage !== "Approve" || approvalsComplete}>Request changes</button><button type="button" className="primary-action" onClick={release} disabled={!canRelease}>{approvalsComplete ? "Execution active" : canRelease ? "Approve recommendation" : "Approval unavailable"}</button></div></section>
-        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EXECUTION PLAN</p><h2>Released work packages</h2></div><button className="text-action" type="button" onClick={() => onToast("Synthetic task plan copied inside this concept session; no operations queue was written.")}>Copy concept plan</button></header><div className="task-list">{activeCase.tasks.map((task) => <article key={task.id}><i className={`task-${task.status.toLowerCase().replace(" ", "-")}`} /><div><b>{task.title}</b><span>{task.owner} · {task.due}</span></div><em>{task.status}</em></article>)}</div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">APPROVAL MATRIX</p><h2>Decision authority</h2></div><span className={approvalsComplete || canRelease ? "approval-ready" : "approval-pending"}>{approvalsComplete ? "Released" : canRelease ? "1 pending" : "Gate blocked"}</span></header><div className="approval-list"><Approval authorityRole="Supply chain owner" person={activeCase.owner} state={approvalStageReached ? "Signed" : "Not ready"} /><Approval authorityRole="Finance controller" person={financeReviewer} state={approvalStageReached ? "Verified" : "Not ready"} /><Approval authorityRole="Executive delegate" person={executiveReviewer} state={approvalsComplete ? "Approved" : canRelease ? "Pending" : "Blocked"} /></div><div className="approval-actions"><button type="button" onClick={requestChanges} disabled={activeCase.stage !== "Approve" || approvalsComplete}>Request changes</button><button type="button" className="primary-action" onClick={release} disabled={!canRelease}>{approvalsComplete ? "Execution active" : canRelease ? "Approve recommendation" : "Approval unavailable"}</button></div></section>
+        <section className="panel case-section"><header className="panel-heading"><div><p className="kicker">EXECUTION PLAN · SYNTHETIC</p><h2>Browser-session work-package drafts</h2></div><button className="text-action" type="button" onClick={() => onToast("Synthetic task-plan receipt opened inside this concept session; no clipboard or operations queue was changed.")}>Open plan receipt</button></header><div className="task-list">{activeCase.tasks.map((task) => <article key={task.id}><i className={`task-${task.status.toLowerCase().replace(" ", "-")}`} /><div><b>{task.title}</b><span>{task.owner} · {task.due}</span></div><em>{task.status} fixture</em></article>)}</div></section>
       </div>
 
-      <ScenarioComparison item={activeCase} compact />
+      <ScenarioComparison item={activeCase} compact onTrace={onToast} />
     </section>
   );
 }
@@ -173,12 +176,12 @@ function StageRail({ item }: { item: DecisionCase }) {
   return <ol className="case-stage-rail" aria-label="Decision lifecycle">{decisionStageOrder.map((stage, index) => <li className={index < activeIndex ? "complete" : index === activeIndex ? "active" : ""} key={stage}><span>{index < activeIndex ? "OK" : `0${index + 1}`}</span><div><b>{stage}</b><small>{index < activeIndex ? "Complete" : index === activeIndex ? item.status : "Queued"}</small></div></li>)}</ol>;
 }
 
-function ScenarioComparison({ item, compact = false }: { item: DecisionCase; compact?: boolean }) {
-  return <section className={`panel case-section scenario-section ${compact ? "compact" : ""}`}><header className="panel-heading"><div><p className="kicker">OR SCENARIO LAB · SYNTHETIC COMPARISON</p><h2>Response alternatives across the hard decision envelope</h2><p>Each alternative retains method stack, feasibility state, service, cost, cash, risk, carbon, and the action delta.</p></div><span>{item.scenarios.length} alternatives · {item.scenarios.filter((scenario) => scenario.feasibility === "Inside hard envelope").length} inside envelope</span></header><div className="scenario-grid">{item.scenarios.map((scenario) => <article className={`scenario-card ${scenario.recommended ? "scenario-recommended" : ""}`} key={scenario.id}><header><div><small>{scenario.posture}</small><h3>{scenario.name}</h3></div>{scenario.recommended && <b>RECOMMENDED</b>}</header><div className={`scenario-feasibility scenario-${scenario.feasibility.toLowerCase().replaceAll(" ", "-")}`}>{scenario.feasibility}</div><dl><div><dt>Protected value</dt><dd>{scenario.protectedValue}</dd></div><div><dt>Service</dt><dd>{scenario.service}</dd></div><div><dt>Incremental cost</dt><dd>{scenario.cost}</dd></div><div><dt>Cash impact</dt><dd>{scenario.cashImpact}</dd></div><div><dt>Residual risk</dt><dd>{scenario.residualRisk}%</dd></div><div><dt>Carbon delta</dt><dd>{scenario.carbonDelta}</dd></div></dl><footer><span>{scenario.methodStack}</span><p>{scenario.change}</p></footer></article>)}</div></section>;
+function ScenarioComparison({ item, compact = false, onTrace }: { item: DecisionCase; compact?: boolean; onTrace: (message: string) => void }) {
+  return <section className={`panel case-section scenario-section ${compact ? "compact" : ""}`}><header className="panel-heading"><div><p className="kicker">OR SCENARIO LAB · SYNTHETIC COMPARISON</p><h2>Response alternatives across the hard decision envelope</h2><p>Each alternative retains method stack, feasibility state, service, cost, cash, risk, carbon, and the action delta.</p></div><span>{item.scenarios.length} alternatives · {item.scenarios.filter((scenario) => scenario.feasibility === "Inside hard envelope").length} inside envelope</span></header><div className="scenario-grid">{item.scenarios.map((scenario) => <article className={`scenario-card ${scenario.recommended ? "scenario-recommended" : ""}`} key={scenario.id}><header><div><small>{scenario.posture}</small><h3>{scenario.name}</h3></div>{scenario.recommended && <b>RECOMMENDED</b>}</header><div className={`scenario-feasibility scenario-${scenario.feasibility.toLowerCase().replaceAll(" ", "-")}`}>{scenario.feasibility}</div><dl><div><dt>Protected value</dt><dd>{scenario.protectedValue}</dd></div><div><dt>Service</dt><dd>{scenario.service}</dd></div><div><dt>Incremental cost</dt><dd>{scenario.cost}</dd></div><div><dt>Cash impact</dt><dd>{scenario.cashImpact}</dd></div><div><dt>Residual risk</dt><dd>{scenario.residualRisk}%</dd></div><div><dt>Carbon delta</dt><dd>{scenario.carbonDelta}</dd></div></dl><footer><span>{scenario.methodStack}</span><p>{scenario.change}</p><button data-action-id={`scenario.receipt.${scenario.id}`} type="button" onClick={() => onTrace(`${scenario.id} scenario receipt opened: ${scenario.name}; ${scenario.feasibility}; protected value ${scenario.protectedValue}; service ${scenario.service}; cost ${scenario.cost}; cash impact ${scenario.cashImpact}; residual risk ${scenario.residualRisk}%; carbon ${scenario.carbonDelta}; methods ${scenario.methodStack}. Values are synthetic.`)}>Open scenario receipt ◇</button></footer></article>)}</div></section>;
 }
 
-function Metric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
-  return <article className={`workflow-metric workflow-metric-${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+function Metric({ label, value, detail, tone, onTrace }: { label: string; value: string; detail: string; tone: string; onTrace: (message: string) => void }) {
+  return <button data-action-id={`decision.metric.${label.toLowerCase().replaceAll(" ", "-")}`} type="button" className={`workflow-metric workflow-metric-${tone}`} onClick={() => onTrace(`${label} receipt opened: ${value} ${detail}. The aggregate is calculated from the visible synthetic decision-case fixture.`)}><span>{label}</span><strong>{value}</strong><small>{detail} · Trace ◇</small></button>;
 }
 
 function Approval({ authorityRole, person, state }: { authorityRole: string; person: string; state: string }) {

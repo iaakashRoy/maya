@@ -8,5 +8,5 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   const navigation = resolveNavigation(await searchParams);
 
-  return <PlatformShell initialView={navigation.view} initialScope={navigation.scope} initialCaseId={navigation.caseId} />;
+  return <PlatformShell initialView={navigation.view} initialScope={navigation.scope} initialCaseId={navigation.caseId} initialProjectId={navigation.projectId} initialProjectTab={navigation.projectTab} initialProjectApp={navigation.projectApp} />;
 }

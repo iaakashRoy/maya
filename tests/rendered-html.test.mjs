@@ -25,12 +25,13 @@ test("server-renders the connected Resilience OS platform", async () => {
   assert.match(html, /See the whole network/);
   assert.match(html, /RiskRadar/);
   assert.match(html, /Decision Inbox/);
-  assert.match(html, /Action Room/);
-  assert.match(html, /Data Agent Hub/);
+  assert.match(html, /Expert workspace/);
+  assert.match(html, /CLIENT DELIVERY/);
+  assert.match(html, /INTELLIGENCE APPS/);
   assert.match(html, /GLOBAL NETWORK RADAR/);
   assert.match(html, /Natural Earth 1:110m land/);
   assert.match(html, />Cargo<\/button>/);
-  assert.match(html, /Scope dashboards.*Decision Inbox.*Case Workspace.*Action Room/i);
+  assert.match(html, /Global intelligence.*Sector.*Client.*Project.*Decision.*Evidence/i);
   assert.match(html, /No operational backend/i);
   assert.match(html, /og\.png/);
   assert.match(html, /class="[^"]*__font_geist_/);
@@ -43,9 +44,28 @@ test("server and client receive the same deep-linked navigation state", async ()
 
   const html = await response.text();
   assert.match(html, /<div class="breadcrumb"><span>Resilience OS<\/span><i>\/<\/i><b>RiskRadar<\/b>/);
-  assert.match(html, /<option value="company" selected="">Apex Mobility<\/option>/);
+  assert.match(html, /<option value="company" selected="">Apex Mobility[\s\S]*?Anode Shield<\/option>/);
   assert.match(html, /class="app-nav active"[^>]*><span>RR<\/span><div><b>RiskRadar<\/b>/);
   assert.doesNotMatch(html, /typeof window/);
+});
+
+test("server-renders the selected sector, client, project, tab, and specialist studio", async () => {
+  const projectResponse = await render("/?view=company&scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise&projectTab=data");
+  assert.equal(projectResponse.status, 200);
+  const projectHtml = await projectResponse.text();
+  assert.match(projectHtml, /Cold Chain Promise/);
+  assert.match(projectHtml, /Helixora Therapeutics/);
+  assert.match(projectHtml, /PROJECT DATA VAULT/);
+  assert.match(projectHtml, /Preview a governed ingestion contract/);
+  assert.match(projectHtml, /filename only/i);
+  assert.match(projectHtml, /Restricted clinical supply/);
+
+  const studioResponse = await render("/?view=company&scope=company&sector=critical-minerals&client=terrametals&project=lithium-cell-provenance&projectTab=apps&projectApp=minerals");
+  assert.equal(studioResponse.status, 200);
+  const studioHtml = await studioResponse.text();
+  assert.match(studioHtml, /Lithium-to-Cell Provenance/);
+  assert.match(studioHtml, /MineralAtlas/);
+  assert.match(studioHtml, /RESERVE[\s\S]*?REFINERY[\s\S]*?PRODUCT/);
 });
 
 test("server-renders persistent decision case and action-room deep links", async () => {
@@ -57,7 +77,7 @@ test("server-renders persistent decision case and action-room deep links", async
   assert.match(caseHtml, /Secure alternate graphite volume/);
   assert.match(caseHtml, /What each application contributes/);
   assert.match(caseHtml, /Balanced response/);
-  assert.match(caseHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
+  assert.match(caseHtml, /<option value="company" selected="">Apex Mobility[\s\S]*?Anode Shield<\/option>/);
 
   const actionResponse = await render("/?view=action&scope=global&case=CASE-1042");
   assert.equal(actionResponse.status, 200);
@@ -65,7 +85,7 @@ test("server-renders persistent decision case and action-room deep links", async
   assert.match(actionHtml, /Action Room/);
   assert.match(actionHtml, /Decision authority/);
   assert.match(actionHtml, /Approve recommendation/);
-  assert.match(actionHtml, /<option value="company" selected="">Apex Mobility<\/option>/);
+  assert.match(actionHtml, /<option value="company" selected="">Apex Mobility[\s\S]*?Anode Shield<\/option>/);
 });
 
 test("action room renders an explicit lifecycle gate before approval", async () => {
@@ -84,15 +104,13 @@ test("action room renders an explicit lifecycle gate before approval", async () 
   assert.match(readyHtml, /Approve recommendation/);
 });
 
-test("every application exposes a decision-specific operating model", async () => {
+test("each existing project app exposes a decision-specific operating model", async () => {
   const applicationRoutes = [
     ["risk", "RiskRadar", /Which emerging dependency can stop customer commitments/],
     ["optimizer", "Network Optimizer", /What combination of sourcing, production, inventory, logistics/],
     ["flow", "FlowLens", /Where is cash or margin trapped in the physical network/],
     ["demand", "DemandSense", /What is the credible demand range/],
     ["suppliers", "SupplierGraph", /Which supplier capability, ownership, site, or sub-tier dependency matters/],
-    ["agents", "Data Agent Hub", /Is the evidence feeding each decision app current, complete, permitted/],
-    ["graph", "Operational Knowledge Graph", /What entities and relationships explain this operational condition/],
   ];
 
   for (const [view, name, decisionQuestion] of applicationRoutes) {
@@ -108,7 +126,18 @@ test("every application exposes a decision-specific operating model", async () =
   }
 });
 
-test("ships three platform levels, three workflow surfaces, five apps, and two data workspaces", async () => {
+test("decision operations, agents, and graph resolve inside the selected project workspace", async () => {
+  for (const [view, expected] of [["decisions", "Decision decomposition"], ["agents", "AGENT SOCIETY"], ["graph", "KNOWLEDGE GRAPH + TRACE PLAYBACK"]]) {
+    const response = await render(`/?view=${view}&scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Helixora Therapeutics/);
+    assert.ok(html.includes(expected), `${view} should render ${expected}`);
+    assert.doesNotMatch(html, /CONNECTED DATA PLATFORM · APEX MOBILITY/);
+  }
+});
+
+test("ships three platform levels, project workflows, ten apps, and two data workspaces", async () => {
   const [page, applications, dataOperations, packageJson] = await Promise.all([
     Promise.all([
       readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -123,7 +152,7 @@ test("ships three platform levels, three workflow surfaces, five apps, and two d
   for (const moduleName of [
     "Global platform",
     "Regional platform",
-    "Company platform",
+    "Expert workspace",
     "Decision Inbox",
     "Case Workspace",
     "Action Room",

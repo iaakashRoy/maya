@@ -11,7 +11,7 @@ export type NetworkScenarioId = "trajectory" | "no-action" | "recommended";
 export const networkFrames: readonly { id: NetworkFrameId; label: string; detail: string }[] = [
   { id: "t-24h", label: "T-24h", detail: "Observed prior operating state" },
   { id: "t-6h", label: "T-6h", detail: "Latest reconciled telemetry" },
-  { id: "live", label: "Live", detail: "Synthetic as-of state" },
+  { id: "live", label: "Now", detail: "Synthetic as-of state" },
   { id: "t+6h", label: "+6h", detail: "Near-term estimated position" },
   { id: "t+24h", label: "+24h", detail: "Current-policy forecast" },
   { id: "t+72h", label: "+72h", detail: "Planning forecast" },

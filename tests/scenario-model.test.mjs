@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { applications, decisionCases, scopeSnapshots, solveNetworkPlan } from "../app/platform-model.ts";
@@ -46,12 +47,14 @@ test("network optimization clamps unsafe or impossible inputs", () => {
   assert.ok(result.warnings.length > 0);
 });
 
-test("scope, case, selected entity, decision pattern, horizon, method stack, and scenario version are fingerprinted", () => {
-  const context = { scope: "company", caseId: "CASE-1042", entityContext: "corridor:cor-001", patternId: "sourcing", horizon: "Tactical · 4–104 weeks", methodStack: ["M-06", "M-20", "M-24"], scenarioSetId: "JOINT-S12-V1" };
+test("scope, case, decision, primary entity, map context, pattern, horizon, methods, and scenario version are fingerprinted", () => {
+  const context = { scope: "company", caseId: "CASE-1042", decisionTitle: "Secure qualified project capacity", primaryEntity: "Apex Mobility / Anode Shield", entityContext: "corridor:cor-001", patternId: "sourcing", horizon: "Tactical · 4–104 weeks", methodStack: ["M-06", "M-20", "M-24"], scenarioSetId: "JOINT-S12-V1" };
   const base = solveNetworkPlan(baseline, context);
   const variants = [
     { ...context, scope: "global" },
     { ...context, caseId: "CASE-1024" },
+    { ...context, decisionTitle: "Protect cold-chain launch" },
+    { ...context, primaryEntity: "Helixora / Cold Chain Promise" },
     { ...context, entityContext: "cargo:cargo-001" },
     { ...context, patternId: "transport" },
     { ...context, horizon: "Operational · hours–13 weeks" },
@@ -61,6 +64,50 @@ test("scope, case, selected entity, decision pattern, horizon, method stack, and
   for (const variant of variants) assert.notEqual(solveNetworkPlan(baseline, variant).inputFingerprint, base.inputFingerprint);
   const outcomes = variants.map((variant) => solveNetworkPlan(baseline, variant)).map((result) => `${result.totalCost}|${result.projectedService}|${result.residualRisk}|${result.candidateSpaceIndex}`);
   assert.ok(new Set(outcomes).size > 1, "run context should affect more than the fingerprint");
+});
+
+test("allocation labels stay project-bound and do not leak the Apex fixture", () => {
+  const context = {
+    scope: "company",
+    caseId: "CASE-002-01",
+    decisionTitle: "Protect clinical launch allocation",
+    primaryEntity: "Helixora Therapeutics / Cold Chain Promise",
+    entityContext: "network:unscoped",
+    patternId: "allocation",
+    horizon: "Operational · hours–13 weeks",
+    methodStack: ["M-05", "M-06", "M-13", "M-20"],
+    scenarioSetId: "JOINT-S12-V1",
+  };
+  const result = solveNetworkPlan(baseline, context);
+  const allocationText = result.allocations.map((allocation) => `${allocation.action} ${allocation.volume}`).join(" | ");
+
+  assert.equal(result.context.decisionTitle, context.decisionTitle);
+  assert.equal(result.context.primaryEntity, context.primaryEntity);
+  assert.match(allocationText, /Helixora Therapeutics \/ Cold Chain Promise/);
+  assert.match(allocationText, /Protect clinical launch allocation/);
+  assert.doesNotMatch(allocationText, /graphite|Monterrey|Vietnam|428 orders/i);
+});
+
+test("generated workspace cases open with a project-appropriate decision pattern", () => {
+  const source = readFileSync(new URL("../app/OptimizationWorkbench.tsx", import.meta.url), "utf8");
+  const mappings = {
+    "CASE-001-01": "sourcing",
+    "CASE-002-01": "allocation",
+    "CASE-003-01": "maintenance",
+    "CASE-004-01": "inventory",
+    "CASE-005-01": "sourcing",
+    "CASE-006-01": "portfolio",
+    "CASE-007-01": "sourcing",
+    "CASE-008-01": "transport",
+    "CASE-009-01": "maintenance",
+    "CASE-010-01": "warehouse",
+  };
+
+  for (const [caseId, patternId] of Object.entries(mappings)) {
+    assert.match(source, new RegExp(`"${caseId}":\\s*"${patternId}"`), `${caseId} should map to ${patternId}`);
+  }
+  assert.match(source, /return "Catalog";/);
+  assert.doesNotMatch(source, /Primary methods solve the decision/);
 });
 
 test("all hard families participate and physical stress can block multiple families", () => {

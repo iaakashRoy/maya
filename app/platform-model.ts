@@ -104,10 +104,10 @@ const globalRoutes: readonly NetworkRoute[] = [
 ];
 
 const globalIntel: readonly Intel[] = [
-  { id: "INT-301", title: "Graphite capacity is being contracted ahead of the open market", detail: "Three public agreements now reserve 23% of forecast merchant supply through Q2.", impact: "$42M margin exposure", confidence: 91, tone: "critical", horizon: "60–120 days", source: "Filings + trade data" },
-  { id: "INT-302", title: "Singapore dwell is propagating into two priority corridors", detail: "Nine vessels and 812 open orders are inside the current delay window.", impact: "3.4 days service risk", confidence: 94, tone: "watch", horizon: "5–12 days", source: "AIS + terminal feeds" },
-  { id: "INT-303", title: "Mexico inventory can protect North American service", detail: "Rebalancing 14% of controller stock protects 428 high-margin orders.", impact: "$7.8M value protected", confidence: 86, tone: "opportunity", horizon: "This week", source: "ERP + WMS twin" },
-  { id: "INT-304", title: "Carbon evidence gaps threaten EU-bound steel programs", detail: "Twelve suppliers are missing fields required for the next reporting cycle.", impact: "$18.7M revenue gated", confidence: 97, tone: "watch", horizon: "Next filing", source: "Policy + supplier portal" },
+  { id: "INT-301", title: "Graphite capacity is being contracted ahead of the open market", detail: "Three synthetic agreement records reserve 23% of illustrative merchant supply through Q2.", impact: "$42M margin exposure", confidence: 91, tone: "critical", horizon: "60–120 days", source: "Synthetic filings + trade-data fixture" },
+  { id: "INT-302", title: "Singapore dwell is propagating into two priority corridors", detail: "Nine vessels and 812 open orders are inside the current delay window.", impact: "3.4 days service risk", confidence: 94, tone: "watch", horizon: "5–12 days", source: "Synthetic AIS + terminal fixture" },
+  { id: "INT-303", title: "Mexico inventory can protect North American service", detail: "Rebalancing 14% of fixture controller stock protects 428 illustrative high-margin orders.", impact: "$7.8M value protected", confidence: 86, tone: "opportunity", horizon: "This week", source: "Synthetic ERP + WMS-twin fixture" },
+  { id: "INT-304", title: "Carbon evidence gaps threaten EU-bound steel programs", detail: "Twelve synthetic supplier records are missing fields in the demonstration reporting cycle.", impact: "$18.7M revenue gated", confidence: 97, tone: "watch", horizon: "Next filing", source: "Synthetic policy + supplier-portal fixture" },
 ];
 
 const globalMoney: readonly MoneyFlow[] = [
@@ -137,7 +137,7 @@ export const scopeSnapshots: Record<ScopeId, ScopeSnapshot> = {
     description: "One global operating picture across market intelligence, suppliers, orders, cargo, vessels, cash, and customer commitments.",
     context: "12 regions · 48 countries · 6,420 suppliers",
     currency: "USD",
-    updated: "Live · refreshed 2 min ago",
+    updated: "Fixture snapshot · advanced 2 min ago",
     metrics: metrics([
       ["Network spend", "$8.4B", "Direct + indirect annualized", "info", "+3.8% YoY"],
       ["Goods in motion", "$1.28B", "2,164 active movements", "healthy", "82% on plan"],
@@ -160,7 +160,7 @@ export const scopeSnapshots: Record<ScopeId, ScopeSnapshot> = {
     description: "Translate global signals into corridor, country, plant, supplier, and customer actions for the Asia-Pacific network.",
     context: "APAC · 11 countries · 1,846 suppliers",
     currency: "USD",
-    updated: "Live · refreshed 46 sec ago",
+    updated: "Fixture snapshot · advanced 46 sec ago",
     metrics: metrics([
       ["Regional spend", "$3.1B", "46% electronics + materials", "info", "+5.1% YoY"],
       ["Cargo in motion", "$486M", "642 shipments · 18 vessels", "watch", "11 delayed"],
@@ -182,7 +182,7 @@ export const scopeSnapshots: Record<ScopeId, ScopeSnapshot> = {
   },
   company: {
     id: "company",
-    label: "Company platform",
+    label: "Expert workspace",
     shortLabel: "Apex Mobility",
     title: "Turn outside change into company-specific decisions.",
     description: "A private decision twin connecting Apex Mobility’s products, suppliers, materials, plants, orders, margins, and execution workflows.",
@@ -256,18 +256,18 @@ export type DataAgent = {
 };
 
 export const dataAgents: readonly DataAgent[] = [
-  { id: "sap", name: "ERP transaction agent", source: "SAP S/4HANA", mode: "CDC + read-only APIs", status: "running", freshness: "18 sec", records: "18.4M", entities: "Orders · inventory · finance", quality: 98, boundary: "Client VPC" },
-  { id: "plm", name: "Product knowledge agent", source: "Teamcenter PLM", mode: "Events + scheduled crawl", status: "running", freshness: "4 min", records: "4.6M", entities: "BOM · materials · revisions", quality: 96, boundary: "Client VPC" },
-  { id: "tms", name: "Movement agent", source: "TMS + AIS + carrier APIs", mode: "Event stream", status: "running", freshness: "42 sec", records: "2.8M", entities: "Ships · cargo · lanes · ETA", quality: 94, boundary: "Hybrid" },
-  { id: "supplier", name: "Supplier portal agent", source: "Portals + EDI + documents", mode: "API + document extraction", status: "attention", freshness: "26 min", records: "742K", entities: "Suppliers · capacity · evidence", quality: 87, boundary: "Client VPC" },
-  { id: "public", name: "Market intelligence swarm", source: "Web · filings · news · trade data", mode: "Continuous evidence crawl", status: "running", freshness: "2 min", records: "84.2M", entities: "Events · companies · commodities", quality: 91, boundary: "Platform" },
-  { id: "mail", name: "Unstructured operations agent", source: "Approved mailboxes + files", mode: "Policy-scoped extraction", status: "paused", freshness: "Paused", records: "184K", entities: "Commitments · exceptions · actions", quality: 89, boundary: "Client VPC" },
-  { id: "wms", name: "Warehouse execution agent", source: "WMS + yard + labor systems", mode: "Events + bounded polling", status: "running", freshness: "36 sec", records: "9.8M", entities: "Receipts · picks · doors · inventory age", quality: 97, boundary: "Client VPC" },
-  { id: "qms", name: "Quality evidence agent", source: "QMS + laboratory + audit packs", mode: "Events + governed documents", status: "attention", freshness: "19 min", records: "1.1M", entities: "Lots · defects · certificates · CAPA", quality: 92, boundary: "Client VPC" },
-  { id: "crm", name: "Demand signal agent", source: "CRM + order portal + channel inventory", mode: "CDC + approved signals", status: "running", freshness: "3 min", records: "6.7M", entities: "Opportunities · orders · programs · overrides", quality: 95, boundary: "Client VPC" },
-  { id: "finance", name: "Financial flow agent", source: "ERP finance + treasury + tariff books", mode: "CDC + daily controls", status: "running", freshness: "54 sec", records: "12.6M", entities: "Invoices · payables · receivables · margin", quality: 98, boundary: "Client VPC" },
-  { id: "carbon", name: "Resource and carbon agent", source: "Metering + carrier factors + declarations", mode: "Hourly + evidence event", status: "attention", freshness: "47 min", records: "886K", entities: "Energy · carbon · water · product evidence", quality: 84, boundary: "Hybrid" },
-  { id: "customs", name: "Trade and customs agent", source: "Broker milestones + declarations + policy", mode: "Event stream + policy rules", status: "running", freshness: "6 min", records: "2.3M", entities: "Entries · holds · duties · market access", quality: 93, boundary: "Hybrid" },
+  { id: "sap", name: "ERP transaction agent", source: "Expected source · SAP S/4HANA", mode: "Target mode · CDC + read-only APIs", status: "running", freshness: "18 sec fixture", records: "18.4M", entities: "Orders · inventory · finance", quality: 98, boundary: "Client VPC target" },
+  { id: "plm", name: "Product knowledge agent", source: "Expected source · Teamcenter PLM", mode: "Target mode · events + scheduled crawl", status: "running", freshness: "4 min fixture", records: "4.6M", entities: "BOM · materials · revisions", quality: 96, boundary: "Client VPC target" },
+  { id: "tms", name: "Movement agent", source: "Expected sources · TMS + AIS + carrier APIs", mode: "Target mode · event stream", status: "running", freshness: "42 sec fixture", records: "2.8M", entities: "Ships · cargo · lanes · ETA", quality: 94, boundary: "Hybrid target" },
+  { id: "supplier", name: "Supplier portal agent", source: "Expected sources · portals + EDI + documents", mode: "Target mode · API + document extraction", status: "attention", freshness: "26 min fixture", records: "742K", entities: "Suppliers · capacity · evidence", quality: 87, boundary: "Client VPC target" },
+  { id: "public", name: "Market intelligence swarm", source: "Expected sources · web + filings + news + trade data", mode: "Target mode · bounded evidence collection", status: "running", freshness: "2 min fixture", records: "84.2M", entities: "Events · companies · commodities", quality: 91, boundary: "Platform target" },
+  { id: "mail", name: "Unstructured operations agent", source: "Expected sources · approved mailboxes + files", mode: "Target mode · policy-scoped extraction", status: "paused", freshness: "Paused", records: "184K", entities: "Commitments · exceptions · actions", quality: 89, boundary: "Client VPC target" },
+  { id: "wms", name: "Warehouse execution agent", source: "Expected sources · WMS + yard + labor systems", mode: "Target mode · events + bounded polling", status: "running", freshness: "36 sec fixture", records: "9.8M", entities: "Receipts · picks · doors · inventory age", quality: 97, boundary: "Client VPC target" },
+  { id: "qms", name: "Quality evidence agent", source: "Expected sources · QMS + laboratory + audit packs", mode: "Target mode · events + governed documents", status: "attention", freshness: "19 min fixture", records: "1.1M", entities: "Lots · defects · certificates · CAPA", quality: 92, boundary: "Client VPC target" },
+  { id: "crm", name: "Demand signal agent", source: "Expected sources · CRM + order portal + channel inventory", mode: "Target mode · CDC + approved signals", status: "running", freshness: "3 min fixture", records: "6.7M", entities: "Opportunities · orders · programs · overrides", quality: 95, boundary: "Client VPC target" },
+  { id: "finance", name: "Financial flow agent", source: "Expected sources · ERP finance + treasury + tariff books", mode: "Target mode · CDC + daily controls", status: "running", freshness: "54 sec fixture", records: "12.6M", entities: "Invoices · payables · receivables · margin", quality: 98, boundary: "Client VPC target" },
+  { id: "carbon", name: "Resource and carbon agent", source: "Expected sources · metering + carrier factors + declarations", mode: "Target mode · hourly + evidence event", status: "attention", freshness: "47 min fixture", records: "886K", entities: "Energy · carbon · water · product evidence", quality: 84, boundary: "Hybrid target" },
+  { id: "customs", name: "Trade and customs agent", source: "Expected sources · broker milestones + declarations + policy", mode: "Target mode · event stream + policy rules", status: "running", freshness: "6 min fixture", records: "2.3M", entities: "Entries · holds · duties · market access", quality: 93, boundary: "Hybrid target" },
 ];
 
 export type DecisionStage = "Detect" | "Validate" | "Simulate" | "Approve" | "Execute" | "Measure";
@@ -464,6 +464,8 @@ export type OptimizationInput = {
 export type OptimizationContext = {
   scope: ScopeId;
   caseId: string;
+  decisionTitle: string;
+  primaryEntity: string;
   entityContext: string;
   patternId: string;
   horizon: string;
@@ -513,6 +515,8 @@ const fingerprint = (value: string) => {
 const defaultOptimizationContext: OptimizationContext = {
   scope: "company",
   caseId: "CASE-1042",
+  decisionTitle: "Network continuity response",
+  primaryEntity: "Selected project network",
   entityContext: "network:unscoped",
   patternId: "sourcing",
   horizon: "Tactical · 3–24 months",
@@ -534,6 +538,8 @@ export function solveNetworkPlan(input: OptimizationInput, context: Optimization
   const normalizedContext: OptimizationContext = {
     scope: ["global", "region", "company"].includes(context.scope) ? context.scope : "company",
     caseId: context.caseId || defaultOptimizationContext.caseId,
+    decisionTitle: context.decisionTitle || defaultOptimizationContext.decisionTitle,
+    primaryEntity: context.primaryEntity || defaultOptimizationContext.primaryEntity,
     entityContext: context.entityContext || defaultOptimizationContext.entityContext,
     patternId: context.patternId || defaultOptimizationContext.patternId,
     horizon: context.horizon || defaultOptimizationContext.horizon,
@@ -610,10 +616,10 @@ export function solveNetworkPlan(input: OptimizationInput, context: Optimization
       { label: "Residual service penalty", value: round(Math.max(0, normalized.serviceTarget - projectedService) * 1.7, 1), unit: "points" },
     ],
     allocations: [
-      { action: `Reserve ${alternateShare}% alternate graphite capacity`, volume: `${Math.round(alternateShare * 18)} t`, timing: "Week 1", owner: "Category lead", cost: `$${round(totalCost * .48, 2)}M` },
-      { action: "Reallocate Monterrey safety stock", volume: `${transferTons} t`, timing: "48 hours", owner: "Network planning", cost: `$${round(totalCost * .22, 2)}M` },
-      { action: "Prioritize high-margin customer orders", volume: "428 orders", timing: "Weeks 1–4", owner: "Customer operations", cost: `$${round(totalCost * .12, 2)}M` },
-      { action: "Qualify Vietnam casting capacity", volume: "2 part families", timing: "6 weeks", owner: "Supplier quality", cost: `$${round(totalCost * .18, 2)}M` },
+      { action: `Reserve qualified response capacity for ${normalizedContext.primaryEntity}`, volume: `${alternateShare}% of modeled demand`, timing: "Week 1", owner: "Project decision owner", cost: `$${round(totalCost * .48, 2)}M` },
+      { action: `Rebalance project inventory for ${normalizedContext.decisionTitle}`, volume: `${transferTons} modeled transfer units`, timing: "48 hours", owner: "Project network lead", cost: `$${round(totalCost * .22, 2)}M` },
+      { action: `Protect priority commitments for ${normalizedContext.primaryEntity}`, volume: `${round(normalized.serviceTarget)}% governed service floor`, timing: "Weeks 1–4", owner: "Project service owner", cost: `$${round(totalCost * .12, 2)}M` },
+      { action: `Qualify alternate project-bound capacity for ${normalizedContext.decisionTitle}`, volume: "2 modeled option families", timing: "6 weeks", owner: "Project assurance lead", cost: `$${round(totalCost * .18, 2)}M` },
     ],
     warnings,
   };

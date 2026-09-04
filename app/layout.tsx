@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "Explore a connected supply-network platform spanning global, regional, and company intelligence, five decision applications, data agents, and an operational knowledge graph.";
+  "Explore a connected supply-chain decision platform spanning global intelligence, sector-client-project workspaces, ten distinct specialist apps, expert agents, operations research, and evidence-traceable decisions.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
