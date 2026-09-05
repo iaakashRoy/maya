@@ -20,7 +20,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Maya Workspace/);
+  assert.match(html, /<title>tanjx — Tangent \+ Exchange/);
   assert.match(html, /data-action-id="nav\.workspace"[^>]*class="scope-nav active"/);
   assert.match(html, /data-action-id="nav\.operations-world"/);
   assert.match(html, /<h1>Workspace<\/h1>/);
@@ -33,7 +33,9 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Anode Shield/);
   assert.match(html, /Helixora Therapeutics/);
   assert.match(html, /Cold Chain Promise/);
-  assert.match(html, /class="environment-badge">Synthetic workspace/);
+  assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
+  assert.match(html, /aria-label="Open tanjx workspace"/);
+  assert.match(html, /Tangent \+ Exchange/);
   assert.doesNotMatch(html, /Concept environment/);
   assert.match(html, /og-workspace\.png/);
   assert.match(html, /class="[^"]*__font_geist_/);
@@ -222,7 +224,7 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
   assert.equal(legacyTeamResponse.status, 200);
   const legacyTeamHtml = await legacyTeamResponse.text();
   assert.match(legacyTeamHtml, /Knowledge footprint/);
-  assert.doesNotMatch(legacyTeamHtml, /Client and Kearney access/);
+  assert.doesNotMatch(legacyTeamHtml, /Client and (?:Kearney|tanjx) access/);
 });
 
 test("ships the two-root IA, onboarding, project accountability, ten apps, and wrapped project tabs", async () => {

@@ -38,8 +38,8 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.match(css, /\.mobile-project-path\s*>\s*span,[\s\S]*?white-space:\s*normal;/);
 
   assert.match(shell, /aria-label=\{`Open account menu for/);
-  assert.match(shell, /aria-controls="maya-profile-panel"/);
-  assert.match(shell, /ref=\{profilePanelRef\} id="maya-profile-panel"/);
+  assert.match(shell, /aria-controls="tanjx-profile-panel"/);
+  assert.match(shell, /ref=\{profilePanelRef\} id="tanjx-profile-panel"/);
   assert.match(shell, /setIdentitySelection\(null\)/);
   assert.match(css, /\.work-identity-inspector\s*\{[\s\S]*?top:\s*var\(--topbar-height\);[\s\S]*?width:\s*min\(430px, calc\(100vw - 12px\)\)/);
 });

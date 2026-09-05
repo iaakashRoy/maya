@@ -317,7 +317,7 @@ test("a session-created project has zero resources and explicit project membersh
     classification: "Client confidential",
     dataResidency: "EU policy intent",
     clientLead: "Client Lead Fixture",
-    kearneyLead: "Kearney Lead Fixture",
+    providerLead: "tanjx Lead Fixture",
   });
   const project = model.createSessionProject({
     clientId: client.id,
@@ -530,7 +530,7 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
   assert.match(shell, /<WorkspaceHome projects=\{accessibleProjects\} clients=\{accessibleClients\}/);
   assert.match(shell, /patch\.stage === "Execute" \? "decisions\.approve" : "decisions\.draft"/);
   assert.match(shell, /<ProjectAccessBoundary decision=\{deniedProjectAccess\}/);
-  assert.match(model, /signedInCollaboratorId = "kearney-engagement"/);
+  assert.match(model, /signedInCollaboratorId = "tanjx-engagement"/);
   assert.doesNotMatch(source, /projectRole === "Client owner"/);
   assert.doesNotMatch(source, /AGENT FOUNDRY · FRONT-END CONCEPT/);
 });
@@ -690,12 +690,12 @@ test("project navigation keeps route context, closes transient chrome, and revea
   assert.match(popState, /projectCatalog\.find\(\(project\) => project\.id === navigation\.projectId\)/);
   assert.match(popState, /projectPathKeys\(restoredProject, projectPathMode\)/);
   assert.match(popState, /setProjectNavQuery\(""\)/);
-  assert.match(shell, /type MayaHistoryState = \{ mayaReturn\?: \{ surface: "project"; projectId: string; tab: WorkspaceTabId \} \}/);
+  assert.match(shell, /type TanjxHistoryState = \{ tanjxReturn\?: \{ surface: "project"; projectId: string; tab: WorkspaceTabId \} \}/);
   assert.match(shell, /const projectSurfaceTransition = \(\) =>/);
   assert.match(shell, /replace: alreadyOnProjectSurface/);
   assert.match(shell, /const returnFromProjectApp = \(\) =>/);
   assert.match(shell, /window\.history\.back\(\)/);
-  assert.match(shell, /openProjectTab\(historyState\?\.mayaReturn\?\.tab \?\? activeProjectTab, true\)/);
+  assert.match(shell, /openProjectTab\(historyState\?\.tanjxReturn\?\.tab \?\? activeProjectTab, true\)/);
   assert.doesNotMatch(shell, /onCloseStudio=/);
   assert.match(shell, /data-action-id="context\.back-to-project" className="context-back-button"[^>]*onClick=\{returnFromProjectApp\}/);
   assert.doesNotMatch(studios, /studio\.back-to-apps|studio\.unsupported\.back|onBack/);

@@ -15,6 +15,7 @@ import {
 } from "./or-methodology";
 import { solveNetworkPlan, type DecisionCase, type OptimizationContext, type OptimizationInput, type OptimizationResult, type ScopeId, type ScopeSnapshot, type StatusTone } from "./platform-model";
 import type { MapSelectionContext } from "./WorldNetworkMap";
+import { AppGlyph } from "./VisualIdentity";
 
 type WorkbenchStage = "frame" | "formulate" | "methods" | "stress" | "release";
 const stages: readonly { id: WorkbenchStage; label: string; detail: string }[] = [
@@ -261,7 +262,7 @@ export default function OptimizationWorkbench({ snapshot, activeCase, networkSel
   return (
     <div className="app-workspace optimizer-workbench">
       <header className="studio-header app-intro app-canonical-header optimizer-hero">
-        <div><span className="app-code optimizer-hero-code">NO</span><p>PROJECT APP · {snapshot.shortLabel.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>Network Optimizer</h1><small>Define the decision model, compare scenarios, and prepare a response for expert review.</small></div>
+        <div><AppGlyph appId="optimizer" className="app-code optimizer-hero-code" /><p>PROJECT APP · {snapshot.shortLabel.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>Network Optimizer</h1><small>Define the decision model, compare scenarios, and prepare a response for expert review.</small></div>
         <aside><b>ACTIVE CONTRACT · {activeCase.id}</b><span>{pattern.name}</span><small>{activeCase.title} · {horizon}</small>{networkSelection && <small>Map focus · {networkSelection.kind} · {networkSelection.label}</small>}<button type="button" onClick={runReplay} disabled={running}>{running ? `Calculating fixture · ${progress}%` : pendingChanges.length ? `Recalculate ${pendingChanges.length} pending changes →` : "Recalculate current response →"}</button></aside>
       </header>
       <div className={`replay-strip ${result.releasable && !pendingChanges.length ? "replay-ready" : "replay-blocked"}`}><span><Dot tone={running || pendingChanges.length ? "watch" : result.releasable ? "healthy" : "critical"} />{running ? "Deterministic response calculation in progress" : pendingChanges.length ? "Completed result is stale · decision contract changed" : result.status}</span><b>{result.runId}</b><em>NO SOLVER / OPTIMALITY CLAIM · SPACE INDEX {result.candidateSpaceIndex.toLocaleString()} · {result.context.caseId} · 12 SCENARIOS</em>{running && <i style={{ width: `${progress}%` }} />}</div>

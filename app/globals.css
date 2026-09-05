@@ -5226,3 +5226,321 @@ textarea:focus-visible,
 .theme-dark .workspace-onboarding :is(input, select, textarea) { color: var(--dark-text); background: #202b24; border-color: #46544a; }
 .theme-dark .workspace-onboarding nav button { color: #cbd5ce; background: var(--dark-surface-2); border-color: var(--dark-line); }
 .theme-dark .workspace-onboarding nav button.active { color: #111712; background: #d7ff38; }
+
+/* tanjx visual system ---------------------------------------------------------
+   One type scale, one page gutter, semantic app glyphs, and neutral dark mode. */
+:root {
+  --workspace-gutter: clamp(18px, 2vw, 28px);
+  --workspace-block-gap: 14px;
+  --type-xs: 11px;
+  --type-sm: 12px;
+  --type-md: 13px;
+  --type-base: 14px;
+  --type-lg: 16px;
+  --type-xl: 20px;
+  --type-page: 26px;
+}
+
+.platform-shell {
+  font-size: var(--type-base);
+  line-height: 1.45;
+}
+.main-content { max-width: none; padding: 0 0 56px !important; }
+.workspace-home,
+.scope-dashboard,
+.application-session-surface,
+.decision-workspace,
+.data-workspace,
+.workspace-onboarding,
+.project-stage { padding: var(--workspace-gutter) !important; }
+.application-session-surface { display: grid; gap: var(--workspace-block-gap); }
+
+.platform-shell :is(.workspace-home__hero, .view-intro, .project-commandbar, .workflow-intro, .data-intro) h1 {
+  font-size: var(--type-page) !important;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+.platform-shell :is(.app-canonical-header, .studio-header) h1,
+.platform-shell .project-commandbar h1 { font-size: var(--type-xl) !important; }
+.platform-shell :is(.main-content, .project-stage, .workspace-home) h2 { font-size: 18px !important; line-height: 1.28; }
+.platform-shell :is(.main-content, .project-stage, .workspace-home) h3 { font-size: 15px !important; line-height: 1.35; }
+.platform-shell :is(.main-content, .project-stage, .workspace-home) p { font-size: var(--type-md) !important; line-height: 1.5; }
+.platform-shell :is(.main-content, .project-stage, .workspace-home) :is(small, dt) { font-size: var(--type-xs) !important; }
+.platform-shell :is(button, input, select, textarea, label, th, td) { font-size: var(--type-md) !important; }
+.platform-shell :is(.kicker, [class*="eyebrow"], [class*="-code"], [class*="-meta"] small) { font-size: var(--type-xs) !important; }
+.topbar, .statusbar, .project-context-stack { font-size: var(--type-md); }
+
+/* Compact code-native tanjx mark: exchange nodes sit on a tangent line. */
+.brand > .tanjx-mark,
+.tanjx-mark {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: block;
+  flex: 0 0 36px;
+  overflow: hidden;
+  color: #132019;
+  background: #d7ff38;
+  border: 1px solid #b8db24;
+  border-radius: 9px;
+}
+.tanjx-mark::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.tanjx-mark::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 17px;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-28deg);
+  transform-origin: center;
+}
+.tanjx-mark > i {
+  position: absolute;
+  z-index: 1;
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border: 1px solid #d7ff38;
+  border-radius: 50%;
+}
+.tanjx-mark > i:first-child { left: 6px; top: 22px; }
+.tanjx-mark > i:last-child { right: 6px; top: 9px; }
+.brand > div { gap: 1px; }
+.brand b { font-size: 15px; font-weight: 760; letter-spacing: -.01em; }
+.brand small { color: #9ba6a0; font: 650 10px/1.25 var(--font-ui); letter-spacing: .01em; }
+
+/* Semantic application icons replace two-letter abbreviations everywhere. */
+.app-glyph {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #17231b;
+  background: color-mix(in srgb, var(--context-app-accent, var(--app-accent, var(--studio-accent, #d7ff38))) 24%, #fff);
+  border: 1px solid color-mix(in srgb, var(--context-app-accent, var(--app-accent, var(--studio-accent, #d7ff38))) 55%, #cbd3cb);
+  border-radius: 7px;
+  font-family: "Segoe UI Symbol", var(--font-ui);
+  font-size: 17px !important;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+}
+.app-glyph-risk { --glyph-accent: #ff715b; }
+.app-glyph-optimizer { --glyph-accent: #a4bd20; }
+.app-glyph-flow { --glyph-accent: #2aa6d6; }
+.app-glyph-demand { --glyph-accent: #806dd6; }
+.app-glyph-suppliers { --glyph-accent: #3ea86a; }
+.app-glyph-minerals { --glyph-accent: #bd762d; }
+.app-glyph-workforce { --glyph-accent: #5a6bd0; }
+.app-glyph-manufacturing { --glyph-accent: #52778c; }
+.app-glyph-logistics { --glyph-accent: #008b88; }
+.app-glyph-quality { --glyph-accent: #b47706; }
+.app-glyph:not([style]) {
+  color: color-mix(in srgb, var(--glyph-accent) 82%, #152019);
+  background: color-mix(in srgb, var(--glyph-accent) 13%, #fff);
+  border-color: color-mix(in srgb, var(--glyph-accent) 35%, #d5dbd5);
+}
+.context-mounted-apps .app-glyph { width: 26px; height: 26px; font-size: 15px !important; border-radius: 6px; }
+.app-canonical-header .app-glyph.app-code,
+.studio-header .app-glyph.app-code { width: 40px; height: 40px; font-size: 21px !important; border-radius: 9px; }
+.app-graph-node .app-glyph,
+.app-catalog-grid .app-glyph,
+.app-token-row .app-glyph { width: 30px; height: 30px; }
+.app-token-row .app-glyph { width: 24px; height: 24px; font-size: 13px !important; border-radius: 5px; }
+.app-run-list .app-glyph { width: 28px; height: 28px; font-size: 15px !important; }
+
+/* Stable, differentiated identity colors for agents and team members. */
+.identity-avatar,
+.context-identity-tools > button > .identity-avatar {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  flex: 0 0 25px;
+  place-items: center;
+  color: color-mix(in srgb, var(--identity-accent) 78%, #152019);
+  background: color-mix(in srgb, var(--identity-accent) 15%, #fff);
+  border: 1px solid color-mix(in srgb, var(--identity-accent) 38%, #cbd3cb);
+  border-radius: 50%;
+  font: 750 9px/1 var(--font-ui);
+  font-style: normal;
+}
+.context-identity-tools > button.active > .identity-avatar { box-shadow: 0 0 0 2px color-mix(in srgb, var(--identity-accent) 28%, transparent); }
+.agent-roster-compact > button:nth-child(12n + 1) > span { --identity-accent: #2f6fed; }
+.agent-roster-compact > button:nth-child(12n + 2) > span { --identity-accent: #8b5cf6; }
+.agent-roster-compact > button:nth-child(12n + 3) > span { --identity-accent: #c46d22; }
+.agent-roster-compact > button:nth-child(12n + 4) > span { --identity-accent: #d04a46; }
+.agent-roster-compact > button:nth-child(12n + 5) > span { --identity-accent: #0f8b8d; }
+.agent-roster-compact > button:nth-child(12n + 6) > span { --identity-accent: #2f855a; }
+.agent-roster-compact > button:nth-child(12n + 7) > span { --identity-accent: #4f6f8f; }
+.agent-roster-compact > button:nth-child(12n + 8) > span { --identity-accent: #c0567f; }
+.agent-roster-compact > button:nth-child(12n + 9) > span { --identity-accent: #168aad; }
+.agent-roster-compact > button:nth-child(12n + 10) > span { --identity-accent: #718414; }
+.agent-roster-compact > button:nth-child(12n + 11) > span { --identity-accent: #7a5af8; }
+.agent-roster-compact > button:nth-child(12n + 12) > span { --identity-accent: #b45309; }
+.agent-roster-compact > button > span {
+  color: color-mix(in srgb, var(--identity-accent) 78%, #152019) !important;
+  background: color-mix(in srgb, var(--identity-accent) 14%, #fff) !important;
+  border-color: color-mix(in srgb, var(--identity-accent) 38%, #cbd3cb) !important;
+}
+
+/* Neutral dark mode. Lime is a focus/action accent, not a surface color. */
+.platform-shell.theme-dark {
+  --ink: #f3f5f7;
+  --ink-2: #dbe0e5;
+  --paper: #0d0f11;
+  --panel: #171a1d;
+  --soft: #1e2226;
+  --line: #343a40;
+  --muted: #a3abb3;
+  --strong-muted: #c3c9cf;
+  --dark-canvas: #0d0f11;
+  --dark-surface: #171a1d;
+  --dark-surface-2: #1e2226;
+  --dark-surface-3: #272c31;
+  --dark-line: #343a40;
+  --dark-text: #f2f4f6;
+  --dark-muted: #a6aeb6;
+  color: var(--dark-text);
+  background: var(--dark-canvas);
+}
+.theme-dark .side-rail { color: var(--dark-text); background: #111417 !important; border-color: var(--dark-line); box-shadow: 8px 0 26px rgba(0, 0, 0, .28); }
+.theme-dark :is(.workspace-primary-nav, .sidebar-projects, .sidebar-path-tree, .sidebar-path-branches) {
+  color: var(--dark-text) !important;
+  background: #14171a !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark .sidebar-path-root { background: var(--dark-surface) !important; border-color: var(--dark-line) !important; }
+.theme-dark :is(.sidebar-path-root > button, .sidebar-path-branches > .sidebar-path-branch > button, .sidebar-project-leaves .sidebar-project) {
+  color: var(--dark-text) !important;
+  background: var(--dark-surface-2) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark :is(.sidebar-path-root.open > button, .sidebar-path-root > button.active-context, .sidebar-path-branches > .sidebar-path-branch > button.active-context, .sidebar-project-leaves .sidebar-project.active) {
+  color: #f8fafb !important;
+  background: #252a2e !important;
+  border-color: #596545 !important;
+}
+.theme-dark .sidebar-path-branch::before,
+.theme-dark .sidebar-project-leaves { border-color: #3a4147; }
+.theme-dark .sidebar-path-branch::before { background: #3a4147; }
+.theme-dark .rail-quick-actions > button { color: #e8ebee; background: var(--dark-surface) !important; border-color: var(--dark-line) !important; }
+.theme-dark .rail-quick-actions > button:hover { background: var(--dark-surface-3) !important; }
+
+.theme-dark :is(.shell-chrome, .topbar, .project-context-stack, .project-context-bar, .project-people-bar) {
+  color: var(--dark-text);
+  background: #121518 !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark :is(.search-trigger, .topbar-icon, .context-current, .context-group-home, .context-back-button, .context-identity-home, .context-mounted-apps > button, .context-identity-tools > button) {
+  color: #e5e9ec !important;
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark .search-trigger kbd { color: #c0c7cd; background: #252a2e; border-color: #3d444a; }
+.theme-dark .statusbar { color: #b5bdc4; background: #1a1e21 !important; border-color: var(--dark-line); }
+.theme-dark .project-commandbar > aside,
+.theme-dark .project-tabs { color: var(--dark-text); background: var(--dark-surface) !important; border-color: var(--dark-line) !important; }
+.theme-dark .project-tabs button { color: #b7bec5; background: transparent !important; border-color: var(--dark-line); }
+.theme-dark .project-tabs button:hover,
+.theme-dark .project-tabs button.active { color: #fff; background: #24292d !important; }
+.theme-dark :is(.context-current, .context-mounted-apps > button.active, .context-identity-tools > button.active) {
+  background: #24292d !important;
+  border-color: #4a535a !important;
+}
+.theme-dark :is(.main-content, .project-os, .project-stage, .workspace-home, .scope-dashboard, .application-session-surface) {
+  color: var(--dark-text);
+  background: var(--dark-canvas) !important;
+}
+
+.theme-dark :is(
+  .workspace-home__hero, .workspace-home__metrics, .workspace-home__portfolio,
+  .workspace-home__sector, .workspace-home__client, .workspace-home__side-panel,
+  .workspace-home__project, .workspace-home__work-item, .workspace-home__collaborator,
+  .workspace-home__search, .workspace-home__actions button, .workspace-home__empty-client,
+  .workspace-home__empty-search
+) { color: var(--dark-text) !important; background: var(--dark-surface) !important; border-color: var(--dark-line) !important; }
+.theme-dark :is(.workspace-home__sector > header, .workspace-home__result-count, .workspace-home__client-meta span, .workspace-home__side-panel > footer) {
+  color: var(--dark-muted) !important;
+  background: var(--dark-surface-2) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark .workspace-home :is(p, small, span, em, dt) { color: var(--dark-muted); }
+.theme-dark .workspace-home :is(h1, h2, h3, h4, b, strong, dd) { color: var(--dark-text); }
+
+.theme-dark :is(
+  .project-thesis, .project-metric-grid button, .project-home-grid > section,
+  .portfolio-footprint, .recent-work-panel, .project-memberships,
+  .data-graph-commandbar, .data-query-results, .ingestion-workbench,
+  .dataset-register, .source-file-register, .iot-sources, .graph-sidecar,
+  .app-catalog-grid article, .app-run-workspace, .app-run-detail,
+  .decision-tree-panel, .decision-inspector, .method-library,
+  .governance-settings, .governance-control-list, .governance-audit
+) { color: var(--dark-text) !important; background: var(--dark-surface) !important; border-color: var(--dark-line) !important; }
+.theme-dark :is(
+  .project-home-grid li, .recent-work-list dl div, .project-memberships > div > button,
+  .data-query-results > div > button, .dataset-card, .iot-template-grid article,
+  .source-file-register > div > button, .app-run-list > button,
+  .decision-node-list > button, .decision-commit-row, .taxonomy-stack article,
+  .governance-control-list > article, .governance-audit > div > button
+) { color: var(--dark-text) !important; background: var(--dark-surface-2) !important; border-color: var(--dark-line) !important; }
+
+.theme-dark .application-container,
+.theme-dark .project-app-studio { color: var(--dark-text); background: var(--dark-canvas) !important; }
+.theme-dark :is(.application-container .app-canonical-header, .optimizer-workbench .app-canonical-header, .project-app-studio .studio-header) {
+  color: var(--dark-text);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--studio-accent) 9%, #171a1d), #171a1d 58%) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark :is(.app-workspace .panel, .studio-toolbar, .studio-metric, .mineral-map, .skills-matrix, .plant-flow, .logistics-map, .quality-genealogy, .agent-session-rail, .agent-trace-panel) {
+  color: var(--dark-text) !important;
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark .agent-os { color: var(--dark-text); background: #101214 !important; border-color: var(--dark-line); }
+.theme-dark .agent-session { color: var(--dark-text); background: #111315 !important; border-color: var(--dark-line); }
+.theme-dark :is(.agent-messages > article, .agent-prompt, .playground-runner-bar, .agent-steering-bar, .agent-final-result, .tool-trace-stream > button) {
+  color: var(--dark-text) !important;
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-line) !important;
+}
+.theme-dark :is(.agent-prompt textarea, .playground-runner-bar select) { color: var(--dark-text); background: var(--dark-surface-2); border-color: #41484e; }
+.theme-dark :is(.agent-session-list > button.active, .agent-roster-compact > button.active, .agent-inspector-tabs button.active) {
+  color: #fff !important;
+  background: #252a2e !important;
+  border-color: #4d565d !important;
+  box-shadow: inset 3px 0 #b5d52c;
+}
+.theme-dark .identity-avatar,
+.theme-dark .context-identity-tools > button > .identity-avatar,
+.theme-dark .agent-roster-compact > button > span {
+  color: color-mix(in srgb, var(--identity-accent) 56%, #fff) !important;
+  background: color-mix(in srgb, var(--identity-accent) 25%, #1b1f22) !important;
+  border-color: color-mix(in srgb, var(--identity-accent) 55%, #3c4349) !important;
+}
+.theme-dark .app-glyph {
+  color: color-mix(in srgb, var(--glyph-accent) 55%, #fff);
+  background: color-mix(in srgb, var(--glyph-accent) 23%, #1b1f22);
+  border-color: color-mix(in srgb, var(--glyph-accent) 52%, #3c4349);
+}
+
+@media (max-width: 760px) {
+  :root { --workspace-gutter: 14px; }
+  .workspace-home,
+  .scope-dashboard,
+  .application-session-surface,
+  .decision-workspace,
+  .data-workspace,
+  .workspace-onboarding,
+  .project-stage { padding: var(--workspace-gutter) !important; }
+  .platform-shell :is(.workspace-home__hero, .view-intro, .project-commandbar, .workflow-intro, .data-intro) h1 { font-size: 23px !important; }
+}

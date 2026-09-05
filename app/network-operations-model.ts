@@ -191,7 +191,7 @@ export type TransportAssetFrame = TransportAsset & {
 };
 
 const contacts: readonly OperationalContact[] = [
-  ["contact-01", "Maya Singh — synthetic", "Global transport controller", "EMEA / APAC overlap", "UTC+05:30", "Available"],
+  ["contact-01", "Anika Singh — synthetic", "Global transport controller", "EMEA / APAC overlap", "UTC+05:30", "Available"],
   ["contact-02", "Leo Martins — synthetic", "Ocean operations lead", "Americas", "UTC-03:00", "Monitoring"],
   ["contact-03", "Elena Weiss — synthetic", "European network planner", "Europe", "UTC+01:00", "Available"],
   ["contact-04", "Kenji Mori — synthetic", "APAC control-tower lead", "APAC", "UTC+09:00", "Monitoring"],
@@ -204,7 +204,7 @@ const contacts: readonly OperationalContact[] = [
   ["contact-11", "Mateo Cruz — synthetic", "Supplier recovery lead", "Americas", "UTC-05:00", "Monitoring"],
   ["contact-12", "Lin Zhao — synthetic", "Electronics category lead", "APAC", "UTC+08:00", "Available"],
 ].map(([id, name, role, shift, timezone, availability], index) => ({
-  id, name, role, shift, timezone, availability: availability as OperationalContact["availability"], channel: `MAYA-DEMO-${String(index + 21).padStart(3, "0")}`,
+  id, name, role, shift, timezone, availability: availability as OperationalContact["availability"], channel: `TANJX-DEMO-${String(index + 21).padStart(3, "0")}`,
 }));
 
 type LocationSeed = readonly [string, string, string, string, NetworkRegion, NetworkLocation["kind"], number, number, string, boolean];

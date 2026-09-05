@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fixtureEvidenceFor, projectApps, type EvidenceReceipt, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
+import { AppGlyph } from "./VisualIdentity";
 
 type Props = {
   appId: ProjectAppId;
@@ -12,9 +13,9 @@ type Props = {
 
 function StudioHeader({ appId, project }: Pick<Props, "appId" | "project">) {
   const app = projectApps.find((item) => item.id === appId) ?? projectApps[0];
-  return <header className="studio-header">
-    <div><span>{app.icon}</span><p>PROJECT APP · {project.code}</p><h1>{app.name}</h1><small>{app.archetype} · {app.outcome}</small></div>
-    <aside><b>{app.status}</b><span>{app.methodCodes.join(" · ")}</span><small>Deterministic synthetic workspace</small></aside>
+  return <header className="studio-header app-canonical-header">
+    <div><AppGlyph appId={appId} className="app-code" /><p>PROJECT APP · {project.code}</p><h1>{app.name}</h1><small>{app.archetype} · {app.outcome}</small></div>
+    <aside><b>{app.status}</b><span>{app.methodCodes.join(" · ")}</span><small>Deterministic demonstration data</small></aside>
   </header>;
 }
 

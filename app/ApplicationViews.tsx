@@ -6,6 +6,7 @@ import type { MapSelectionContext } from "./WorldNetworkMap";
 import { getNetworkView, type MapLayer } from "./network-operations-model";
 import { type AppId, type DecisionCase, type ScopeSnapshot, type StatusTone } from "./platform-model";
 import type { WorkspaceProject } from "./workspace-model";
+import { AppGlyph } from "./VisualIdentity";
 
 type ApplicationViewsProps = {
   app: AppId;
@@ -25,11 +26,11 @@ function Dot({ tone }: { tone: StatusTone }) {
   return <i className={`tone-dot tone-${tone}`} aria-hidden="true" />;
 }
 
-function AppIntro({ code, title, body, scope, outcome, actions }: { code: string; title: string; body: string; scope: string; outcome: string; actions?: React.ReactNode }) {
+function AppIntro({ appId, title, body, scope, outcome, actions }: { appId: Exclude<AppId, "optimizer">; title: string; body: string; scope: string; outcome: string; actions?: React.ReactNode }) {
   return (
     <header className="studio-header app-intro app-canonical-header">
-      <div><span className="app-code">{code}</span><p>PROJECT APP · {scope.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>{title}</h1><small>{body}</small></div>
-      <aside><b>ACTIVE WORKSPACE</b><span>{outcome}</span><small>Deterministic synthetic workspace</small>{actions}</aside>
+      <div><AppGlyph appId={appId} className="app-code" /><p>PROJECT APP · {scope.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>{title}</h1><small>{body}</small></div>
+      <aside><b>ACTIVE WORKSPACE</b><span>{outcome}</span><small>Deterministic demonstration data</small>{actions}</aside>
     </header>
   );
 }
@@ -111,7 +112,7 @@ function RiskRadar({ project, snapshot, onOpenGraph, onToast }: Pick<Application
 
   return (
     <div className="app-workspace risk-workspace">
-      <AppIntro code="RR" title="Risk Radar" scope={snapshot.shortLabel} outcome="Dependencies and exposure" body="Review current risk signals, affected entities, recovery paths, and evidence." actions={<button type="button" onClick={onOpenGraph}>Open evidence graph →</button>} />
+      <AppIntro appId="risk" title="Risk Radar" scope={snapshot.shortLabel} outcome="Dependencies and exposure" body="Review current risk signals, affected entities, recovery paths, and evidence." actions={<button type="button" onClick={onOpenGraph}>Open evidence graph →</button>} />
       <div className="app-metrics"><AppMetric label="Visible exposure" value={`$${visibleExposure.toFixed(1)}M`} detail={`${visibleDependencies.length} modeled dependencies · ${horizon}`} /><AppMetric label="Critical dependencies" value={String(visibleDependencies.filter((item) => item.criticality >= 80).length)} detail={`${visibleDependencies.filter((item) => item.caseReady).length} continuity cases`} tone="critical" /><AppMetric label="N-tier visibility" value="78%" detail="Synthetic snapshot · no live refresh" tone="healthy" /><AppMetric label="Risk velocity" value={horizon === "30 days" ? "+9%" : horizon === "12 months" ? "+27%" : "+18%"} detail={`${riskMode} view`} tone="watch" /></div>
 
       <section className="panel app-controlbar"><div className="segmented-control wide">{["Procurement criticality", "Event radar", "Continuity cases"].map((mode) => <button className={riskMode === mode ? "active" : ""} type="button" key={mode} onClick={() => setRiskMode(mode)}>{mode}</button>)}</div><label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}><option>All categories</option><option>Critical materials</option><option>Electronics</option><option>Castings</option></select></label><label>Horizon<select value={horizon} onChange={(event) => setHorizon(event.target.value)}><option>30 days</option><option>90 days</option><option>12 months</option></select></label><button type="button" onClick={() => { setEvidenceRevision((current) => current + 1); onToast("Deterministic synthetic evidence snapshot advanced; no source system was contacted."); }}>Advance synthetic snapshot ↻</button></section>
@@ -171,7 +172,7 @@ function FlowLens({ project, snapshot, onToast }: Pick<ApplicationViewsProps, "p
   const actionValue = visibleActions.reduce((sum, item) => sum + Number(item[1]) * scale, 0);
   return (
     <div className="app-workspace flow-workspace">
-      <AppIntro code="FL" title="Flow Lens" scope={snapshot.shortLabel} outcome="Material and cash flow" body="Inspect inventory, movements, orders, invoices, margin, and working-capital effects." actions={<button type="button" onClick={() => onToast("Synthetic cash-action preview opened; no finance or source record was written.")}>Review cash action →</button>} />
+      <AppIntro appId="flow" title="Flow Lens" scope={snapshot.shortLabel} outcome="Material and cash flow" body="Inspect inventory, movements, orders, invoices, margin, and working-capital effects." actions={<button type="button" onClick={() => onToast("Synthetic cash-action preview opened; no finance or source record was written.")}>Review cash action →</button>} />
       <div className="app-metrics"><AppMetric label="Cash in inventory" value={`$${Math.round(486 * scale)}M`} detail={`${businessUnit} · ${period}`} tone="watch" /><AppMetric label="Value in transit" value={`$${(1.28 * scale).toFixed(2)}B`} detail={`${Math.round(2164 * scale).toLocaleString()} modeled movements`} /><AppMetric label="Receivables exposed" value={`$${Math.round(214 * scale)}M`} detail={`${mode} lens`} tone="critical" /><AppMetric label="Visible action value" value={`$${actionValue.toFixed(1)}M`} detail={`${visibleActions.length} deterministic actions`} tone="opportunity" /></div>
       <section className="panel app-controlbar"><div className="segmented-control wide">{["Working capital", "Order-to-cash", "Margin flow"].map((item) => <button className={mode === item ? "active" : ""} type="button" key={item} onClick={() => setMode(item)}>{item}</button>)}</div><label>Business unit<select value={businessUnit} onChange={(event) => setBusinessUnit(event.target.value)}><option>All business units</option><option>{primaryUnit}</option><option>{secondaryUnit}</option></select></label><label>Period<select value={period} onChange={(event) => setPeriod(event.target.value)}><option>Next 90 days</option><option>This quarter</option><option>FY 2026</option></select></label><button type="button" onClick={() => onToast(`${mode} synthetic bridge preview prepared for ${businessUnit}, ${period}; no file was downloaded.`)}>Preview cash bridge</button></section>
       <div className="app-grid flow-grid">
@@ -214,7 +215,7 @@ function DemandSense({ project, snapshot, onToast }: Pick<ApplicationViewsProps,
   const visibleGaps = demandGaps.filter((item) => productFamily === "All products" || item.family === productFamily);
   return (
     <div className="app-workspace demand-workspace">
-      <AppIntro code="DS" title="Demand Sense" scope={snapshot.shortLabel} outcome="Demand range and drivers" body="Compare order, consumption, market, product, and commercial signals by scenario." actions={<button type="button" onClick={() => onToast(`${scenario} synthetic demand scenario staged for human review; no operational plan changed.`)}>Stage review →</button>} />
+      <AppIntro appId="demand" title="Demand Sense" scope={snapshot.shortLabel} outcome="Demand range and drivers" body="Compare order, consumption, market, product, and commercial signals by scenario." actions={<button type="button" onClick={() => onToast(`${scenario} synthetic demand scenario staged for human review; no operational plan changed.`)}>Stage review →</button>} />
       <div className="app-metrics"><AppMetric label="Forecast accuracy" value={`${accuracy.toFixed(1)}%`} detail={`${scenario} holdout fixture`} tone="healthy" /><AppMetric label={`Demand · ${granularity.toLowerCase()}`} value={`${demandTotal.toLocaleString()}K`} detail={`${productFamily} · ${series.horizon}`} /><AppMetric label="Visible supply gaps" value={String(visibleGaps.filter((item) => item.row[3].startsWith("−")).length)} detail={`${visibleGaps.length} modeled product-market rows`} tone="critical" /><AppMetric label="Scenario factor" value={`${Math.round(uplift * 100)}%`} detail="Relative to consensus" tone="opportunity" /></div>
       <section className="panel app-controlbar"><div className="segmented-control wide">{["Consensus", "High growth", "Downside", "Promotion"].map((item) => <button className={scenario === item ? "active" : ""} type="button" key={item} onClick={() => setScenario(item)}>{item}</button>)}</div><label>Granularity<select value={granularity} onChange={(event) => setGranularity(event.target.value)}><option>Weekly</option><option>Monthly</option><option>Quarterly</option></select></label><label>Product family<select value={productFamily} onChange={(event) => setProductFamily(event.target.value)}><option>All products</option><option>{primaryFamily}</option><option>{secondaryFamily}</option></select></label><button type="button" aria-pressed={compareVersions} onClick={() => setCompareVersions((current) => !current)}>{compareVersions ? "Hide prior version" : "Compare prior version"}</button></section>
       <div className="app-grid demand-grid">
@@ -256,7 +257,7 @@ function SupplierGraph({ project, snapshot, onOpenGraph, onToast }: Pick<Applica
   const evidenceLabels = ["Identity + ownership", "Capability", "Capacity", "ESG + compliance"];
   return (
     <div className="app-workspace supplier-workspace">
-      <AppIntro code="SG" title="Supplier Graph" scope={snapshot.shortLabel} outcome="Supplier dependency and options" body="Inspect ownership, sites, materials, capacity, performance, evidence, and alternatives." actions={<button type="button" onClick={onOpenGraph}>Open knowledge graph →</button>} />
+      <AppIntro appId="suppliers" title="Supplier Graph" scope={snapshot.shortLabel} outcome="Supplier dependency and options" body="Inspect ownership, sites, materials, capacity, performance, evidence, and alternatives." actions={<button type="button" onClick={onOpenGraph}>Open knowledge graph →</button>} />
       <div className="app-metrics"><AppMetric label="Suppliers resolved" value="6,420" detail={`${snapshot.suppliers.length} shown in ${snapshot.shortLabel}`} /><AppMetric label="Selected OTIF" value={`${performance.otif.toFixed(1)}%`} detail={`${selected.name} · ${performance.trend}`} tone="healthy" /><AppMetric label="Selected dependency" value={`${selected.dependency}%`} detail={`${selected.category} · ${selected.spend}`} tone="critical" /><AppMetric label="Shortlisted now" value={String(shortlisted.length)} detail={`${requirement.name} · synthetic session`} tone="opportunity" /></div>
       <div className="app-grid supplier-graph-grid">
         <section className="panel supplier-network-panel"><header className="panel-header"><div><p className="kicker">N-TIER SUPPLY NETWORK · SYNTHETIC</p><h2>{selected.category} dependency</h2><span>{selected.name} · {selected.tier} · {selected.region} · {selected.dependency}% modeled dependency.</span></div><span className="live-chip"><Dot tone="healthy" />Selection-linked graph</span></header><div className="supplier-network"><i className="sg-edge e1" /><i className="sg-edge e2" /><i className="sg-edge e3" /><i className="sg-edge e4" /><i className="sg-edge e5" /><i className="sg-edge e6" />{[

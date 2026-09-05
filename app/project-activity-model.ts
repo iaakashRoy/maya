@@ -250,12 +250,12 @@ function runFor(project: WorkspaceProject, appId: ProjectAppId, sessionId: strin
 function detailedMessages(project: WorkspaceProject, session: ProjectWorkSession, optimizerRunId: string, riskRunId?: string, supplierRunId?: string): readonly SessionMessage[] {
   const token = projectToken(project);
   const messages = project.id === "anode-shield" ? [
-    { role: "user", author: "Maya Rao", kind: "Prompt", body: "Protect the 800V launch. Show the evidence, test qualified alternatives, and stop before any supplier or inventory commitment.", evidenceRefs: [], appRunRefs: [] },
+    { role: "user", author: "Asha Rao", kind: "Prompt", body: "Protect the 800V launch. Show the evidence, test qualified alternatives, and stop before any supplier or inventory commitment.", evidenceRefs: [], appRunRefs: [] },
     { role: "agent", author: "Project Orchestrator", kind: "Response", body: "Scope locked to Apex Mobility / Anode Shield. I will coordinate evidence, supplier, risk, and OR specialists and stop at the human gate.", evidenceRefs: [], appRunRefs: [] },
     { role: "agent", author: "Evidence Auditor", kind: "Activity", body: "Read the graphite allocation, product structure, qualification, order, and movement fixtures. The primary refining-path dependency is 92%.", evidenceRefs: ["EV-001-03"], appRunRefs: [] },
     { role: "agent", author: "Supplier Cartographer", kind: "Activity", body: "SupplierGraph found 480 t of qualified alternate capacity after fixture yield and reservation limits.", evidenceRefs: ["EV-001-D2A"], appRunRefs: supplierRunId ? [supplierRunId] : [] },
     { role: "agent", author: "Risk Sentinel", kind: "Activity", body: "RiskRadar replayed the P90 disruption envelope and retained $42.0M of exposed launch value as a synthetic scenario input.", evidenceRefs: ["EV-001-01"], appRunRefs: riskRunId ? [riskRunId] : [] },
-    { role: "user", author: "Maya Rao", kind: "Steering", body: "Keep projected service at or above 95% and forbid unqualified sources.", evidenceRefs: [], appRunRefs: [] },
+    { role: "user", author: "Asha Rao", kind: "Steering", body: "Keep projected service at or above 95% and forbid unqualified sources.", evidenceRefs: [], appRunRefs: [] },
     { role: "agent", author: "OR Formulator", kind: "Activity", body: "Added the 95% service floor and qualification as hard constraints; selected M-06, M-20, and M-23 for the auditable model draft.", evidenceRefs: ["EV-001-02", "EV-001-D2A"], appRunRefs: [] },
     { role: "agent", author: "Solver Operator", kind: "Activity", body: "Network Optimizer replayed the deterministic candidate: reserve 480 t and rebalance 64 t. No solver ran and no optimality claim is made.", evidenceRefs: ["EV-001-D2A", "EV-001-D2B"], appRunRefs: [optimizerRunId] },
     { role: "agent", author: "Evidence Auditor", kind: "Result", body: "Candidate verified against the visible fixture: projected service 95.1%; three named approvals remain. The package is ready for human review, not release.", evidenceRefs: ["EV-001-02", "EV-001-D3A"], appRunRefs: [optimizerRunId] },
@@ -332,9 +332,9 @@ const memberWorkFor = (project: WorkspaceProject, projectRole: string, collabora
   const metric = project.metrics[index % project.metrics.length] ?? project.metrics[0];
   const work: Readonly<Record<string, readonly [string, string, SessionActivity["state"]]>> = {
     "Client owner": ["Review the decision package", `${collaboratorName} reviewed the ${project.name} recommendation, ${metric?.label.toLowerCase() ?? "project outcome"}, and named release conditions; approval remains a synthetic human gate.`, "Review"],
-    "Kearney engagement lead": ["Steer the expert workstream", `${collaboratorName} reconciled the client brief, specialist challenge, value narrative, and next-review agenda for ${project.client}.`, "Complete"],
-    "Kearney OR scientist": ["Review formulation fitness", `${collaboratorName} checked objective, decision variables, constraints, method ${project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "mapping"}, and claim language.`, "Complete"],
-    "Kearney data steward": ["Review data and lineage contract", `${collaboratorName} checked project isolation, ${project.counts.observations} fixture observations, variable mappings, and evidence references before merge.`, "Complete"],
+    "tanjx engagement lead": ["Steer the expert workstream", `${collaboratorName} reconciled the client brief, specialist challenge, value narrative, and next-review agenda for ${project.client}.`, "Complete"],
+    "tanjx OR scientist": ["Review formulation fitness", `${collaboratorName} checked objective, decision variables, constraints, method ${project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "mapping"}, and claim language.`, "Complete"],
+    "tanjx data steward": ["Review data and lineage contract", `${collaboratorName} checked project isolation, ${project.counts.observations} fixture observations, variable mappings, and evidence references before merge.`, "Complete"],
   };
   return work[projectRole] ?? ["Contribute to project review", `${collaboratorName} recorded a project-specific review note for ${project.name}.`, "Complete"];
 };
@@ -372,7 +372,7 @@ function activitiesFor(project: WorkspaceProject, sessionId: string, runs: reado
     if (!collaborator) return [];
     const [title, detail, state] = memberWorkFor(project, membership.projectRole, collaborator.name, index);
     const primary = {
-      type: membership.projectRole === "Client owner" ? "human-gate" as const : membership.projectRole === "Kearney data steward" ? "validation" as const : "steering" as const,
+      type: membership.projectRole === "Client owner" ? "human-gate" as const : membership.projectRole === "tanjx data steward" ? "validation" as const : "steering" as const,
       actor: collaborator.name,
       title,
       detail,
@@ -603,7 +603,7 @@ function forkSessionState(state: ProjectActivityState, source: ProjectWorkSessio
   };
   const message = nextMessage(state, fork, {
     role: "system",
-    author: "Maya",
+    author: "tanjx",
     kind: "Activity",
     body: `Continued from ${source.id}. The closed source session remains immutable; new steering and replays will be recorded under ${id}.`,
     evidenceRefs: [],
@@ -728,12 +728,12 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
     if (!writable) return state;
     const { state: nextState, session } = writable;
     const message = action.type === "steer-session"
-      ? nextMessage(nextState, session, { role: "user", author: "Maya Rao", kind: "Steering", body: action.instruction, evidenceRefs: [], appRunRefs: [] })
+      ? nextMessage(nextState, session, { role: "user", author: "Asha Rao", kind: "Steering", body: action.instruction, evidenceRefs: [], appRunRefs: [] })
       : nextMessage(nextState, session, { role: action.role, author: action.author, kind: action.kind, body: action.body, evidenceRefs: action.evidenceRefs ?? [], appRunRefs: action.appRunRefs ?? [] });
     const steeringActivity = action.type === "steer-session"
       ? nextActivity(nextState, session, {
           type: "steering",
-          actor: "Maya Rao",
+          actor: "Asha Rao",
           title: "Apply human steering",
           detail: action.instruction,
           state: "Complete",
@@ -778,8 +778,8 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
     const writable = mutableSessionState(state, action.projectId, action.sessionId);
     if (!writable) return state;
     const { state: nextState, session } = writable;
-    const message = nextMessage(nextState, session, { role: "system", author: "Maya", kind: "Activity", body: "Session stopped by a human collaborator. No operational release or write-back occurred.", evidenceRefs: [], appRunRefs: [] });
-    const activity = nextActivity(nextState, session, { type: "human-gate", actor: "Maya Rao", title: "Session cancelled", detail: "Stopped before operational release", state: "Stopped", evidenceRefs: [] });
+    const message = nextMessage(nextState, session, { role: "system", author: "tanjx", kind: "Activity", body: "Session stopped by a human collaborator. No operational release or write-back occurred.", evidenceRefs: [], appRunRefs: [] });
+    const activity = nextActivity(nextState, session, { type: "human-gate", actor: "Asha Rao", title: "Session cancelled", detail: "Stopped before operational release", state: "Stopped", evidenceRefs: [] });
     return {
       ...nextState,
       messages: [...nextState.messages, message],
@@ -814,7 +814,7 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
       };
       const opening = nextMessage(state, session, {
         role: "system",
-        author: "Maya",
+        author: "tanjx",
         kind: "Activity",
         body: `Application session ${session.id} created inside ${action.project.client} / ${action.project.name}.`,
         evidenceRefs: [],

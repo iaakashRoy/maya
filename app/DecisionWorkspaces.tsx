@@ -8,6 +8,7 @@ import {
   type DecisionCase,
   type WorkflowViewId,
 } from "./platform-model";
+import { AppGlyph } from "./VisualIdentity";
 
 type DecisionWorkspacesProps = {
   view: WorkflowViewId;
@@ -77,7 +78,7 @@ function DecisionInbox({ cases, activeCase, scopeLabel, onOpenCase, onToast }: D
             <span className="decision-stage"><small>STEP {decisionStageOrder.indexOf(item.stage) + 1}/6</small><b>{item.stage}</b><i><em style={{ width: `${((decisionStageOrder.indexOf(item.stage) + 1) / decisionStageOrder.length) * 100}%` }} /></i></span>
             <span><b>{item.owner}</b><small>{item.due}</small></span>
             <span><b>{item.value}</b><small>{item.confidence}% confidence</small></span>
-            <span className="app-token-row">{item.contributions.map((contribution) => <i key={contribution.app} title={appById[contribution.app].name}>{appById[contribution.app].icon}</i>)}</span>
+            <span className="app-token-row">{item.contributions.map((contribution) => <AppGlyph appId={contribution.app} label={appById[contribution.app].name} key={contribution.app} />)}</span>
             <span className="row-arrow">-&gt;</span>
           </button>)}
           {!visibleCases.length && <div className="empty-state"><b>No cases match this view.</b><span>Clear the search or choose another stage.</span></div>}
@@ -98,7 +99,7 @@ function CaseWorkspace({ activeCase, onOpenCase, onOpenApp, onToast }: DecisionW
         <div className="contribution-grid">
           {activeCase.contributions.map((contribution) => {
             const app = appById[contribution.app];
-            return <button className="contribution-card" type="button" key={contribution.app} onClick={() => onOpenApp(contribution.app)} style={{ "--app-accent": app.accent } as React.CSSProperties}><header><span>{app.icon}</span><div><b>{app.name}</b><small>{contribution.state} · {contribution.freshness}</small></div><i>-&gt;</i></header><strong>{contribution.value}</strong><h3>{contribution.headline}</h3><p>{contribution.detail}</p><footer><span>{contribution.method}</span><b>Open app</b></footer></button>;
+            return <button className="contribution-card" type="button" key={contribution.app} onClick={() => onOpenApp(contribution.app)} style={{ "--app-accent": app.accent } as React.CSSProperties}><header><AppGlyph appId={contribution.app} /><div><b>{app.name}</b><small>{contribution.state} · {contribution.freshness}</small></div><i>-&gt;</i></header><strong>{contribution.value}</strong><h3>{contribution.headline}</h3><p>{contribution.detail}</p><footer><span>{contribution.method}</span><b>Open app</b></footer></button>;
           })}
         </div>
       </section>

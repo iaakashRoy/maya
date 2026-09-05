@@ -16,21 +16,21 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "Maya Workspace connects supply-network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
+  "tanjx — Tangent + Exchange connects supply-network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host =
     requestHeaders.get("x-forwarded-host") ??
     requestHeaders.get("host") ??
-    "maya-supply-chain-resilience-os.kearney-4763.chatgpt.site";
+    "tanjx-supply-chain-workspace.chatgpt.site";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const socialImage = `${protocol}://${host}/og-workspace.png`;
 
   return {
-    title: "Maya Workspace",
+    title: "tanjx — Tangent + Exchange",
     description,
-    applicationName: "Maya Workspace",
+    applicationName: "tanjx",
     category: "Supply-network workspace",
     robots: { index: false, follow: false },
     icons: {
@@ -39,20 +39,20 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       type: "website",
-      title: "Maya Workspace",
+      title: "tanjx — Tangent + Exchange",
       description,
       images: [
         {
           url: socialImage,
           width: 1731,
           height: 909,
-          alt: "Maya Workspace for supply-network operations and client projects",
+          alt: "tanjx workspace for supply-network operations and client projects",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Maya Workspace",
+      title: "tanjx — Tangent + Exchange",
       description,
       images: [socialImage],
     },

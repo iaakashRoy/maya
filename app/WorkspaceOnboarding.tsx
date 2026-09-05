@@ -48,12 +48,12 @@ export default function WorkspaceOnboarding({
   const safeStep = Math.max(0, Math.min(step, steps.length - 1));
   const selectedClient = clients.find((client) => client.id === projectDraft.clientId);
   const towerOptions = Array.from(new Map(clients.map((client) => [client.sectorId, { id: client.sectorId, label: client.sector }])).values()).sort((left, right) => left.label.localeCompare(right.label));
-  const clientComplete = [clientDraft.name, clientDraft.sector, clientDraft.classification, clientDraft.dataResidency, clientDraft.clientLead, clientDraft.kearneyLead].every(hasText);
+  const clientComplete = [clientDraft.name, clientDraft.sector, clientDraft.classification, clientDraft.dataResidency, clientDraft.clientLead, clientDraft.providerLead].every(hasText);
   const projectComplete = Boolean(selectedClient) && [projectDraft.sectorId, projectDraft.sector, projectDraft.name, projectDraft.problem, projectDraft.outcome, projectDraft.owner, projectDraft.currency, projectDraft.regions].every(hasText);
   const stepComplete = mode === "client"
     ? safeStep === 0 ? [clientDraft.name, clientDraft.sector].every(hasText)
       : safeStep === 1 ? [clientDraft.classification, clientDraft.dataResidency].every(hasText)
-        : safeStep === 2 ? [clientDraft.clientLead, clientDraft.kearneyLead].every(hasText) : clientComplete
+        : safeStep === 2 ? [clientDraft.clientLead, clientDraft.providerLead].every(hasText) : clientComplete
     : safeStep === 0 ? Boolean(selectedClient && hasText(projectDraft.name) && hasText(projectDraft.sectorId) && hasText(projectDraft.sector))
       : safeStep === 1 ? [projectDraft.problem, projectDraft.outcome].every(hasText)
         : safeStep === 2 ? [projectDraft.owner, projectDraft.currency, projectDraft.regions].every(hasText) : projectComplete;
@@ -109,16 +109,16 @@ export default function WorkspaceOnboarding({
 
           {mode === "client" && safeStep === 2 && <>
             <p className="kicker">03 · COLLABORATION INTENT</p>
-            <h3>Name one client lead and one Kearney lead</h3>
+            <h3>Name one client lead and one tanjx lead</h3>
             <label>Client lead<input required value={clientDraft.clientLead} onChange={(event) => updateClient({ clientLead: event.target.value })} placeholder="Client project owner" /></label>
-            <label>Kearney lead<input required value={clientDraft.kearneyLead} onChange={(event) => updateClient({ kearneyLead: event.target.value })} placeholder="Kearney engagement lead" /></label>
+            <label>tanjx lead<input required value={clientDraft.providerLead} onChange={(event) => updateClient({ providerLead: event.target.value })} placeholder="tanjx engagement lead" /></label>
             <p>Names become synthetic collaborator metadata. No account, invitation, directory membership, calendar status, or production access is created.</p>
           </>}
 
           {mode === "client" && safeStep === 3 && <>
             <p className="kicker">04 · REVIEW SESSION DRAFT</p>
             <h3>{clientDraft.name}</h3>
-            <dl className="builder-review"><div><dt>Sector</dt><dd>{clientDraft.sector}</dd></div><div><dt>Classification</dt><dd>{clientDraft.classification}</dd></div><div><dt>Residency intent</dt><dd>{clientDraft.dataResidency}</dd></div><div><dt>Client lead</dt><dd>{clientDraft.clientLead}</dd></div><div><dt>Kearney lead</dt><dd>{clientDraft.kearneyLead}</dd></div><div><dt>Persistence</dt><dd>Current browser session only</dd></div></dl>
+            <dl className="builder-review"><div><dt>Sector</dt><dd>{clientDraft.sector}</dd></div><div><dt>Classification</dt><dd>{clientDraft.classification}</dd></div><div><dt>Residency intent</dt><dd>{clientDraft.dataResidency}</dd></div><div><dt>Client lead</dt><dd>{clientDraft.clientLead}</dd></div><div><dt>tanjx lead</dt><dd>{clientDraft.providerLead}</dd></div><div><dt>Persistence</dt><dd>Current browser session only</dd></div></dl>
             <aside><b>NO PROVISIONING</b><p>Saving adds a client draft to browser memory. No tenant, directory group, invitation, storage boundary, project, or source connection is created.</p></aside>
           </>}
 

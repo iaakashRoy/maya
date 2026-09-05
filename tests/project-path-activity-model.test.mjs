@@ -349,7 +349,7 @@ test("closed browser sessions fork once and remain immutable across continued wo
     projectId: project.id,
     sessionId: sourceId,
     role: "user",
-    author: "Maya Rao",
+    author: "Asha Rao",
     kind: "Prompt",
     body: "Continue from the reviewed package.",
   });

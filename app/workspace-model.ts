@@ -3,7 +3,7 @@ export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
 export type ProjectAppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
 export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
-export type CollaboratorAffiliation = "Client" | "Kearney";
+export type CollaboratorAffiliation = "Client" | "tanjx";
 export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
 
 export type WorkspaceClient = {
@@ -14,13 +14,13 @@ export type WorkspaceClient = {
   classification: string;
   dataResidency: string;
   clientLead: string;
-  kearneyLead: string;
+  providerLead: string;
   origin: WorkspaceOrigin;
 };
 
 export type WorkspaceCollaborator = {
   id: string;
-  /** Canonical client binding for client identities; omitted for Kearney identities. */
+  /** Canonical client binding for client identities; omitted for tanjx identities. */
   clientId?: string;
   name: string;
   initials: string;
@@ -34,7 +34,7 @@ export type ProjectMembership = {
   id: string;
   projectId: string;
   collaboratorId: string;
-  projectRole: "Client owner" | "Kearney engagement lead" | "Kearney OR scientist" | "Kearney data steward" | "Contributor" | "Viewer";
+  projectRole: "Client owner" | "tanjx engagement lead" | "tanjx OR scientist" | "tanjx data steward" | "Contributor" | "Viewer";
   capabilities: readonly ProjectCapability[];
   origin: WorkspaceOrigin;
 };
@@ -84,7 +84,7 @@ export type SessionClientDraft = {
   classification: string;
   dataResidency: string;
   clientLead: string;
-  kearneyLead: string;
+  providerLead: string;
 };
 
 export type SessionProjectDraft = {
@@ -252,7 +252,7 @@ const metricSet = (code: string, values: readonly [string, string, string, Works
 
 export const workspaceProjects: readonly WorkspaceProject[] = [
   {
-    id: "anode-shield", origin: "Seed fixture", sectorId: "mobility-ev", sector: "Mobility & EV", clientId: "apex-mobility", client: "Apex Mobility", name: "Anode Shield", code: "P-001", health: "watch", stage: "Validate response", currency: "USD", regions: "North America · APAC · Europe", owner: "Maya Rao", classification: "Client confidential", dataResidency: "India + EU policy partitions",
+    id: "anode-shield", origin: "Seed fixture", sectorId: "mobility-ev", sector: "Mobility & EV", clientId: "apex-mobility", client: "Apex Mobility", name: "Anode Shield", code: "P-001", health: "watch", stage: "Validate response", currency: "USD", regions: "North America · APAC · Europe", owner: "Asha Rao", classification: "Client confidential", dataResidency: "India + EU policy partitions",
     problem: "Protect the 800V drive-unit launch from graphite concentration, port delay, and qualification constraints.", outcome: "Preserve launch service while establishing a qualified, lower-risk anode supply portfolio.",
     counts: { entities: "9,480", relationships: "31,260", observations: "428K", documents: "1,240", events: "72.6K", claims: "12.8K", decisions: 18, runs: 96, apps: 9, agents: 12, experts: 14 },
     metrics: metricSet("P-001", [["Value at risk", "$42.0M", "P90 contribution exposure", "critical"], ["Launch service", "95.1%", "Against a governed 98.0% floor", "watch"], ["Graphite dependency", "92%", "One qualified refining path", "critical"], ["Decision clock", "3h 42m", "Before capacity option expires", "watch"]]),
@@ -260,7 +260,7 @@ export const workspaceProjects: readonly WorkspaceProject[] = [
     variablePack: { l2: ["L2-002", "L2-003", "L2-008", "L2-009", "L2-013", "L2-027", "L2-034"], l1: ["L1-006", "L1-007", "L1-008", "L1-010", "L1-019", "L1-032", "L1-041", "L1-054", "L1-056"], l0: ["L0-029", "L0-030", "L0-035", "L0-044", "L0-047", "L0-057", "L0-061", "L0-064", "L0-071", "L0-155", "L0-217", "L0-299", "L0-445"] }, methodCodes: ["M-02", "M-05", "M-06", "M-13", "M-20", "M-22", "M-23", "M-24"],
   },
   {
-    id: "cathode-origin-assurance", origin: "Seed fixture", sectorId: "critical-minerals", sector: "Mining & Critical Minerals", clientId: "apex-mobility", client: "Apex Mobility", name: "Cathode Origin Assurance", code: "P-011", health: "watch", stage: "Compare origin paths", currency: "USD", regions: "North America · Australia · Indonesia · EU", owner: "Maya Rao", classification: "Client confidential", dataResidency: "US + EU policy partitions",
+    id: "cathode-origin-assurance", origin: "Seed fixture", sectorId: "critical-minerals", sector: "Mining & Critical Minerals", clientId: "apex-mobility", client: "Apex Mobility", name: "Cathode Origin Assurance", code: "P-011", health: "watch", stage: "Compare origin paths", currency: "USD", regions: "North America · Australia · Indonesia · EU", owner: "Asha Rao", classification: "Client confidential", dataResidency: "US + EU policy partitions",
     problem: "Qualify a traceable nickel and lithium portfolio across origin, processing, price, rights, carbon, and launch constraints.", outcome: "Select an auditable cathode-material pathway that protects launch volume without crossing origin or sustainability gates.",
     counts: { entities: "11,860", relationships: "38,420", observations: "812K", documents: "2,340", events: "118K", claims: "19.6K", decisions: 16, runs: 88, apps: 9, agents: 11, experts: 15 },
     metrics: metricSet("P-011", [["Qualified volume", "18.4K t", "2027 cathode-active-material coverage", "watch"], ["Origin evidence", "91.8%", "Mine-to-active-material claim coverage", "watch"], ["Refining concentration", "68%", "Highest-country share", "critical"], ["Portfolio premium", "$14.6M", "Versus current sourcing baseline", "opportunity"]]),
@@ -328,7 +328,7 @@ export const workspaceClients: readonly WorkspaceClient[] = Array.from(workspace
     classification: project.classification,
     dataResidency: project.dataResidency,
     clientLead: project.owner,
-    kearneyLead: "Maya Rao",
+    providerLead: "Asha Rao",
     origin: "Seed fixture",
   });
   return clients;
@@ -345,24 +345,24 @@ export const workspaceCollaborators: readonly WorkspaceCollaborator[] = [
     organization: project.client,
     profileOrigin: "Seed fixture" as const,
   })),
-  { id: "kearney-engagement", name: "Maya Rao", initials: "MR", role: "Portfolio engagement lead", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
-  { id: "kearney-or-scientist", name: "Kearney OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
-  { id: "kearney-data-steward", name: "Kearney Data Steward", initials: "KD", role: "Data contracts and lineage", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
+  { id: "tanjx-engagement", name: "Asha Rao", initials: "AR", role: "Portfolio engagement lead", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
+  { id: "tanjx-or-scientist", name: "tanjx OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
+  { id: "tanjx-data-steward", name: "tanjx Data Steward", initials: "DS", role: "Data contracts and lineage", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
 ];
 
-/** Explicit browser-session identity represented by the shell's Maya Rao profile. */
-export const signedInCollaboratorId = "kearney-engagement";
+/** Explicit browser-session identity represented by the shell's Asha Rao profile. */
+export const signedInCollaboratorId = "tanjx-engagement";
 
 const clientOwnerCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "decisions.approve", "agents.run", "team.manage"];
-const kearneyLeadCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "agents.run", "agents.create", "team.manage"];
-const kearneyOrCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "apps.view", "decisions.view", "decisions.draft", "agents.run", "agents.create"];
-const kearneyDataCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "decisions.view"];
+const tanjxLeadCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "agents.run", "agents.create", "team.manage"];
+const tanjxOrCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "apps.view", "decisions.view", "decisions.draft", "agents.run", "agents.create"];
+const tanjxDataCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "decisions.view"];
 
 export const projectMemberships: readonly ProjectMembership[] = workspaceProjects.flatMap((project) => [
   { id: `${project.id}:client-owner`, projectId: project.id, collaboratorId: `${project.id}-client-owner`, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:kearney-engagement`, projectId: project.id, collaboratorId: "kearney-engagement", projectRole: "Kearney engagement lead", capabilities: kearneyLeadCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:kearney-or-scientist`, projectId: project.id, collaboratorId: "kearney-or-scientist", projectRole: "Kearney OR scientist", capabilities: kearneyOrCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:kearney-data-steward`, projectId: project.id, collaboratorId: "kearney-data-steward", projectRole: "Kearney data steward", capabilities: kearneyDataCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjx-engagement`, projectId: project.id, collaboratorId: "tanjx-engagement", projectRole: "tanjx engagement lead", capabilities: tanjxLeadCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjx-or-scientist`, projectId: project.id, collaboratorId: "tanjx-or-scientist", projectRole: "tanjx OR scientist", capabilities: tanjxOrCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjx-data-steward`, projectId: project.id, collaboratorId: "tanjx-data-steward", projectRole: "tanjx data steward", capabilities: tanjxDataCapabilities, origin: "Seed fixture" },
 ]);
 
 export const connectorTemplates: readonly ConnectorTemplate[] = [
@@ -414,7 +414,7 @@ export const expertAgents: readonly ExpertAgent[] = [
 ];
 
 export const humanExperts: readonly HumanExpert[] = [
-  { id: "maya", name: "Maya Rao", initials: "MR", role: "Client project owner", specialties: ["Decision rights", "Customer service"], years: 17, decisionRight: "Accept or return recommendations", availability: "Available now", activeWork: 4 },
+  { id: "maya", name: "Asha Rao", initials: "AR", role: "Client project owner", specialties: ["Decision rights", "Customer service"], years: 17, decisionRight: "Accept or return recommendations", availability: "Available now", activeWork: 4 },
   { id: "arun", name: "Dr. Arun Mehta", initials: "AM", role: "OR scientist", specialties: ["MILP", "Robust optimization", "Simulation"], years: 15, decisionRight: "Validate formulation and claims", availability: "In project · 60%", activeWork: 3 },
   { id: "elena", name: "Elena Torres", initials: "ET", role: "Procurement executive", specialties: ["Critical minerals", "Contracts", "Supplier qualification"], years: 19, decisionRight: "Approve sourcing package", availability: "Available in 24 min", activeWork: 5 },
   { id: "priya", name: "Priya Menon", initials: "PM", role: "Finance controller", specialties: ["Margin", "Cash", "Benefit validation"], years: 12, decisionRight: "Validate value and funding", availability: "Available now", activeWork: 2 },
@@ -434,7 +434,7 @@ export const projectDatasets = [
 ] as const;
 
 export const decisionTree = [
-  { id: "D0", parent: null, level: "Outcome", title: "Protect the 800V drive-unit launch", owner: "Maya Rao", state: "At risk", value: "$42.0M", evidenceRef: "EV-001-01" },
+  { id: "D0", parent: null, level: "Outcome", title: "Protect the 800V drive-unit launch", owner: "Asha Rao", state: "At risk", value: "$42.0M", evidenceRef: "EV-001-01" },
   { id: "D1", parent: "D0", level: "Strategic", title: "Reshape the graphite sourcing portfolio", owner: "Elena Torres", state: "In review", value: "92% dependency", evidenceRef: "EV-001-03" },
   { id: "D2-A", parent: "D1", level: "Tactical", title: "Reserve qualified alternate capacity", owner: "Dr. Arun Mehta", state: "Candidate", value: "480 t", evidenceRef: "EV-001-D2A" },
   { id: "D2-B", parent: "D1", level: "Tactical", title: "Rebalance regional inventory", owner: "Leila Haddad", state: "Feasible fixture", value: "64 t", evidenceRef: "EV-001-D2B" },
@@ -493,7 +493,7 @@ export function createSessionClient(draft: SessionClientDraft, existingClients: 
     classification: requiredText(draft.classification, "Classification"),
     dataResidency: requiredText(draft.dataResidency, "Data-residency intent"),
     clientLead: requiredText(draft.clientLead, "Client lead"),
-    kearneyLead: requiredText(draft.kearneyLead, "Kearney lead"),
+    providerLead: requiredText(draft.providerLead, "tanjx lead"),
     origin: "Browser-session draft",
   };
 }
@@ -559,28 +559,28 @@ export function createSessionCollaborators(client: WorkspaceClient, existingColl
   const existingIds = new Set(existingCollaborators.map((collaborator) => collaborator.id));
   const clientId = collisionSafeId(`${client.id}-client-lead`, existingIds);
   existingIds.add(clientId);
-  const kearneyId = collisionSafeId(`${client.id}-kearney-lead`, existingIds);
-  const existingKearneyLead = existingCollaborators.find((collaborator) => collaborator.affiliation === "Kearney"
+  const tanjxId = collisionSafeId(`${client.id}-tanjx-lead`, existingIds);
+  const existingTanjxLead = existingCollaborators.find((collaborator) => collaborator.affiliation === "tanjx"
     && collaborator.clientId === undefined
-    && collaborator.name.trim().toLowerCase() === client.kearneyLead.trim().toLowerCase());
+    && collaborator.name.trim().toLowerCase() === client.providerLead.trim().toLowerCase());
   return [
     { id: clientId, clientId: client.id, name: client.clientLead, initials: initialsFor(client.clientLead), role: "Client relationship lead", affiliation: "Client", organization: client.name, profileOrigin: "Browser-session draft" },
-    existingKearneyLead ?? { id: kearneyId, name: client.kearneyLead, initials: initialsFor(client.kearneyLead), role: "Kearney engagement lead", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Browser-session draft" },
+    existingTanjxLead ?? { id: tanjxId, name: client.providerLead, initials: initialsFor(client.providerLead), role: "tanjx engagement lead", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Browser-session draft" },
   ];
 }
 
-export function createSessionProjectMemberships(project: WorkspaceProject, clientCollaborator: WorkspaceCollaborator, kearneyCollaborator: WorkspaceCollaborator): readonly ProjectMembership[] {
+export function createSessionProjectMemberships(project: WorkspaceProject, clientCollaborator: WorkspaceCollaborator, tanjxCollaborator: WorkspaceCollaborator): readonly ProjectMembership[] {
   if (clientCollaborator.affiliation !== "Client" || clientCollaborator.clientId !== project.clientId) {
     throw new Error(`Client collaborator '${clientCollaborator.id}' is not bound to canonical client '${project.clientId}'; no project membership was created.`);
   }
-  if (kearneyCollaborator.affiliation !== "Kearney" || kearneyCollaborator.clientId !== undefined) {
-    throw new Error(`Kearney collaborator '${kearneyCollaborator.id}' has an invalid client binding; no project membership was created.`);
+  if (tanjxCollaborator.affiliation !== "tanjx" || tanjxCollaborator.clientId !== undefined) {
+    throw new Error(`tanjx collaborator '${tanjxCollaborator.id}' has an invalid client binding; no project membership was created.`);
   }
   const clientId = requiredText(clientCollaborator.id, "Client collaborator");
-  const kearneyId = requiredText(kearneyCollaborator.id, "Kearney collaborator");
+  const tanjxId = requiredText(tanjxCollaborator.id, "tanjx collaborator");
   return [
     { id: `${project.id}:${clientId}`, projectId: project.id, collaboratorId: clientId, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Browser-session draft" },
-    { id: `${project.id}:${kearneyId}`, projectId: project.id, collaboratorId: kearneyId, projectRole: "Kearney engagement lead", capabilities: kearneyLeadCapabilities, origin: "Browser-session draft" },
+    { id: `${project.id}:${tanjxId}`, projectId: project.id, collaboratorId: tanjxId, projectRole: "tanjx engagement lead", capabilities: tanjxLeadCapabilities, origin: "Browser-session draft" },
   ];
 }
 
