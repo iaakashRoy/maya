@@ -6,15 +6,13 @@ import { fixtureEvidenceFor, projectApps, type EvidenceReceipt, type ProjectAppI
 type Props = {
   appId: ProjectAppId;
   project: WorkspaceProject;
-  onBack: () => void;
   onEvidence: (receipt: EvidenceReceipt) => void;
   onOutcome: (title: string, detail: string, artifact?: string) => void;
 };
 
-function StudioHeader({ appId, project, onBack }: Pick<Props, "appId" | "project" | "onBack">) {
+function StudioHeader({ appId, project }: Pick<Props, "appId" | "project">) {
   const app = projectApps.find((item) => item.id === appId) ?? projectApps[0];
   return <header className="studio-header">
-    <button data-action-id="studio.back-to-apps" type="button" onClick={onBack}>← Apps</button>
     <div><span>{app.icon}</span><p>PROJECT APP · {project.code}</p><h1>{app.name}</h1><small>{app.archetype} · {app.outcome}</small></div>
     <aside><b>{app.status}</b><span>{app.methodCodes.join(" · ")}</span><small>Deterministic synthetic workspace</small></aside>
   </header>;
@@ -25,7 +23,7 @@ function EvidenceMetric({ project, app, id, label, value, detail, variableId, on
   return <button className="studio-metric" data-action-id={`evidence.open.${receipt.id}`} type="button" onClick={() => onEvidence(receipt)}><span>{label}</span><b>{value}</b><small>{detail}</small><em>◇ {receipt.id}</em></button>;
 }
 
-function MineralAtlas({ project, onEvidence, onOutcome }: Omit<Props, "appId" | "onBack">) {
+function MineralAtlas({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
   const [mineral, setMineral] = useState("Graphite");
   const [country, setCountry] = useState("China");
   const [scenario, setScenario] = useState("Policy stress");
@@ -43,7 +41,7 @@ function MineralAtlas({ project, onEvidence, onOutcome }: Omit<Props, "appId" | 
   </div>;
 }
 
-function WorkforceStudio({ project, onEvidence, onOutcome }: Omit<Props, "appId" | "onBack">) {
+function WorkforceStudio({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
   const [scenario, setScenario] = useState("Recovery roster");
   const skills = [[`${project.sector} constraint operator`,18,16,89],[`${project.name} release analyst`,12,12,100],[`${project.regions.split("·")[0]?.trim()} logistics coordinator`,8,6,75],["Maintenance electrician",14,11,79],["Safety and compliance lead",5,5,100]] as const;
   const [selectedSkill, setSelectedSkill] = useState<string>(skills[0][0]);
@@ -55,7 +53,7 @@ function WorkforceStudio({ project, onEvidence, onOutcome }: Omit<Props, "appId"
   </div>;
 }
 
-function ManufacturingTwin({ project, onEvidence, onOutcome }: Omit<Props, "appId" | "onBack">) {
+function ManufacturingTwin({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
   const [plan, setPlan] = useState("Recovery plan");
   const cells = [[`${project.name} input`,92,"healthy"],[`${project.sector} constraint`,104,"critical"],["Primary process",86,"watch"],["Quality gate",78,"healthy"],["Pack and release",96,"watch"]] as const;
   const [cell, setCell] = useState<string>(cells[1][0]);
@@ -67,7 +65,7 @@ function ManufacturingTwin({ project, onEvidence, onOutcome }: Omit<Props, "appI
   </div>;
 }
 
-function LogisticsRadar({ project, onEvidence, onOutcome }: Omit<Props, "appId" | "onBack">) {
+function LogisticsRadar({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
   const projectRegions = project.regions.split("·").map((item) => item.trim());
   const assets = [[`${project.code}-VESSEL-01`,"Vessel","812 TEU","+3.4d"],[`${project.code}-AIR-071`,"Flight","42 lots","On plan"],[`${project.code}-RAIL-184`,"Rail","186 t","+4h"],[`${project.code}-ROAD-882`,"Truck","24 pallets","At gate"]] as const;
   const [asset, setAsset] = useState<string>(assets[0][0]);
@@ -80,25 +78,25 @@ function LogisticsRadar({ project, onEvidence, onOutcome }: Omit<Props, "appId" 
   </div>;
 }
 
-function QualityGenealogy({ project, onEvidence, onOutcome }: Omit<Props, "appId" | "onBack">) {
+function QualityGenealogy({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
   const batches = [`${project.code}-SOURCE-44`, `${project.code}-PROCESS-21`, `${project.code}-RELEASE-84`, `${project.code}-CUSTOMER-71`];
   const [batch, setBatch] = useState(batches[0]);
   return <div className="quality-studio"><section className="studio-toolbar"><div>{batches.map((item) => <button data-action-id={`quality.batch.${item}`} className={batch === item ? "active" : ""} type="button" key={item} onClick={() => setBatch(item)}>{item}</button>)}</div><button data-action-id="quality.release-review" type="button" onClick={() => onOutcome("Quality-review receipt recorded", `${batch} release-gate and genealogy fixture details were recorded in the browser-session ledger for ${project.client}; no review was opened and no batch state was frozen or released.`, `${project.code}-QUALITY-REVIEW-01`)}>Record release-review receipt →</button></section><div className="quality-genealogy">{batches.map((item,index) => { const stage = ["Source lot","Process batch","Release lot","Customer unit"][index]; const state = index === 1 ? "Deviation linked" : "Released"; return <button data-action-id={`quality.trace.${item}`} type="button" className={batch === item ? "active" : ""} key={item} onClick={() => { setBatch(item); onEvidence(fixtureEvidenceFor(project, { id: `EV-QUALITY-${item}`, claim: `${item} genealogy state`, displayedValue: state, source: "QualityGenealogy deterministic batch fixture", formula: `${stage} relationship and release-state lookup`, inputs: [item, stage, project.metrics[1].evidenceRef] })); }}><span>0{index+1}</span><b>{item}</b><small>{stage}</small><em>{state}</em></button>; })}</div><section className="quality-inspector"><p>GENEALOGY CONTRACT · {project.code}</p><h2>{batch}</h2><span>Every batch relationship retains certificates, test results, transformations, timestamps, and release authority.</span><dl><div><dt>Certificate coverage</dt><dd>100%</dd></div><div><dt>Open deviations</dt><dd>1</dd></div><div><dt>Affected metric</dt><dd>{project.metrics[1].value}</dd></div><div><dt>Trace depth</dt><dd>4 levels</dd></div></dl><button data-action-id="quality.trace-summary" type="button" onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-QUALITY-SUMMARY-${batch}`, claim: `${batch} trace summary`, displayedValue: "100% certificate coverage · 1 open deviation · 4 levels", source: "QualityGenealogy deterministic batch fixture", formula: "Fixture certificate coverage, deviation count, and relationship depth", inputs: [batch, project.metrics[1].evidenceRef] }))}>Trace summary evidence ◇</button></section></div>;
 }
 
-function UnsupportedStudio({ project, appId, onBack }: Pick<Props, "project" | "appId" | "onBack">) {
-  return <section className="unsupported-studio"><p>PROJECT APP</p><h2>{projectApps.find((item) => item.id === appId)?.name}</h2><span>{project.client} / {project.name} remains in the active project context.</span><button data-action-id="studio.unsupported.back" type="button" onClick={onBack}>Back to apps</button></section>;
+function UnsupportedStudio({ project, appId }: Pick<Props, "project" | "appId">) {
+  return <section className="unsupported-studio"><p>PROJECT APP</p><h2>{projectApps.find((item) => item.id === appId)?.name}</h2><span>{project.client} / {project.name} remains in the active project context. Use the persistent Back to project control above to return.</span></section>;
 }
 
 export default function ProjectAppStudio(props: Props) {
   const app = projectApps.find((item) => item.id === props.appId) ?? projectApps[0];
   return <div className={`project-app-studio app-theme-${props.appId}`} data-app-theme={props.appId} style={{ "--studio-accent": app.accent } as React.CSSProperties}>
-    <StudioHeader appId={props.appId} project={props.project} onBack={props.onBack} />
+    <StudioHeader appId={props.appId} project={props.project} />
     {props.appId === "minerals" ? <MineralAtlas project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "workforce" ? <WorkforceStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "manufacturing" ? <ManufacturingTwin project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "logistics" ? <LogisticsRadar project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "quality" ? <QualityGenealogy project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
-      : <UnsupportedStudio project={props.project} appId={props.appId} onBack={props.onBack} />}
+      : <UnsupportedStudio project={props.project} appId={props.appId} />}
   </div>;
 }

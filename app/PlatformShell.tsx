@@ -1050,18 +1050,13 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   })();
   const activeMountedAppId = activeProjectApp
     ?? (applications.some((app) => app.id === view) ? view as ProjectAppId : null);
+  const projectApplicationOpen = view !== "company" || Boolean(activeProjectApp);
   const mountedAppPreviewLimit = compactContext ? 4 : effectiveMountedApps.length;
-  const agentPreviewLimit = compactContext ? 1 : 4;
-  const memberPreviewLimit = compactContext ? 1 : activeProjectMembers.length;
   const defaultVisibleMountedApps = effectiveMountedApps.slice(0, mountedAppPreviewLimit);
   const visibleMountedApps = activeMountedAppId && effectiveMountedApps.includes(activeMountedAppId) && !defaultVisibleMountedApps.includes(activeMountedAppId)
     ? [...defaultVisibleMountedApps.slice(0, Math.max(0, mountedAppPreviewLimit - 1)), activeMountedAppId]
     : defaultVisibleMountedApps;
   const hiddenMountedAppCount = Math.max(0, effectiveMountedApps.length - visibleMountedApps.length);
-  const visibleProjectAgents = activeProjectAgents.slice(0, agentPreviewLimit);
-  const hiddenProjectAgentCount = Math.max(0, activeProjectAgents.length - visibleProjectAgents.length);
-  const visibleProjectMembers = activeProjectMembers.slice(0, memberPreviewLimit);
-  const hiddenProjectMemberCount = Math.max(0, activeProjectMembers.length - visibleProjectMembers.length);
   return (
     <div className={`platform-shell ${railCollapsed ? "rail-collapsed" : ""}`}>
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
@@ -1092,14 +1087,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
                   || group.branches.some((branch) => branch.projects.some((project) => project.id === resolvedProject?.id));
                 const rootOpen = projectNavQueryActive || (!collapsedSidebarRoots.includes(group.key) && (expandedSidebarRoots.includes(group.key) || rootContainsActive));
                 const rootPanelId = `nav-${group.key.replaceAll(":", "-")}`;
-                return <section key={group.key} className="sidebar-path-root">
+                return <section key={group.key} className={`sidebar-path-root path-root-${group.kind} ${rootOpen ? "open" : ""}`}>
                   <button data-action-id={`nav.path.root.${group.key}`} className={rootContainsActive ? "active-context" : ""} type="button" aria-expanded={rootOpen} aria-controls={rootPanelId} disabled={projectNavQueryActive} onClick={() => { if (rootOpen) { setCollapsedSidebarRoots((current) => current.includes(group.key) ? current : [...current, group.key]); setExpandedSidebarRoots((current) => current.filter((item) => item !== group.key)); } else { setCollapsedSidebarRoots((current) => current.filter((item) => item !== group.key)); setExpandedSidebarRoots((current) => current.includes(group.key) ? current : [...current, group.key]); } }}><span>{group.kind === "client" ? "C" : "T"}</span><b>{group.label}</b><em>{group.projects.length}</em><i>{rootOpen ? "−" : "+"}</i></button>
                   {rootOpen && <div className="sidebar-path-branches" id={rootPanelId}>
                     {group.branches.map((branch) => {
                       const branchContainsActive = branch.projects.some((project) => project.id === resolvedProject?.id);
                       const branchOpen = projectNavQueryActive || (!collapsedSidebarBranches.includes(branch.key) && (expandedSidebarBranches.includes(branch.key) || branchContainsActive));
                       const branchPanelId = `nav-${branch.key.replaceAll(":", "-")}`;
-                      return <section key={branch.key}>
+                      return <section key={branch.key} className={`sidebar-path-branch path-branch-${branch.kind} ${branchOpen ? "open" : ""}`}>
                         <button data-action-id={`nav.path.branch.${branch.key}`} className={branchContainsActive ? "active-context" : ""} type="button" aria-expanded={branchOpen} aria-controls={branchPanelId} disabled={projectNavQueryActive} onClick={() => { if (branchOpen) { setCollapsedSidebarBranches((current) => current.includes(branch.key) ? current : [...current, branch.key]); setExpandedSidebarBranches((current) => current.filter((item) => item !== branch.key)); } else { setCollapsedSidebarBranches((current) => current.filter((item) => item !== branch.key)); setExpandedSidebarBranches((current) => current.includes(branch.key) ? current : [...current, branch.key]); } }}><span>{branch.kind === "client" ? "Client" : "Tower"}</span><b>{branch.label}</b><i>{branchOpen ? "−" : "+"}</i></button>
                         {branchOpen && <div className="sidebar-project-leaves" id={branchPanelId}>{branch.projects.map((project) => <button data-action-id={`nav.project.${project.id}`} className={`sidebar-project ${resolvedProject?.id === project.id ? "active" : ""}`} type="button" aria-current={resolvedProject?.id === project.id ? "page" : undefined} key={project.id} onClick={() => openProject(project.id)}><span className={`project-health health-${project.health}`} /><div><b>{project.name}</b><small>{project.code}</small></div><em>›</em></button>)}{!branch.projects.length && <button data-action-id={`nav.path.empty.${branch.id}`} className="sidebar-empty-project" type="button" onClick={() => startOnboarding("project", branch.id)}>Create first project</button>}</div>}
                       </section>;
@@ -1132,8 +1127,9 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           {canViewActiveProject && <section className="project-context-stack" aria-label="Current project work context">
             <div className="project-context-bar" aria-label="Mounted project applications">
               <div className="mobile-project-path" aria-label={`Current project path: ${projectPath.map((segment) => segment.label).join(" / ")}`} title={projectPath.map((segment) => segment.label).join(" / ")}><span>{projectPath.slice(0, -1).map((segment) => segment.label).join(" / ")}</span><b>{projectPath[projectPath.length - 1]?.label ?? activeProject.name}</b></div>
-              {view === "company" ? <div className="context-current" aria-current="page"><span>YOU ARE HERE</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></div> : <button data-action-id="context.back-to-project" className="context-current" type="button" onClick={returnFromProjectApp}><span>APPLICATION</span><b>{currentProjectSurface}</b><small>Back to project</small></button>}
+              <div className={`context-current ${projectApplicationOpen ? "application-context" : ""}`} aria-current="page"><span>{projectApplicationOpen ? "APPLICATION" : "YOU ARE HERE"}</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></div>
               <div className="context-mounted-apps" aria-label="Mounted project applications">
+                {projectApplicationOpen && <button data-action-id="context.back-to-project" className="context-back-button" type="button" onClick={returnFromProjectApp}><span aria-hidden="true">←</span><b>Back to project</b></button>}
                 <button data-action-id="context.open-apps" className={`context-group-home ${view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "active" : ""}`} type="button" aria-current={view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("apps")}><b>Apps</b><small>{effectiveMountedApps.length}</small></button>
                 {visibleMountedApps.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><i>{app.icon}</i><b>{app.name}</b></button>; })}
                 {hiddenMountedAppCount > 0 && <button data-action-id="context.open-apps.more" className="context-more" type="button" aria-label={`Open Apps to view ${hiddenMountedAppCount} more mounted applications`} title={`${hiddenMountedAppCount} more mounted apps`} onClick={() => openProjectTab("apps")}>+{hiddenMountedAppCount}</button>}
@@ -1142,13 +1138,11 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
             <div className="project-people-bar" aria-label="Project agents and team">
               <div className="context-identity-tools context-agent-tools" aria-label="Project agents">
                 <button data-action-id="context.agents" className="context-identity-home" type="button" disabled={!activeProjectAgents.length} title={activeProjectAgents.map((agent) => agent.name).join(", ")} onClick={() => activeProjectAgents[0] && setIdentitySelection({ kind: "agent", id: activeProjectAgents[0].id })}><b>Agents</b><small>{activeProjectAgents.length}</small></button>
-                {visibleProjectAgents.map((agent) => <button data-action-id={`context.agent.${agent.id}`} className={identitySelection?.kind === "agent" && identitySelection.id === agent.id ? "active" : ""} type="button" title={`${agent.name} · ${agent.role}`} aria-label={`Open accountability record for agent ${agent.name}`} key={agent.id} onClick={() => setIdentitySelection({ kind: "agent", id: agent.id })}><i>{agent.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</i><b>{agent.name.replace("Project ", "").replace("Supplier ", "").split(" ")[0]}</b></button>)}
-                {hiddenProjectAgentCount > 0 && <button data-action-id="context.agents.more" className="context-more" type="button" aria-label={`Open agent directory with ${hiddenProjectAgentCount} more agents`} title={`${hiddenProjectAgentCount} more agents`} onClick={() => activeProjectAgents[visibleProjectAgents.length] && setIdentitySelection({ kind: "agent", id: activeProjectAgents[visibleProjectAgents.length].id })}>+{hiddenProjectAgentCount}</button>}
+                {activeProjectAgents.map((agent) => <button data-action-id={`context.agent.${agent.id}`} className={identitySelection?.kind === "agent" && identitySelection.id === agent.id ? "active" : ""} type="button" title={`${agent.name} · ${agent.role}`} aria-label={`Open accountability record for agent ${agent.name}`} key={agent.id} onClick={() => setIdentitySelection({ kind: "agent", id: agent.id })}><i>{agent.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</i><b>{agent.name.replace("Project ", "").replace("Supplier ", "").split(" ")[0]}</b></button>)}
               </div>
               <div className="context-identity-tools context-team-tools" aria-label="Project team">
                 <button data-action-id="context.team" className="context-identity-home" type="button" disabled={!activeProjectMembers.length} title={activeProjectMembers.map((item) => item.collaborator.name).join(", ")} onClick={() => activeProjectMembers[0] && setIdentitySelection({ kind: "member", id: activeProjectMembers[0].collaborator.id })}><b>Team</b><small>{activeProjectMembers.length}</small></button>
-                {visibleProjectMembers.map(({ collaborator }) => <button data-action-id={`context.member.${collaborator.id}`} className={identitySelection?.kind === "member" && identitySelection.id === collaborator.id ? "active" : ""} type="button" title={`${collaborator.name} · ${collaborator.role}`} aria-label={`Open accountability record for team member ${collaborator.name}`} key={collaborator.id} onClick={() => setIdentitySelection({ kind: "member", id: collaborator.id })}><i>{collaborator.initials}</i><b>{collaborator.name.split(" ").at(-1)}</b></button>)}
-                {hiddenProjectMemberCount > 0 && <button data-action-id="context.team.more" className="context-more" type="button" aria-label={`Open team directory with ${hiddenProjectMemberCount} more members`} title={`${hiddenProjectMemberCount} more members`} onClick={() => activeProjectMembers[visibleProjectMembers.length] && setIdentitySelection({ kind: "member", id: activeProjectMembers[visibleProjectMembers.length].collaborator.id })}>+{hiddenProjectMemberCount}</button>}
+                {activeProjectMembers.map(({ collaborator }) => <button data-action-id={`context.member.${collaborator.id}`} className={identitySelection?.kind === "member" && identitySelection.id === collaborator.id ? "active" : ""} type="button" title={`${collaborator.name} · ${collaborator.role}`} aria-label={`Open accountability record for team member ${collaborator.name}`} key={collaborator.id} onClick={() => setIdentitySelection({ kind: "member", id: collaborator.id })}><i>{collaborator.initials}</i><b>{collaborator.name.split(" ").at(-1)}</b></button>)}
               </div>
             </div>
           </section>}
@@ -1159,7 +1153,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           {resolvedProject && scope === "company" && deniedProjectAccess ? (
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
           ) : view === "company" && resolvedProject ? (
-            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} initialSessionId={activeSessionId} initialRunId={activeRunId} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onAgentRosterChange={handleAgentRosterChange} onProjectSetupChange={handleProjectSetupChange} onTabChange={(tab) => openProjectTab(tab)} onStudioChange={openMountedProjectApp} onCloseStudio={returnFromProjectApp} onSessionChange={openProjectSession} onRunChange={openProjectRun} onOpenApp={openMountedProjectApp} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
+            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} initialSessionId={activeSessionId} initialRunId={activeRunId} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onAgentRosterChange={handleAgentRosterChange} onProjectSetupChange={handleProjectSetupChange} onTabChange={(tab) => openProjectTab(tab)} onStudioChange={openMountedProjectApp} onSessionChange={openProjectSession} onRunChange={openProjectRun} onOpenApp={openMountedProjectApp} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
           ) : view === "company" ? (
             <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />
           ) : view === "global" || view === "region" ? (
@@ -1205,7 +1199,6 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         sessions={activeWorkSessions}
         activities={activeProjectActivities}
         appRuns={activeProjectRuns}
-        onSelect={setIdentitySelection}
         onClose={() => setIdentitySelection(null)}
         onOpenSession={openProjectSession}
         onOpenRun={openProjectRun}

@@ -624,14 +624,21 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   assert.match(inspector, /Exactly attributed events/);
   assert.match(inspector, /session context, not ownership/);
   assert.match(inspector, /Only named actor events are attributed/);
-  assert.match(inspector, /disabled=\{!agents\.length\}/);
+  assert.doesNotMatch(inspector, /identity-kind-tabs|identity-directory|identity\.select|onSelect:/);
+  assert.match(inspector, /const personName = agent\?\.name \?\? member!\.collaborator\.name/);
+  assert.match(shell, /\{activeProjectAgents\.map\(\(agent\) => <button/);
+  assert.doesNotMatch(shell, /context\.agents\.more|context\.team\.more/);
   assert.match(workspace, /className="playground-runner-bar"/);
   assert.match(workspace, /aria-label="Select Playground agent"/);
   assert.doesNotMatch(inspector, /session\.id === sessions\[0\]\?\.id/);
 });
 
 test("project navigation keeps route context, closes transient chrome, and reveals selected ancestry", async () => {
-  const shell = await read("../app/PlatformShell.tsx");
+  const [shell, workspace, studios] = await Promise.all([
+    read("../app/PlatformShell.tsx"),
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/ProjectAppStudios.tsx"),
+  ]);
   const openProject = shell.slice(shell.indexOf("const openProject ="), shell.indexOf("const openMountedProjectApp ="));
   const startOnboarding = shell.slice(shell.indexOf("const startOnboarding ="), shell.indexOf("const saveClientDraft ="));
   const popState = shell.slice(shell.indexOf("const onPopState ="), shell.indexOf("window.addEventListener(\"popstate\""));
@@ -655,8 +662,10 @@ test("project navigation keeps route context, closes transient chrome, and revea
   assert.match(shell, /const returnFromProjectApp = \(\) =>/);
   assert.match(shell, /window\.history\.back\(\)/);
   assert.match(shell, /openProjectTab\(historyState\?\.mayaReturn\?\.tab \?\? activeProjectTab, true\)/);
-  assert.match(shell, /onCloseStudio=\{returnFromProjectApp\}/);
-  assert.match(shell, /data-action-id="context\.back-to-project"[^>]*onClick=\{returnFromProjectApp\}/);
+  assert.doesNotMatch(shell, /onCloseStudio=/);
+  assert.match(shell, /data-action-id="context\.back-to-project" className="context-back-button"[^>]*onClick=\{returnFromProjectApp\}/);
+  assert.doesNotMatch(studios, /studio\.back-to-apps|studio\.unsupported\.back|onBack/);
+  assert.doesNotMatch(workspace, /workspace\.open-governed-decision|workspace\.ask-expert-society|className="project-thesis"/);
 });
 
 test("session continuation and application assumptions expose truthful controls", async () => {
