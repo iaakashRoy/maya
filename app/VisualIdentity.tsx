@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 import type { ProjectAppId } from "./workspace-model";
 
-const appSymbols: Record<ProjectAppId, string> = {
+type AppGlyphId = ProjectAppId | "playground";
+
+const appSymbols: Record<AppGlyphId, string> = {
   risk: "⌖",
   optimizer: "⎔",
   flow: "⇄",
@@ -12,6 +14,7 @@ const appSymbols: Record<ProjectAppId, string> = {
   manufacturing: "⚙",
   logistics: "⇢",
   quality: "✓",
+  playground: ">_",
 };
 
 const identityPalette = [
@@ -96,7 +99,7 @@ export function ClientMark({ clientId, label }: { clientId: string; label: strin
   return <span className="path-entity-mark client-mark" style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} concept brand`} aria-hidden="true" data-client-mark={clientId}>{visual.monogram}</span>;
 }
 
-export function AppGlyph({ appId, label, className = "" }: { appId: ProjectAppId; label?: string; className?: string }) {
+export function AppGlyph({ appId, label, className = "" }: { appId: AppGlyphId; label?: string; className?: string }) {
   return <span className={`app-glyph app-glyph-${appId} ${className}`.trim()} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} data-app-icon={appId}>{appSymbols[appId]}</span>;
 }
 

@@ -240,11 +240,10 @@ export const workspaceTabs: readonly { id: WorkspaceTabId; label: string; count?
   { id: "overview", label: "Overview" },
   { id: "decisions", label: "Decisions" },
   { id: "data", label: "Data & graph" },
-  { id: "agents", label: "Playground" },
   { id: "governance", label: "Controls" },
 ];
 
-/** Routeable project surfaces. Apps remains routeable from the mounted-work strip. */
+/** Routeable project surfaces. Apps and Playground remain routeable from the mounted-work strip. */
 export const workspaceSurfaceIds: readonly WorkspaceTabId[] = ["overview", "decisions", "apps", "data", "graph", "agents", "governance"];
 
 const metricSet = (code: string, values: readonly [string, string, string, WorkspaceMetric["tone"]][]): readonly WorkspaceMetric[] =>

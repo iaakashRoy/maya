@@ -535,7 +535,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const projectSurfaceTransition = () => {
     const current = window.history.state as TanjxHistoryState | null;
     const currentReturn = current?.tanjxReturn?.surface === "project" && current.tanjxReturn.projectId === activeProject.id ? current : null;
-    const alreadyOnProjectSurface = scope === "company" && Boolean(resolvedProject) && (view !== "company" || activeProjectApp !== null);
+    const alreadyOnProjectSurface = scope === "company" && Boolean(resolvedProject) && (view !== "company" || activeProjectApp !== null || activeProjectTab === "agents");
     return {
       historyState: currentReturn ?? (alreadyOnProjectSurface ? {} : { tanjxReturn: { surface: "project" as const, projectId: activeProject.id, tab: activeProjectTab } }),
       replace: alreadyOnProjectSurface,
@@ -602,7 +602,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     url.searchParams.delete("run");
     if (nextTab === "agents" && activeSessionId) url.searchParams.set("session", activeSessionId);
     else url.searchParams.delete("session");
-    commitNavigationUrl(url, replace);
+    const applicationTransition = nextTab === "agents" ? projectSurfaceTransition() : null;
+    commitNavigationUrl(url, applicationTransition?.replace ?? replace, applicationTransition?.historyState ?? {});
     setScope("company");
     setView("company");
     setSelectedCaseId(caseIdForProject(activeProject));
@@ -623,7 +624,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       window.history.back();
       return;
     }
-    openProjectTab(historyState?.tanjxReturn?.tab ?? activeProjectTab, true);
+    openProjectTab(historyState?.tanjxReturn?.tab ?? (activeProjectTab === "agents" ? "overview" : activeProjectTab), true);
   };
 
   const openProjectSession = (sessionId: string) => {
@@ -641,7 +642,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     url.searchParams.set("session", sessionId);
     url.searchParams.delete("projectApp");
     url.searchParams.delete("run");
-    commitNavigationUrl(url);
+    const transition = projectSurfaceTransition();
+    commitNavigationUrl(url, transition.replace, transition.historyState);
     setView("company");
     setScope("company");
     setActiveProjectTab("agents");
@@ -1063,7 +1065,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   })();
   const activeMountedAppId = activeProjectApp
     ?? (applications.some((app) => app.id === view) ? view as ProjectAppId : null);
-  const projectApplicationOpen = view !== "company" || Boolean(activeProjectApp);
+  const projectApplicationOpen = view !== "company" || Boolean(activeProjectApp) || activeProjectTab === "agents";
   const mountedAppPreviewLimit = compactContext ? 4 : effectiveMountedApps.length;
   const defaultVisibleMountedApps = effectiveMountedApps.slice(0, mountedAppPreviewLimit);
   const visibleMountedApps = activeMountedAppId && effectiveMountedApps.includes(activeMountedAppId) && !defaultVisibleMountedApps.includes(activeMountedAppId)
@@ -1143,7 +1145,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
               <div className={`context-current ${projectApplicationOpen ? "application-context" : ""}`} aria-current="page"><span>{projectApplicationOpen ? "APPLICATION" : "YOU ARE HERE"}</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></div>
               <div className="context-mounted-apps" aria-label="Mounted project applications">
                 {projectApplicationOpen && <button data-action-id="context.back-to-project" className="context-back-button" type="button" onClick={returnFromProjectApp}><span aria-hidden="true">←</span><b>Back to project</b></button>}
-                <button data-action-id="context.open-apps" className={`context-group-home ${view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "active" : ""}`} type="button" aria-current={view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("apps")}><b>Apps</b><small>{effectiveMountedApps.length}</small></button>
+                <button data-action-id="context.open-apps" className={`context-group-home ${view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "active" : ""}`} type="button" aria-current={view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("apps")}><b>Apps</b><small>{effectiveMountedApps.length + 1}</small></button>
+                <button data-action-id="context.open-playground" className={`context-playground-app ${view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "active" : ""}`} style={{ "--context-app-accent": "#7d5cf4" } as React.CSSProperties} type="button" title="Open Playground" aria-label="Open mounted application Playground" aria-current={view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("agents")}><AppGlyph appId="playground" /><b>Playground</b></button>
                 {visibleMountedApps.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><AppGlyph appId={appId} /><b>{app.name}</b></button>; })}
                 {hiddenMountedAppCount > 0 && <button data-action-id="context.open-apps.more" className="context-more" type="button" aria-label={`Open Apps to view ${hiddenMountedAppCount} more mounted applications`} title={`${hiddenMountedAppCount} more mounted apps`} onClick={() => openProjectTab("apps")}>+{hiddenMountedAppCount}</button>}
               </div>

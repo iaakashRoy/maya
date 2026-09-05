@@ -34,7 +34,7 @@ test("every project app has a semantic icon and agents have stable differentiate
     read("../app/OptimizationWorkbench.tsx"),
   ]);
 
-  for (const appId of ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "workforce", "manufacturing", "logistics", "quality"]) {
+  for (const appId of ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "workforce", "manufacturing", "logistics", "quality", "playground"]) {
     assert.match(identity, new RegExp(`\\b${appId}: \\"[^A-Z]{1,2}\\"`), appId);
   }
   assert.match(shell, /<AppGlyph appId=\{appId\}/);
@@ -53,6 +53,16 @@ test("every project app has a semantic icon and agents have stable differentiate
   for (const icon of ["client-add", "project-add", "workspace", "world"]) {
     assert.match(shell, new RegExp(`NavigationIcon name="${icon}"`));
   }
+});
+
+test("light mode gives maps and knowledge graphs a light spatial canvas", async () => {
+  const css = await read("../app/globals.css");
+  const contract = css.slice(css.lastIndexOf("Light spatial workspaces"));
+
+  assert.match(contract, /\.theme-light \.network-radar \.radar-map\.network-map[\s\S]*?background:\s*#dfeef2\s*!important/);
+  assert.match(contract, /\.theme-light \.network-radar \.radar-ocean\s*\{\s*fill:\s*#dfeef2/);
+  assert.match(contract, /\.theme-light :is\(\.knowledge-canvas, \.project-knowledge-canvas\)[\s\S]*?background-color:\s*#f7faf7\s*!important/);
+  assert.match(contract, /\.theme-light \.project-graph-node,[\s\S]*?\.theme-light \.kg-node[\s\S]*?background:\s*#fff/);
 });
 
 test("the workspace uses one type scale, one gutter contract, and neutral dark surfaces", async () => {

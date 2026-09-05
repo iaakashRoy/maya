@@ -591,7 +591,7 @@ test("project chrome has one hierarchy, mounted context, and three accessible co
   assert.match(css, /\.side-rail \.rail-footer \{ display: none; \}/);
   assert.match(css, /--rail-width: 304px/);
   assert.match(css, /\.work-identity-inspector \{[\s\S]*?position: fixed/);
-  assert.match(css, /\.project-tabs \{[\s\S]*?grid-template-columns: repeat\(5/);
+  assert.match(css, /\.project-tabs \{[\s\S]*?grid-template-columns: repeat\(4/);
   assert.doesNotMatch(css, /\.project-tabs[^}]*overflow-x:\s*(?:auto|scroll)/s);
 });
 
@@ -604,8 +604,8 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   ]);
   const visibleTabs = model.slice(model.indexOf("export const workspaceTabs"), model.indexOf("export const workspaceSurfaceIds"));
   assert.match(visibleTabs, /label: "Data & graph"/);
-  assert.match(visibleTabs, /label: "Playground"/);
-  assert.doesNotMatch(visibleTabs, /id: "apps"|id: "graph"|id: "team"/);
+  assert.doesNotMatch(visibleTabs, /label: "Playground"/);
+  assert.doesNotMatch(visibleTabs, /id: "apps"|id: "graph"|id: "agents"|id: "team"/);
   assert.match(workspace, /function ProjectDataWorkspace/);
   assert.match(workspace, /Search files, tables, PDFs, variables, evidence, connectors, and graph entities/);
   assert.match(workspace, /data-action-id="data-graph\.mode\.sources"/);
@@ -618,6 +618,8 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   assert.match(workspace, /data-action-id=\{`data-query\.connector-template\.\$\{template\.id\}`\}/);
   assert.match(shell, /visibleMountedApps/);
   assert.match(shell, /hiddenMountedAppCount/);
+  assert.match(shell, /data-action-id="context\.open-playground"/);
+  assert.match(workspace, /data-action-id="apps\.open\.playground"/);
   assert.match(shell, /selection=\{identitySelection\}/);
   assert.match(inspector, /export type WorkIdentitySelection = \{ kind: "agent" \| "member"/);
   assert.match(inspector, /directlyAttributedActivities/);
@@ -651,9 +653,13 @@ test("Playground behaves as a scrollable live agent console with a persistent co
   assert.match(workspace, /multiple accept="\.csv,\.xlsx,\.json,\.pdf,\.parquet,\.docx,\.md,\.txt"/);
   assert.match(workspace, /aria-label="Scrollable agent transcript and activity"/);
   assert.match(workspace, /Ctrl U/);
+  assert.match(workspace, /className="playground-app-header"/);
+  assert.match(workspace, /data-action-id="agents\.toggle-fullscreen"/);
+  assert.match(workspace, /playgroundFullscreen \? "playground-fullscreen"/);
   assert.match(css, /\.agent-session\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;[\s\S]*?grid-template-rows:\s*auto minmax\(0, 1fr\) auto auto/);
   assert.match(css, /\.agent-messages\s*\{[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?scrollbar-gutter:\s*stable/);
-  assert.match(css, /\.main-content:has\(> \.project-os\[data-project-tab="agents"\]\) \+ \.app-footer \{ display: none; \}/);
+  assert.match(css, /\.main-content:has\(> \.project-os\.playground-app-mode\) \+ \.app-footer \{ display: none; \}/);
+  assert.match(css, /\.project-os\.playground-fullscreen\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?height:\s*100dvh/);
 });
 
 test("decision lineage, interactive controls, uniform project leaves, and theme controls are explicit", async () => {
@@ -721,7 +727,7 @@ test("project navigation keeps route context, closes transient chrome, and revea
   assert.match(shell, /replace: alreadyOnProjectSurface/);
   assert.match(shell, /const returnFromProjectApp = \(\) =>/);
   assert.match(shell, /window\.history\.back\(\)/);
-  assert.match(shell, /openProjectTab\(historyState\?\.tanjxReturn\?\.tab \?\? activeProjectTab, true\)/);
+  assert.match(shell, /openProjectTab\(historyState\?\.tanjxReturn\?\.tab \?\? \(activeProjectTab === "agents" \? "overview" : activeProjectTab\), true\)/);
   assert.doesNotMatch(shell, /onCloseStudio=/);
   assert.match(shell, /data-action-id="context\.back-to-project" className="context-back-button"[^>]*onClick=\{returnFromProjectApp\}/);
   assert.doesNotMatch(studios, /studio\.back-to-apps|studio\.unsupported\.back|onBack/);

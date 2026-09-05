@@ -203,11 +203,13 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
     const response = await render(path);
     assert.equal(response.status, 200, `${path} should render`);
     const html = await response.text();
-    assert.match(html, /class="project-os"/);
-    assert.match(html, /<h1>Cold Chain Promise<\/h1>/);
+    assert.match(html, /class="project-os(?: [^"]+)?"/);
+    assert.match(html, path.includes("view=agents") ? /<h1>Playground<\/h1>/ : /<h1>Cold Chain Promise<\/h1>/);
     assert.match(html, /Helixora Therapeutics/);
     assert.ok(html.includes(expected), `${path} should render ${expected}`);
     if (path.includes("view=agents")) {
+      assert.match(html, /class="project-os playground-app-mode/);
+      assert.match(html, /data-action-id="agents\.toggle-fullscreen"/);
       assert.match(html, /SES-P002-024/);
       assert.match(html, /MSG-P002-024-001/);
       assert.match(html, /Continue as new session/);
