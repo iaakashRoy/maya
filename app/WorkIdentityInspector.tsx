@@ -14,7 +14,6 @@ type WorkIdentityInspectorProps = {
   sessions: readonly ProjectWorkSession[];
   activities: readonly SessionActivity[];
   appRuns: readonly ProjectAppRun[];
-  onSelect: (selection: Exclude<WorkIdentitySelection, null>) => void;
   onClose: () => void;
   onOpenSession: (sessionId: string) => void;
   onOpenRun: (sessionId: string, runId: string) => void;
@@ -23,16 +22,13 @@ type WorkIdentityInspectorProps = {
 
 const initialsFor = (name: string) => name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
-export default function WorkIdentityInspector({ project, selection, agents, members, sessions, activities, appRuns, onSelect, onClose, onOpenSession, onOpenRun, onReceipt }: WorkIdentityInspectorProps) {
+export default function WorkIdentityInspector({ project, selection, agents, members, sessions, activities, appRuns, onClose, onOpenSession, onOpenRun, onReceipt }: WorkIdentityInspectorProps) {
   if (!selection) return null;
   const isAgent = selection.kind === "agent";
   const agent = isAgent ? agents.find((item) => item.id === selection.id) : undefined;
   const member = !isAgent ? members.find((item) => item.collaborator.id === selection.id) : undefined;
   if ((isAgent && !agent) || (!isAgent && !member)) return null;
 
-  const directory = isAgent
-    ? agents.map((item) => ({ id: item.id, name: item.name, detail: `${item.level} · ${item.state}`, initials: initialsFor(item.name) }))
-    : members.map((item) => ({ id: item.collaborator.id, name: item.collaborator.name, detail: `${item.membership.projectRole} · ${item.collaborator.affiliation}`, initials: item.collaborator.initials }));
   const personName = agent?.name ?? member!.collaborator.name;
   const directlyAttributedActivities = activities.filter((activity) => activity.actor === personName || (agent && activity.actor === agent.id));
   const attributedSessionIds = new Set([
@@ -48,13 +44,6 @@ export default function WorkIdentityInspector({ project, selection, agents, memb
       <div><span>{isAgent ? "AGENT ACCOUNTABILITY" : "TEAM ACCOUNTABILITY"}</span><h2>{personName}</h2><p>{project.code} · {project.name}</p></div>
       <button data-action-id="identity.close" type="button" aria-label="Close accountability inspector" onClick={onClose}>×</button>
     </header>
-    <nav className="identity-kind-tabs" aria-label="Accountability directory">
-      <button data-action-id="identity.kind.agents" className={isAgent ? "active" : ""} type="button" disabled={!agents.length} onClick={() => agents[0] && onSelect({ kind: "agent", id: agents[0].id })}>Agents <span>{agents.length}</span></button>
-      <button data-action-id="identity.kind.members" className={!isAgent ? "active" : ""} type="button" disabled={!members.length} onClick={() => members[0] && onSelect({ kind: "member", id: members[0].collaborator.id })}>Team <span>{members.length}</span></button>
-    </nav>
-    <div className="identity-directory" aria-label={isAgent ? "Project agents" : "Project team members"}>
-      {directory.map((item) => <button data-action-id={`identity.select.${selection.kind}.${item.id}`} className={item.id === selection.id ? "active" : ""} type="button" key={item.id} onClick={() => onSelect({ kind: selection.kind, id: item.id })}><i>{item.initials}</i><span><b>{item.name}</b><small>{item.detail}</small></span></button>)}
-    </div>
     <div className="identity-detail">
       {agent ? <>
         <section className="identity-summary"><span>{initialsFor(agent.name)}</span><div><small>{agent.level} · {agent.state}</small><h3>{agent.role}</h3><p>{agent.authority}</p></div></section>
