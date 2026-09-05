@@ -62,7 +62,7 @@ import {
 
 const dataViews = [
   { id: "agents" as const, label: "Playground", icon: "PG", detail: "Project sessions and expert agents" },
-  { id: "graph" as const, label: "Data & graph", icon: "DG", detail: "Sources, files, tables, and knowledge graph" },
+  { id: "graph" as const, label: "Data", icon: "DG", detail: "Sources, files, tables, and knowledge graph" },
 ];
 
 const workflowViews = [
@@ -1058,7 +1058,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     if (view === "company") {
       if (activeProjectApp) return projectApps.find((app) => app.id === activeProjectApp)?.name ?? "Application";
       return workspaceTabs.find((item) => item.id === activeProjectTab)?.label
-        ?? (activeProjectTab === "apps" ? "Apps" : activeProjectTab === "graph" ? "Data & graph" : activeProjectTab === "agents" ? "Playground" : "Overview");
+        ?? (activeProjectTab === "apps" ? "Apps" : activeProjectTab === "graph" ? "Data" : activeProjectTab === "agents" ? "Playground" : "Overview");
     }
     return applications.find((app) => app.id === view)?.name
       ?? workflowViews.find((item) => item.id === view)?.label
@@ -1068,6 +1068,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const activeMountedAppId = activeProjectApp
     ?? (applications.some((app) => app.id === view) ? view as ProjectAppId : null);
   const projectApplicationOpen = view !== "company" || Boolean(activeProjectApp) || activeProjectTab === "agents";
+  const projectWorkspaceOpen = canViewActiveProject && view === "company" && !activeProjectApp && activeProjectTab !== "agents";
   const mountedAppPreviewLimit = compactContext ? 4 : effectiveMountedApps.length;
   const defaultVisibleMountedApps = effectiveMountedApps.slice(0, mountedAppPreviewLimit);
   const visibleMountedApps = activeMountedAppId && effectiveMountedApps.includes(activeMountedAppId) && !defaultVisibleMountedApps.includes(activeMountedAppId)
@@ -1164,14 +1165,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
               </div>
             </div>
           </section>}
-          {canViewActiveProject ? <div className="project-section-bar" aria-label="Project sections and state">
+          {projectWorkspaceOpen ? <div className="project-section-bar" aria-label="Project sections and state">
             <nav className="project-section-tabs" aria-label="Project workspace sections">{workspaceTabs.map((item) => {
               const active = view === "company" && !activeProjectApp && (activeProjectTab === item.id || (item.id === "data" && activeProjectTab === "graph"));
               const count = item.id === "decisions" ? decisionsFor(activeProject).length : item.id === "data" ? datasetsFor(activeProject).length : undefined;
               return <button data-action-id={`workspace.tab.${item.id}`} type="button" aria-current={active ? "page" : undefined} className={active ? "active" : ""} key={item.id} onClick={() => openProjectTab(item.id)}><span>{item.label}</span>{count !== undefined && <em>{count}</em>}</button>;
             })}</nav>
             <aside className="project-section-state" aria-label={`Project state: ${activeProject.stage}`}><span><i className={`project-tone-${activeProject.health}`} />{activeProject.stage}</span><small>{activeProject.classification} · {activeProject.dataResidency}</small></aside>
-          </div> : <div className="statusbar">{resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>}
+          </div> : !canViewActiveProject ? <div className="statusbar">{resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div> : null}
         </div>
 
         <main className="main-content">
@@ -1207,7 +1208,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           ) : resolvedProject && workflowViews.some((item) => item.id === view) ? (
             <DecisionWorkspaces key={`workflow:${activeProject.id}:${view}`} view={view as WorkflowViewId} cases={visibleCases} activeCase={activeCase} scopeLabel={`${activeProject.client} / ${activeProject.name}`} financeReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 2) % humanExperts.length].name} executiveReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 3) % humanExperts.length].name} onOpenCase={openCase} onOpenApp={(app) => app === "graph" ? go("graph") : openMountedProjectApp(app)} onUpdateCase={updateCase} onToast={(message) => completeAction("Decision interaction recorded", message, "DECISION-INTERACTION", interactionStatus(message))} />
           ) : resolvedProject && applications.some((item) => item.id === view) ? (
-            <div className="application-session-surface"><ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} /><AppRunHistory key={activeRunId ?? `application-${view}`} project={activeProject} runs={appRunsFor(activityState, activeProject.id, view as ProjectAppId)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openMountedProjectApp} onOpenSession={openProjectSession} onEvidence={(target) => { const ref = typeof target === "string" ? target : target.id; completeAction("Application evidence opened", `${ref} was opened from the selected application run.`, ref, "Saved", `${activeProject.client} / ${activeProject.name}`); }} onOutcome={completeAction} canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed && projectHasDataContract(activeProject)} runBlockedReason={!projectHasDataContract(activeProject) ? "Complete Data & graph setup before starting an application run." : undefined} focusedRunId={activeRunId} initialAppId={view as ProjectAppId} onRunChange={openProjectRun} /></div>
+            <div className="application-session-surface"><ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} /><AppRunHistory key={activeRunId ?? `application-${view}`} project={activeProject} runs={appRunsFor(activityState, activeProject.id, view as ProjectAppId)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openMountedProjectApp} onOpenSession={openProjectSession} onEvidence={(target) => { const ref = typeof target === "string" ? target : target.id; completeAction("Application evidence opened", `${ref} was opened from the selected application run.`, ref, "Saved", `${activeProject.client} / ${activeProject.name}`); }} onOutcome={completeAction} canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed && projectHasDataContract(activeProject)} runBlockedReason={!projectHasDataContract(activeProject) ? "Complete Data setup before starting an application run." : undefined} focusedRunId={activeRunId} initialAppId={view as ProjectAppId} onRunChange={openProjectRun} /></div>
           ) : resolvedProject ? (
             <DataOperations key={`data:${activeProject.id}:${view}`} view={view as DataViewId} snapshot={snapshot} onOpenApp={openMountedProjectApp} onToast={(message) => completeAction("Data interaction recorded", message, "DATA-INTERACTION", interactionStatus(message))} />
           ) : <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />}

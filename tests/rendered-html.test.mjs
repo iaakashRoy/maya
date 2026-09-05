@@ -99,7 +99,8 @@ test("server-renders the selected sector, client, project, data tab, and special
   assert.match(projectHtml, /Cold Chain Promise/);
   assert.match(projectHtml, /Helixora Therapeutics/);
   assert.match(projectHtml, /data-action-id="workspace\.tab\.data"[^>]*class="active"/);
-  assert.match(projectHtml, /Data &amp; graph/);
+  assert.match(projectHtml, />Data</);
+  assert.doesNotMatch(projectHtml, /Data &amp; graph/);
   assert.match(projectHtml, /Search files, tables, PDFs, variables, evidence, connectors, and graph entities/);
   assert.match(projectHtml, /filename metadata only/i);
   assert.match(projectHtml, /Source integration requests/);
@@ -114,6 +115,7 @@ test("server-renders the selected sector, client, project, data tab, and special
   assert.match(studioHtml, /TerraMetals Alliance/);
   assert.match(studioHtml, /Mineral Atlas/);
   assert.match(studioHtml, /RESERVE[\s\S]*?REFINERY[\s\S]*?PRODUCT/);
+  assert.doesNotMatch(studioHtml, /class="project-section-bar"/);
   assert.match(studioHtml, /Runs, reports, and reruns/);
   assert.match(studioHtml, /APP-P007-MA-019/);
 });
@@ -178,6 +180,7 @@ test("each decision app exposes a project-bound, decision-specific operating mod
     assert.match(html, new RegExp(`data-app-theme="${view}"`));
     assert.match(html, new RegExp(`<h1[^>]*>${name}<\\/h1>`));
     assert.match(html, /ACTIVE DECISION/);
+    assert.doesNotMatch(html, /class="project-section-bar"/);
     assert.match(html, /Open decision/);
     assert.match(html, />Review/);
     assert.match(html, /Runs, reports, and reruns/);
@@ -189,7 +192,7 @@ test("each decision app exposes a project-bound, decision-specific operating mod
   }
 });
 
-test("Decisions, apps, Data & graph, and Playground resolve inside the selected project", async () => {
+test("project tabs remain on project section routes and disappear from application surfaces", async () => {
   const projectPath = "scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise";
   const routes = [
     [`/?view=decisions&${projectPath}`, "Branch, challenge, and merge"],
@@ -205,8 +208,16 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
     const html = await response.text();
     assert.match(html, /class="project-os(?: [^"]+)?"/);
     assert.doesNotMatch(html, /<h1>(?:Playground|Cold Chain Promise)<\/h1>/);
-    assert.match(html, /class="project-section-bar"/);
-    assert.match(html, /aria-label="Project state: Simulate release"/);
+    const projectPage = !path.includes("view=agents");
+    if (projectPage) {
+      assert.match(html, /class="project-section-bar"/);
+      assert.match(html, /aria-label="Project state: Simulate release"/);
+      assert.match(html, />Data</);
+      assert.doesNotMatch(html, />Data &amp; graph</);
+    } else {
+      assert.doesNotMatch(html, /class="project-section-bar"/);
+      assert.doesNotMatch(html, /aria-label="Project state:/);
+    }
     assert.match(html, /Helixora Therapeutics/);
     assert.ok(html.includes(expected), `${path} should render ${expected}`);
     if (path.includes("view=agents")) {
@@ -268,7 +279,7 @@ test("ships the two-root IA, onboarding, project accountability, ten apps, and w
     "Manufacturing Twin",
     "Logistics Radar",
     "Quality Genealogy",
-    "Data & graph",
+    "Data",
     "Playground",
     "Agent accountability",
     "Team accountability",

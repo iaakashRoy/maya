@@ -20,7 +20,7 @@ export const viewLabels: Record<ViewId, string> = {
   case: "Decision",
   action: "Review",
   agents: "Playground",
-  graph: "Data & graph",
+  graph: "Data",
 };
 
 type SearchValue = string | string[] | undefined;
@@ -110,7 +110,7 @@ export function resolveNavigation(searchParams: NavigationSearchParams = {}, pro
   const requestedLegacyApp = applications.some((item) => item.id === view) ? view as ProjectAppId : null;
   // A copied or restored URL must obey the same data-readiness gate as an
   // in-product app launch. Keep the project context, but send app/run intents
-  // to Data & graph until a canonical L0 contract exists.
+  // to Data until a canonical L0 contract exists.
   if (!projectHasDataContract(project) && (requestedLegacyApp || requestedProjectApp || requestedRun)) {
     return {
       view: "company" as const,

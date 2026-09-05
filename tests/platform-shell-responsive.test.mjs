@@ -31,6 +31,8 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.match(shell, /className="project-section-bar"/);
   assert.match(shell, /className="project-section-tabs" aria-label="Project workspace sections"/);
   assert.match(shell, /className="project-section-state"/);
+  assert.match(shell, /const projectWorkspaceOpen = canViewActiveProject && view === "company" && !activeProjectApp && activeProjectTab !== "agents"/);
+  assert.match(shell, /\{projectWorkspaceOpen \? <div className="project-section-bar"/);
   assert.match(shell, /className="project-people-bar"/);
   assert.match(shell, /className="context-identity-tools context-agent-tools"/);
   assert.match(shell, /className="context-identity-tools context-team-tools"/);

@@ -99,3 +99,15 @@ test("the workspace uses a compact chrome and content density contract", async (
   assert.match(density, /\.sidebar-project-leaves \.sidebar-project\s*\{\s*min-height:\s*56px/);
   assert.match(density, /@media \(max-width:\s*1180px\) and \(min-width:\s*761px\)[\s\S]*?--project-people-row-height:\s*66px/);
 });
+
+test("all non-terminal applications share one compact card and toolbar contract", async () => {
+  const css = await read("../app/globals.css");
+  const density = css.slice(css.lastIndexOf("Compact specialist application density contract"));
+
+  assert.match(density, /\.application-container \.app-metric,[\s\S]*?\.project-app-studio \.studio-metric,[\s\S]*?\.application-container \.replay-metric\s*\{[\s\S]*?min-height:\s*88px/);
+  assert.match(density, /\.application-container \.app-controlbar,[\s\S]*?\.project-app-studio \.studio-toolbar\s*\{[\s\S]*?min-height:\s*40px/);
+  assert.match(density, /\.application-container :is\(\.panel-header, \.or-section-head\),[\s\S]*?min-height:\s*50px/);
+  assert.match(density, /\.application-container \.risk-matrix \{ height:\s*315px/);
+  assert.match(density, /\.project-app-studio \.mineral-world \{ min-height:\s*320px/);
+  assert.doesNotMatch(density, /\.agent-|playground-app-mode|\.agent-os/);
+});

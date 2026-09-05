@@ -6803,3 +6803,273 @@ textarea:focus-visible,
   .project-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-home-grid { grid-template-columns: 1fr; }
 }
+
+/* Compact specialist application density contract. -----------------------
+   Every mounted decision app uses the same spacing, metric geometry,
+   toolbar rhythm, and panel header scale. */
+.application-container {
+  padding: 8px 12px 16px;
+  gap: 6px !important;
+  box-sizing: border-box;
+}
+.application-container .app-workspace,
+.optimizer-workbench,
+.project-app-studio,
+.project-app-studio > :is(.mineral-studio, .workforce-studio, .manufacturing-studio, .logistics-studio) {
+  gap: 6px !important;
+}
+
+/* Active decision context is a utility strip, not a presentation card. */
+.application-container .application-commandbar {
+  min-height: 58px;
+  padding: 6px 8px;
+  grid-template-columns: minmax(250px, 1.15fr) minmax(430px, 1.65fr) auto;
+  gap: 8px;
+  color: #1c2a21;
+  background: #fff;
+  border-color: #d2d9d2;
+}
+.application-container .application-commandbar .commandbar-case { min-width: 0; }
+.application-container .application-commandbar .commandbar-case p { min-width: 0; gap: 2px; }
+.application-container .application-commandbar .commandbar-case p small {
+  color: #627168;
+  font-size: 8px;
+  letter-spacing: .065em;
+}
+.application-container .application-commandbar .commandbar-case p b {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #152119;
+  font-size: 10px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.application-container .commandbar-facts {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, .7fr)) minmax(190px, 1.25fr);
+  align-items: stretch;
+}
+.application-container .commandbar-facts > div {
+  min-width: 0;
+  padding: 4px 8px;
+  gap: 2px;
+  border-left-color: #d6ddd6;
+}
+.application-container .commandbar-facts > div :is(small, b),
+.application-container .commandbar-data span :is(small, b) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.application-container .commandbar-facts > div small,
+.application-container .commandbar-data small { color: #6a786f; font-size: 8px; }
+.application-container .commandbar-facts > div b,
+.application-container .commandbar-data b { color: #1b2920; font-size: 9px; }
+.application-container .commandbar-data,
+.application-container .commandbar-network-context {
+  min-width: 0;
+  min-height: 42px;
+  padding: 4px 7px;
+  gap: 6px;
+  color: #1b2920;
+  background: #eff4eb;
+  border-color: #d4ddd0;
+}
+.application-container .commandbar-data > span { gap: 2px; }
+.application-container .commandbar-data em,
+.application-container .commandbar-network-context em { font-size: 8px; }
+.application-container .application-commandbar > div:last-child { display: flex; gap: 4px; }
+.application-container .application-commandbar > div:last-child button {
+  min-height: 32px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+/* One metric-card component across classic apps, optimizer, and studios. */
+.application-container .app-metrics,
+.project-app-studio .studio-metrics { gap: 5px; }
+.application-container .app-metric,
+.project-app-studio .studio-metric,
+.application-container .replay-metric {
+  min-height: 88px;
+  padding: 8px 10px;
+  align-content: stretch;
+  gap: 2px;
+  border-radius: 2px;
+}
+.application-container .app-metric,
+.application-container .replay-metric { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.application-container .app-metric > div,
+.application-container .replay-metric > div,
+.project-app-studio .studio-metric > span { font-size: 8px; line-height: 1.2; }
+.application-container .app-metric strong,
+.application-container .replay-metric > b,
+.project-app-studio .studio-metric b {
+  margin: 2px 0 0;
+  align-self: end;
+  font-size: clamp(19px, 1.65vw, 25px);
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+.application-container .app-metric p,
+.application-container .replay-metric > small,
+.project-app-studio .studio-metric small {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 2px 0 0;
+  font-size: 8px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.application-container .app-metric > em,
+.project-app-studio .studio-metric em { margin-top: 2px; font-size: 7px; }
+.application-container .or-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+/* Filters and scenario controls share a 40px desktop utility rhythm. */
+.application-container .app-controlbar,
+.project-app-studio .studio-toolbar {
+  min-height: 40px;
+  padding: 4px 5px;
+  gap: 5px;
+  border-radius: 2px;
+}
+.application-container .app-controlbar .segmented-control { min-width: 0; width: min(420px, 100%); }
+.application-container .app-controlbar .segmented-control button,
+.project-app-studio .studio-toolbar button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 9px;
+}
+.application-container .app-controlbar label,
+.project-app-studio .studio-toolbar > label { min-height: 30px; padding: 0 7px; font-size: 8px; }
+.application-container .app-controlbar select,
+.project-app-studio .studio-toolbar select { height: 28px; min-height: 28px; font-size: 9px; }
+.application-container .app-controlbar > button { height: 30px; min-height: 30px; padding: 0 9px; }
+.project-app-studio .studio-toolbar > div { gap: 3px; }
+
+/* Consistent application panels reveal more working content above the fold. */
+.application-container .app-grid,
+.project-app-studio :is(.mineral-layout, .workforce-layout, .manufacturing-layout, .logistics-layout, .quality-studio) { gap: 6px; }
+.application-container .panel,
+.project-app-studio :is(.mineral-map, .skills-matrix, .plant-flow, .logistics-map, .mineral-balance, .workforce-card, .machine-inspector, .asset-radar-card, .quality-genealogy, .quality-inspector) { border-radius: 2px; }
+.application-container :is(.panel-header, .or-section-head),
+.project-app-studio :is(.mineral-map, .skills-matrix, .plant-flow, .logistics-map) > header {
+  min-height: 50px;
+  padding: 7px 10px;
+  gap: 8px;
+}
+.application-container :is(.panel-header, .or-section-head) h2,
+.project-app-studio :is(.mineral-map, .skills-matrix, .plant-flow, .logistics-map) h2 { margin-top: 2px; font-size: 15px; }
+.application-container .panel-header > div > span,
+.application-container .or-section-head > div > span { margin-top: 2px; font-size: 9px; line-height: 1.3; }
+.application-container .live-chip { padding: 4px 6px; }
+.application-container .risk-matrix { height: 315px; margin: 14px 18px 27px 43px; }
+.application-container .waterfall-chart { min-height: 270px; padding: 18px 14px 10px; }
+.application-container .waterfall-chart article { height: 225px; }
+.application-container .forecast-chart { min-height: 292px; padding: 18px 16px 10px 44px; }
+.application-container .forecast-grid { inset: 18px 16px 40px 12px; }
+.application-container .forecast-bars { height: 248px; gap: 5px; }
+.application-container .supplier-network { min-height: 350px; }
+.application-container :is(.dependency-summary, .dependency-chain) { padding: 9px 10px; }
+.application-container .dependency-chain > div { min-height: 44px; }
+.application-container .decision-box { margin: 0 10px 10px; padding: 10px; }
+.application-container .cash-actions > button { min-height: 52px; padding: 7px 9px; }
+.application-container .demand-drivers > article { min-height: 47px; padding: 6px 9px; }
+.application-container .flow-stages { padding: 9px; gap: 5px; }
+.application-container .flow-stages article { min-height: 88px; padding: 7px; }
+
+/* Optimizer uses the same density while preserving its five-stage workflow. */
+.application-container .replay-strip { min-height: 34px; padding: 0 9px; gap: 9px; }
+.application-container .or-stage-nav button {
+  min-height: 52px;
+  padding: 6px 8px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
+}
+.application-container .or-stage-nav button > span { width: 22px; height: 22px; }
+.application-container .or-stage-nav button > div { gap: 2px; }
+.application-container .or-stage-nav b { font-size: 9px; }
+.application-container .or-stage-nav small { font-size: 7px; }
+.application-container .or-stage-grid,
+.application-container .method-library-layout,
+.application-container .formulation-top,
+.application-container .stress-grid,
+.application-container .release-grid { gap: 6px; }
+.application-container .decision-pattern-grid { padding: 7px; gap: 4px; }
+.application-container .decision-pattern-grid button { min-height: 68px; padding: 7px; gap: 6px; }
+
+/* Specialist cards and inspectors use the same compact component rhythm. */
+.project-app-studio :is(.mineral-balance, .workforce-card, .machine-inspector, .asset-radar-card, .quality-inspector) { padding: 10px; }
+.project-app-studio :is(.mineral-balance, .workforce-card, .machine-inspector, .asset-radar-card, .quality-inspector) h2 { font-size: 17px; }
+.project-app-studio .mineral-world { min-height: 320px; }
+.project-app-studio .radar-grid { min-height: 330px; }
+.project-app-studio .quality-genealogy { min-height: 350px; padding: 16px; gap: 14px; }
+.project-app-studio .quality-genealogy button { min-height: 54px; padding: 7px; }
+.project-app-studio .quality-genealogy button::after { bottom: -14px; }
+.project-app-studio .mineral-balance > button { min-height: 39px; padding: 5px 6px; }
+.project-app-studio :is(.workforce-card, .machine-inspector, .asset-radar-card, .quality-inspector) dl { margin: 9px 0; gap: 3px; }
+.project-app-studio :is(.workforce-card, .machine-inspector, .asset-radar-card, .quality-inspector) dl div { padding: 5px 6px; }
+.project-app-studio .skills-table { padding: 5px; }
+.project-app-studio .skills-row { min-height: 34px; padding: 4px 7px; }
+.project-app-studio .shift-heatmap { padding: 7px; gap: 3px; }
+.project-app-studio .plant-cells { padding: 7px; gap: 4px; }
+.project-app-studio .plant-cells button { min-height: 82px; padding: 6px; gap: 4px; }
+.project-app-studio .plant-cells strong { font-size: 17px; }
+.project-app-studio .gantt { margin: 0 7px 7px; padding: 5px; }
+.project-app-studio .gantt > button { height: 27px; margin-top: 3px; }
+
+.theme-dark .application-container .application-commandbar {
+  color: var(--dark-text);
+  background: var(--dark-surface);
+  border-color: var(--dark-line);
+}
+.theme-dark .application-container .application-commandbar .commandbar-case p b,
+.theme-dark .application-container .commandbar-facts > div b,
+.theme-dark .application-container .commandbar-data b { color: var(--dark-text); }
+.theme-dark .application-container .application-commandbar .commandbar-case p small,
+.theme-dark .application-container .commandbar-facts > div small,
+.theme-dark .application-container .commandbar-data small { color: var(--dark-muted); }
+.theme-dark .application-container .commandbar-facts > div { border-color: var(--dark-line); }
+.theme-dark .application-container :is(.commandbar-data, .commandbar-network-context) {
+  color: var(--dark-text);
+  background: var(--dark-surface-2);
+  border-color: var(--dark-line);
+}
+
+@media (max-width: 1260px) {
+  .application-container .application-commandbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .application-container .commandbar-facts { grid-column: 1 / -1; grid-row: 2; }
+  .application-container .or-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .application-container .replay-metric:nth-child(3) { border-right: 0; }
+}
+
+@media (max-width: 900px) {
+  .application-container { padding: 6px 8px 12px; }
+  .application-container .app-metrics,
+  .project-app-studio .studio-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application-container .app-controlbar,
+  .project-app-studio .studio-toolbar { align-items: stretch; flex-wrap: wrap; }
+  .application-container .app-controlbar .segmented-control { width: 100%; }
+  .application-container .app-controlbar > button { margin-left: 0; }
+  .project-app-studio .studio-toolbar > label { margin-left: 0; }
+}
+
+@media (max-width: 620px) {
+  .application-container .application-commandbar { grid-template-columns: 1fr; }
+  .application-container .application-commandbar > div:last-child,
+  .application-container .commandbar-facts { grid-column: 1; grid-row: auto; }
+  .application-container .commandbar-facts { grid-template-columns: 1fr; }
+  .application-container .commandbar-facts > div { border-top: 1px solid #d6ddd6; border-left: 0; }
+  .application-container .or-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application-container .replay-strip { grid-template-columns: minmax(0, 1fr) auto; }
+  .application-container .replay-strip > em { display: none; }
+  .application-container .or-stage-nav { grid-template-columns: 1fr; }
+  .application-container .or-stage-nav button { border-right: 0; border-bottom: 1px solid #cfd1ca; }
+  .project-app-studio .studio-toolbar { flex-direction: row; }
+  .project-app-studio .studio-toolbar > div { width: 100%; }
+}

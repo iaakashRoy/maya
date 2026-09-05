@@ -239,7 +239,7 @@ export type HumanExpert = {
 export const workspaceTabs: readonly { id: WorkspaceTabId; label: string; count?: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "decisions", label: "Decisions" },
-  { id: "data", label: "Data & graph" },
+  { id: "data", label: "Data" },
   { id: "governance", label: "Controls" },
 ];
 

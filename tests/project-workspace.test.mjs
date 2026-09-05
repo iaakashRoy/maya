@@ -374,7 +374,7 @@ test("projectApp requires the company apps tab and a mounted specialist studio",
   assert.equal(resolveNavigation({ ...mounted, project: "cold-chain-promise" }).projectApp, null);
 });
 
-test("restored application routes fail closed to Data & graph until the project has an L0 contract", async () => {
+test("restored application routes fail closed to Data until the project has an L0 contract", async () => {
   const [navigation, model] = await Promise.all([loadNavigation(), loadWorkspaceModel()]);
   const seed = model.workspaceProjects[0];
   const empty = {
@@ -607,7 +607,7 @@ test("visible project navigation is app-first and keeps data, graph, and identit
     read("../app/WorkIdentityInspector.tsx"),
   ]);
   const visibleTabs = model.slice(model.indexOf("export const workspaceTabs"), model.indexOf("export const workspaceSurfaceIds"));
-  assert.match(visibleTabs, /label: "Data & graph"/);
+  assert.match(visibleTabs, /label: "Data"/);
   assert.doesNotMatch(visibleTabs, /label: "Playground"/);
   assert.doesNotMatch(visibleTabs, /id: "apps"|id: "graph"|id: "agents"|id: "team"/);
   assert.match(workspace, /function ProjectDataWorkspace/);

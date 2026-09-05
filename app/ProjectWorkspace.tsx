@@ -363,7 +363,7 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const advanceRun = () => {
     if (!authorize("agents.run")) return;
     if (!dataContractReady) {
-      onOutcome("Agent trace blocked", "Complete Data & graph mapping before advancing a trace. No candidate result was created.", `RUN-${project.code}-DATA-REQUIRED`, "Blocked");
+      onOutcome("Agent trace blocked", "Complete Data mapping before advancing a trace. No candidate result was created.", `RUN-${project.code}-DATA-REQUIRED`, "Blocked");
       return;
     }
     if (!selectedWorkSession) {
@@ -411,7 +411,7 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const steerRun = (label: string) => {
     if (!authorize("agents.run")) return;
     if (!dataContractReady) {
-      onOutcome("Steering blocked", "Complete Data & graph mapping before steering a trace. No session or data record changed.", `STEER-${project.code}-DATA-REQUIRED`, "Blocked");
+      onOutcome("Steering blocked", "Complete Data mapping before steering a trace. No session or data record changed.", `STEER-${project.code}-DATA-REQUIRED`, "Blocked");
       return;
     }
     if (!selectedWorkSession) {
@@ -520,7 +520,7 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const deniedAccess = !projectViewAccess.allowed ? projectViewAccess : !activeTabAccess.allowed ? activeTabAccess : null;
   if (deniedAccess) return <section className="project-access-boundary" data-page-heading tabIndex={-1}><span>PROJECT ACCESS</span><h1>Project access required</h1><p>The signed-in collaborator has no project-scoped grant for this workspace section. No project data, app, decision, agent, or team surface was opened.</p><small>{deniedAccess.policyRef}</small><button data-action-id="project.access.view-receipt" type="button" onClick={() => onOutcome("Project access blocked", deniedAccess.reason, deniedAccess.policyRef, "Blocked")}>View access receipt</button></section>;
 
-  if (studioApp) return <div className="project-os studio-mode" data-page-heading tabIndex={-1}><section className="project-stage"><ProjectAppStudio appId={studioApp} project={project} onEvidence={openEvidence} onOutcome={onOutcome} /><AppRunHistory key={focusedAppRunId ?? `studio-${studioApp}`} project={project} runs={projectAppRuns.filter((run) => run.appId === studioApp)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete Data & graph setup before starting an application run." : undefined} focusedRunId={focusedAppRunId} initialAppId={studioApp} onRunChange={onRunChange} /></section>{evidence && <EvidenceDrawer receipt={evidence} onClose={() => setEvidence(null)} onOutcome={onOutcome} />}</div>;
+  if (studioApp) return <div className="project-os studio-mode" data-page-heading tabIndex={-1}><section className="project-stage"><ProjectAppStudio appId={studioApp} project={project} onEvidence={openEvidence} onOutcome={onOutcome} /><AppRunHistory key={focusedAppRunId ?? `studio-${studioApp}`} project={project} runs={projectAppRuns.filter((run) => run.appId === studioApp)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete Data setup before starting an application run." : undefined} focusedRunId={focusedAppRunId} initialAppId={studioApp} onRunChange={onRunChange} /></section>{evidence && <EvidenceDrawer receipt={evidence} onClose={() => setEvidence(null)} onOutcome={onOutcome} />}</div>;
 
   return (
     <div className={`project-os ${tab === "agents" ? `playground-app-mode ${playgroundFullscreen ? "playground-fullscreen" : ""}` : ""}`.trim()} data-project-tab={tab} data-page-heading tabIndex={-1}>
