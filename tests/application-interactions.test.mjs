@@ -91,7 +91,7 @@ test("data controls are mutation-aware and filter the graph", async () => {
 
   assert.match(source, /no source was read or written/i);
   assert.match(source, /no agent or credential was created/i);
-  assert.match(source, /DemandSense","demand"/);
+  assert.match(source, /Demand Sense","demand"/);
 });
 
 test("workflow routing enforces lifecycle gates and opens the project evidence graph", async () => {

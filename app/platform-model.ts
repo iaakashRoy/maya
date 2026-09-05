@@ -234,11 +234,11 @@ export const scopeSnapshots: Record<ScopeId, ScopeSnapshot> = {
 };
 
 export const applications: readonly { id: AppId; name: string; shortName: string; description: string; outcome: string; icon: string; accent: string }[] = [
-  { id: "risk", name: "RiskRadar", shortName: "Risk", description: "Trace disruptions through the n-tier supply network and rank procurement criticality.", outcome: "Know what can stop production", icon: "RR", accent: "#ff715b" },
+  { id: "risk", name: "Risk Radar", shortName: "Risk", description: "Trace disruptions through the n-tier supply network and rank procurement criticality.", outcome: "Know what can stop production", icon: "RR", accent: "#ff715b" },
   { id: "optimizer", name: "Network Optimizer", shortName: "Optimize", description: "Frame, calculate, and compare sourcing, inventory, production, and logistics responses with explicit constraints.", outcome: "Choose the best-evidenced response", icon: "NO", accent: "#d7ff38" },
-  { id: "flow", name: "FlowLens", shortName: "Flow", description: "Connect material movement to cash, working capital, revenue, and margin.", outcome: "See where money is trapped", icon: "FL", accent: "#6ed0ff" },
-  { id: "demand", name: "DemandSense", shortName: "Demand", description: "Combine orders, market signals, consumption, and customer behavior into demand scenarios.", outcome: "Plan demand before it surprises you", icon: "DS", accent: "#b8a4ff" },
-  { id: "suppliers", name: "SupplierGraph", shortName: "Suppliers", description: "Understand n-tier suppliers, alternatives, performance, capabilities, and evidence.", outcome: "Find dependency and optionality", icon: "SG", accent: "#77d59c" },
+  { id: "flow", name: "Flow Lens", shortName: "Flow", description: "Connect material movement to cash, working capital, revenue, and margin.", outcome: "See where money is trapped", icon: "FL", accent: "#6ed0ff" },
+  { id: "demand", name: "Demand Sense", shortName: "Demand", description: "Combine orders, market signals, consumption, and customer behavior into demand scenarios.", outcome: "Plan demand before it surprises you", icon: "DS", accent: "#b8a4ff" },
+  { id: "suppliers", name: "Supplier Graph", shortName: "Suppliers", description: "Understand n-tier suppliers, alternatives, performance, capabilities, and evidence.", outcome: "Find dependency and optionality", icon: "SG", accent: "#77d59c" },
 ];
 
 export type AgentStatus = "running" | "attention" | "paused";

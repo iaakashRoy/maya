@@ -4826,3 +4826,403 @@ textarea:focus-visible,
 .theme-dark .workspace-home__project { color: #e4ece6; background: #151d18; border-color: #344139; }
 .theme-dark .workspace-home :is(p, small, span, em, dt) { color: #a7b3aa; }
 .theme-dark .workspace-home :is(h1, h2, h3, h4, b, strong, dd) { color: #edf4ef; }
+
+/* Canonical application header. Every mounted app now keeps the same shell,
+   density, title rhythm, scope position, and action area as the specialist studios. */
+.application-container {
+  --studio-accent: var(--app-signature);
+  --studio-tint: color-mix(in srgb, var(--app-signature) 8%, #fff);
+  --studio-ink: color-mix(in srgb, var(--app-signature) 52%, #17231b);
+}
+.application-container .app-canonical-header,
+.optimizer-workbench .app-canonical-header {
+  min-height: 76px;
+  padding: 9px 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  gap: 12px;
+  color: #17231b;
+  background: linear-gradient(118deg, var(--studio-tint), #fff 62%);
+  border: 1px solid #d3dad3;
+  border-top: 1px solid #d3dad3;
+  box-shadow: inset 3px 0 var(--studio-accent);
+}
+.application-container .app-canonical-header > div,
+.optimizer-workbench .app-canonical-header > div {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 1px 11px;
+  align-items: center;
+}
+.application-container .app-canonical-header > div > .app-code,
+.optimizer-workbench .app-canonical-header > div > .app-code {
+  grid-row: 1 / 5;
+  width: 40px;
+  height: 40px;
+  color: #111a15;
+  background: var(--studio-accent);
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 68%, #8b978f);
+}
+.application-container .app-canonical-header :is(h1, p, small),
+.optimizer-workbench .app-canonical-header :is(h1, p, small) { margin: 0; }
+.application-container .app-canonical-header h1,
+.optimizer-workbench .app-canonical-header h1 {
+  margin: 1px 0 !important;
+  color: #17231b;
+  font-size: 20px !important;
+  font-weight: 560;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+.application-container .app-canonical-header > div > p,
+.optimizer-workbench .app-canonical-header > div > p,
+.application-container .app-canonical-header > aside > b,
+.optimizer-workbench .app-canonical-header > aside > b { color: var(--studio-ink); }
+.application-container .app-canonical-header > div > small,
+.optimizer-workbench .app-canonical-header > div > small,
+.application-container .app-canonical-header > aside :is(span, small),
+.optimizer-workbench .app-canonical-header > aside :is(span, small) { color: #637269; }
+.application-container .app-canonical-header > aside,
+.optimizer-workbench .app-canonical-header > aside {
+  min-height: 54px;
+  padding: 7px 9px;
+  align-content: center;
+  color: #17231b;
+  background: color-mix(in srgb, var(--studio-accent) 7%, #f5f7f3);
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 24%, #d3dad3);
+}
+.application-container .app-canonical-header > aside button,
+.optimizer-workbench .app-canonical-header > aside button {
+  min-height: 26px;
+  padding: 0;
+  color: var(--studio-ink);
+  background: transparent;
+  border: 0;
+  text-align: right;
+  cursor: pointer;
+}
+
+/* Playground is a persistent working console. Conversation stays available;
+   governed data readiness controls tools and steering, not the message composer. */
+.agent-session { grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+.agent-session > .playground-runner-bar {
+  position: static;
+  z-index: auto;
+  min-height: 48px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  background: #101613;
+  border-bottom: 1px solid #29312e;
+}
+.agent-session > header,
+.agent-os.inspector-collapsed .agent-session > header { padding-right: 16px; }
+.playground-ready {
+  min-width: 132px;
+  margin-right: auto;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 2px 7px;
+  align-items: center;
+  color: #edf4ef;
+  font-size: 10px;
+  font-weight: 720;
+}
+.playground-ready > i {
+  grid-row: 1 / 3;
+  width: 8px;
+  height: 8px;
+  background: #61d394;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(97, 211, 148, .1);
+}
+.playground-ready > small { color: #7f8d84; font-size: 8px; font-weight: 520; }
+.agent-prompt {
+  position: relative;
+  z-index: 2;
+  margin: 0 12px 12px;
+  overflow: hidden;
+  background: #151d19;
+  border: 1px solid #536159;
+  border-radius: 7px;
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, .16);
+}
+.agent-quick-prompts {
+  padding: 7px 8px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.agent-prompt .agent-quick-prompts > button {
+  min-height: 25px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: #aebbb3;
+  background: #1d2721;
+  border: 1px solid #39463f;
+  border-radius: 13px;
+  font-size: 9px !important;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-prompt .agent-quick-prompts > button:hover { color: #eef4ef; border-color: #73824e; }
+.agent-prompt textarea {
+  min-height: 68px;
+  max-height: 180px;
+  resize: vertical;
+  font-family: var(--font-sans);
+  font-size: 12px !important;
+}
+.agent-prompt:focus-within { border-color: #9bb629; box-shadow: 0 0 0 2px rgba(215, 255, 56, .1), 0 -10px 28px rgba(0, 0, 0, .2); }
+.agent-prompt footer > button { min-width: 72px; border-radius: 4px; }
+.agent-prompt footer > button > span { color: inherit; font-size: 13px; }
+
+/* Dark theme foundations: neutral surfaces remain neutral, while each app's
+   signature color is reserved for state, focus, and data meaning. */
+.theme-dark {
+  --dark-canvas: #0d1310;
+  --dark-surface: #151d18;
+  --dark-surface-2: #1b251f;
+  --dark-surface-3: #222e26;
+  --dark-line: #37443b;
+  --dark-text: #e8f0ea;
+  --dark-muted: #a5b1a8;
+}
+
+/* 1. Workspace shell, navigation, and universal overlays. */
+.theme-dark :is(.main-content, .project-stage, .workspace-home, .workspace-onboarding) { background: var(--dark-canvas) !important; }
+.theme-dark :is(.search-dialog, .notification-panel, .profile-panel, .action-outcome, .evidence-drawer, .agent-builder) {
+  color: var(--dark-text);
+  background: var(--dark-surface);
+  border-color: var(--dark-line);
+}
+.theme-dark :is(.search-dialog, .notification-panel, .profile-panel, .action-outcome, .evidence-drawer, .agent-builder) :is(input, select, textarea) {
+  color: var(--dark-text);
+  background: var(--dark-surface-2);
+  border-color: #46544a;
+}
+.theme-dark :is(.notification-panel, .profile-panel, .session-receipt-ledger) > button { color: var(--dark-text); border-color: var(--dark-line); }
+.theme-dark .session-receipt-ledger > button.active { background: #27321f; }
+
+/* 2. Project overview, project access, members, and recent work. */
+.theme-dark :is(
+  .project-thesis, .project-metric-grid button, .project-home-grid > section,
+  .project-placeholder, .project-empty-state, .project-access-boundary,
+  .portfolio-footprint, .recent-work-panel, .project-memberships,
+  .collaboration-parties > span, .concept-status
+) { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(.project-home-grid li, .recent-work-list dl div, .project-memberships > div > button, .recent-work-continue) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .project-memberships > div > button:hover { background: var(--dark-surface-3); }
+.theme-dark .project-memberships > div > button > span { color: #dfeaaf; background: #29331f; border-color: #526035; }
+
+/* 3. Decisions, lineage, comparison, and method catalog. */
+.theme-dark :is(.decision-tree-panel, .decision-inspector, .method-library, .decision-compare-grid article, .decision-compare-result) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.decision-node-list > button, .decision-commit-row, .taxonomy-stack article, .method-chips button, .decision-compare-picker button) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.decision-node-list > button.active, .decision-compare-picker button.active) { background: #28331f; border-color: #718443; }
+.theme-dark .taxonomy-stack b { color: #dbe5dd; background: #2a352d; }
+
+/* 4. Data, search, ingestion, files, IoT, and knowledge graph sidecars. */
+.theme-dark :is(
+  .data-graph-commandbar, .data-query-results, .ingestion-workbench,
+  .dataset-register, .dataset-card, .source-file-register, .iot-sources,
+  .iot-template-grid article, .iot-draft-list, .future-adapters,
+  .graph-sidecar, .trace-playback
+) { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(.data-graph-commandbar nav, .data-graph-search, .dataset-card dl div, .iot-template-grid dl div, .iot-draft-list dl div, .upload-drop, .upload-contract, .data-query-results > div > button) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.data-graph-commandbar nav button, .data-graph-search input, .data-graph-search button, .dataset-card > button, .source-file-register > div > button, .iot-draft-list button, .graph-sidecar > button, .graph-sidecar section button) {
+  color: #dfe8e1; background: #1d2821; border-color: #3d4a41;
+}
+.theme-dark .data-graph-commandbar nav button.active { color: #101611; background: #d7ff38; }
+.theme-dark .source-file-register > div > button:hover,
+.theme-dark .data-query-results > div > button:hover { background: var(--dark-surface-3); }
+.theme-dark .dataset-bindings > b,
+.theme-dark .source-file-register > div > button > i { color: #dce9a4; background: #2a351f; border-color: #596738; }
+
+/* 5. App catalog, run history, and canonical app workspaces. */
+.theme-dark :is(.app-catalog-grid article, .app-run-workspace, .app-run-detail, .app-run-list, .app-run-output) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.app-run-list > header, .app-run-list > button, .app-run-receipts button, .app-input-toggle, .app-run-inputs :is(input, select), .app-run-output > div > button, .app-run-output > dl div) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .app-run-list > button.active { background: #27321f; }
+.theme-dark .application-container { color-scheme: dark; background: var(--dark-canvas) !important; }
+.theme-dark .application-container .app-canonical-header,
+.theme-dark .optimizer-workbench .app-canonical-header {
+  color: var(--dark-text);
+  background: linear-gradient(118deg, color-mix(in srgb, var(--studio-accent) 10%, #151d18), #151d18 62%);
+  border-color: var(--dark-line);
+}
+.theme-dark .application-container .app-canonical-header h1,
+.theme-dark .optimizer-workbench .app-canonical-header h1 { color: var(--dark-text); }
+.theme-dark .application-container .app-canonical-header > div > small,
+.theme-dark .optimizer-workbench .app-canonical-header > div > small,
+.theme-dark .application-container .app-canonical-header > aside :is(span, small),
+.theme-dark .optimizer-workbench .app-canonical-header > aside :is(span, small) { color: var(--dark-muted); }
+.theme-dark .application-container .app-canonical-header > aside,
+.theme-dark .optimizer-workbench .app-canonical-header > aside { color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line); }
+.theme-dark :is(.app-workspace .panel, .app-metric, .app-controlbar, .network-context-bridge, .or-metrics, .or-stage-nav) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.app-metric, .replay-metric, .app-controlbar button, .app-controlbar label, .app-controlbar select, .or-stage-nav button, .network-context-bridge > p, .network-context-bridge > footer) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.app-metric p, .app-metric span, .panel-header span, .network-context-bridge p, .network-context-bridge dt, .replay-metric p, .or-stage-nav small) { color: var(--dark-muted); }
+.theme-dark .app-controlbar button.active,
+.theme-dark .segmented-control button.active,
+.theme-dark .or-stage-nav button.active { color: #111712; background: var(--app-signature, #d7ff38); }
+.theme-dark :is(.criticality-table, .demand-table, .supplier-register) :is(th, td) { color: #dce6df; background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(.dependency-summary, .dependency-chain > div, .cash-actions > button, .demand-drivers > article, .alternative-list > article, .supplier-profile dl div, .profile-hero) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.decision-box, .commandbar-data, .network-context-bridge > aside) { color: var(--dark-text); background: #23291c; border-color: #59633d; }
+
+/* 6. Optimizer formulation, methods, scenarios, and release surfaces. */
+.theme-dark :is(
+  .or-stage-main, .decision-contract, .assumption-studio, .objective-hierarchy,
+  .variable-registry, .constraint-studio, .recommended-stack, .method-detail,
+  .scenario-lab, .pareto-panel, .pareto-inspector, .release-gate-panel,
+  .solution-report, .reproducibility-card, .run-history, .solution-package
+) { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(
+  .decision-pattern-grid button, .horizon-control button, .decision-nonnegotiables,
+  .or-strategy-control button, .constraint-family, .stack-card, .method-filters,
+  .method-filters label, .method-index button, .validation-gates article,
+  .release-actions, .release-actions button, .solution-package-grid > aside,
+  .solution-report article, .pending-change-strip
+) { color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line); }
+.theme-dark :is(.method-index button:hover, .decision-pattern-grid button:hover, .stack-card:hover) { background: var(--dark-surface-3); }
+.theme-dark :is(.method-index button > span, .decision-pattern-grid button > span, .constraint-family header > span, .solution-report article > span) { color: #dce6df; background: #2b362e; border-color: #46534a; }
+
+/* 7. Specialist studios, including every card and inspector outside the maps. */
+.theme-dark .project-app-studio {
+  color: var(--dark-text);
+  color-scheme: dark;
+  --studio-tint: color-mix(in srgb, var(--studio-accent) 10%, #151d18);
+  --studio-ink: color-mix(in srgb, var(--studio-accent) 78%, #eef4ef);
+}
+.theme-dark .project-app-studio .studio-header { color: var(--dark-text); background: linear-gradient(118deg, var(--studio-tint), var(--dark-surface) 62%); border-color: var(--dark-line); }
+.theme-dark .project-app-studio .studio-header h1 { color: var(--dark-text); }
+.theme-dark .project-app-studio .studio-header :is(small, aside span) { color: var(--dark-muted); }
+.theme-dark :is(
+  .studio-toolbar, .studio-metric, .mineral-map, .skills-matrix, .plant-flow,
+  .logistics-map, .mineral-balance, .workforce-card, .machine-inspector,
+  .asset-radar-card, .quality-inspector, .quality-genealogy, .unsupported-studio
+) { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(
+  .studio-toolbar button:not(.active), .studio-toolbar select, .mineral-balance > button,
+  .workforce-card dl div, .machine-inspector dl div, .asset-radar-card dl div,
+  .quality-inspector dl div, .skills-row, .skills-row.head, .plant-cells button,
+  .gantt, .gantt > button, .quality-genealogy button
+) { color: #dce6df; background: var(--dark-surface-2); border-color: var(--dark-line); }
+.theme-dark :is(.studio-metric b, .mineral-map h2, .skills-matrix h2, .plant-flow h2, .logistics-map h2, .mineral-balance h2, .workforce-card h2, .machine-inspector h2, .asset-radar-card h2, .quality-inspector h2, .plant-cells :is(b, strong), .unsupported-studio h2) { color: var(--dark-text); }
+.theme-dark :is(.studio-metric span, .studio-metric small, .workforce-card dt, .machine-inspector dt, .asset-radar-card dt, .quality-inspector dt, .plant-cells :is(span, small), .unsupported-studio span) { color: var(--dark-muted); }
+.theme-dark :is(.mineral-map footer, .logistics-map footer, .shift-heatmap) { color: var(--dark-muted); background: var(--dark-surface-2); border-color: var(--dark-line); }
+
+/* 8. Playground side rails, transcript, composer, and context inspector. */
+.theme-dark .agent-os { color: var(--dark-text); background: #0b100d; border-color: var(--dark-line); }
+.theme-dark :is(.agent-session-rail, .agent-trace-panel) { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark :is(.agent-session-rail > header, .agent-inspector-heading, .agent-inspector-tabs) { border-color: var(--dark-line); }
+.theme-dark :is(.agent-session-list > button, .session-activity-list > button, .session-app-runs > button, .agent-roster-compact > button, .agent-profile-compact > button, .agent-inspector-tabs button) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.agent-session-list > button.active, .agent-roster-compact > button.active, .agent-inspector-tabs button.active) { color: #f3f7f4; background: #29351f; border-color: #64763d; }
+.theme-dark .agent-session-list > button :is(small, em),
+.theme-dark .agent-inspector-body :is(p, small, dt),
+.theme-dark .agent-profile-compact p { color: var(--dark-muted); }
+.theme-dark .agent-roster-compact > button > span { color: #dfeaaf; background: #2a351f; border-color: #586738; }
+
+/* 9. Controls, policies, audit, and identity detail. */
+.theme-dark :is(.governance-settings, .governance-control-list, .governance-audit, .work-identity-inspector, .identity-contract, .identity-worklog) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.governance-control-list > article, .governance-audit > div > button, .identity-worklog > button, .identity-summary, .identity-metrics > div, .governance-settings select) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .work-identity-inspector > header { background: #111813; border-color: var(--dark-line); }
+
+@media (max-width: 820px) {
+  .application-container .app-canonical-header,
+  .optimizer-workbench .app-canonical-header { grid-template-columns: 40px minmax(0, 1fr); }
+  .application-container .app-canonical-header > div,
+  .optimizer-workbench .app-canonical-header > div { grid-column: 1 / -1; }
+  .application-container .app-canonical-header > aside,
+  .optimizer-workbench .app-canonical-header > aside { grid-column: 1 / -1; justify-items: start; }
+  .application-container .app-canonical-header > aside button,
+  .optimizer-workbench .app-canonical-header > aside button { text-align: left; }
+  .agent-session > .playground-runner-bar { flex-wrap: wrap; justify-content: flex-start; }
+  .playground-ready { width: 100%; }
+  .agent-session > .playground-runner-bar label { flex: 1; }
+}
+
+/* 10. Operations World: dashboard chrome and analytical cards. */
+.theme-dark .scope-dashboard { color: var(--dark-text); background: var(--dark-canvas); }
+.theme-dark :is(.scope-dashboard .view-intro, .scope-dashboard .control-strip, .scope-dashboard .panel, .scope-dashboard .metric-card) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.scope-dashboard .operations-scope, .scope-dashboard .filter-group, .scope-dashboard .segmented-control, .scope-dashboard .money-mode-focus) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark :is(.scope-dashboard .operations-scope button, .scope-dashboard .filter-group button, .scope-dashboard .filter-group select, .scope-dashboard .segmented-control button, .scope-dashboard .control-refresh) {
+  color: #dce6df; background: #1d2821; border-color: #3d4a41;
+}
+.theme-dark :is(.scope-dashboard .operations-scope button.active, .scope-dashboard .filter-group button.active, .scope-dashboard .segmented-control button.active) { color: #111712; background: #d7ff38; }
+.theme-dark :is(.scope-dashboard .decision-brief-card, .scope-dashboard .intel-list article, .scope-dashboard .money-list article, .scope-dashboard .supplier-list article) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .scope-dashboard :is(p, small, .operations-context, .intel-meta span, .intel-meta em) { color: var(--dark-muted); }
+.theme-dark .scope-dashboard :is(h1, h2, h3, b, strong, th, dd) { color: var(--dark-text); }
+.theme-dark .scope-dashboard table :is(th, td) { color: #dce6df; background: var(--dark-surface); border-color: var(--dark-line); }
+
+/* 11. Decision operations: inbox, case, review, and approval controls. */
+.theme-dark .decision-workspace { color: var(--dark-text); background: var(--dark-canvas); }
+.theme-dark :is(.decision-workspace .workflow-intro, .decision-workspace .case-hero, .decision-workspace .panel, .decision-workspace .workflow-metrics > div) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.decision-workspace .workflow-intro-context, .decision-workspace .decision-controls, .decision-workspace .decision-search, .decision-workspace .decision-row, .decision-workspace .contribution-card, .decision-workspace .evidence-list > button, .decision-workspace .action-summary dl div) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .decision-workspace :is(input, select) { color: var(--dark-text); background: #202b24; border-color: #455249; }
+.theme-dark .decision-workspace .decision-controls button { color: #dce6df; background: #1d2821; border-color: #3d4a41; }
+.theme-dark .decision-workspace .decision-controls button.active { color: #111712; background: #d7ff38; }
+.theme-dark .decision-workspace :is(.entity-chip-row span, .code-chip-row code) { color: #dbe7a3; background: #29341f; border-color: #566438; }
+.theme-dark .decision-workspace :is(p, small, em, dt, .panel-heading > div > p) { color: var(--dark-muted); }
+.theme-dark .decision-workspace :is(h1, h2, h3, b, strong, dd) { color: var(--dark-text); }
+
+/* 12. Data operations and graph tooling outside a project tab. */
+.theme-dark .data-workspace { color: var(--dark-text); background: var(--dark-canvas); }
+.theme-dark :is(.data-workspace .data-intro, .data-workspace .panel, .data-workspace .app-metric, .data-workspace .entity-inspector) {
+  color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line);
+}
+.theme-dark :is(.data-workspace .app-metric, .data-workspace .pipeline-stages article, .data-workspace .agent-list article, .data-workspace .agent-detail-hero, .data-workspace .decision-box, .data-workspace .source-proof button, .data-workspace .entity-apps button, .data-workspace .schema-coverage article, .data-workspace .mapping-queue button) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .data-workspace .data-intro > aside { color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line); }
+.theme-dark .data-workspace :is(.graph-toolbar button, .graph-toolbar label, .graph-toolbar select, .agent-actions button) { color: #dce6df; background: #1d2821; border-color: #3d4a41; }
+.theme-dark .data-workspace :is(.graph-toolbar button.active, .agent-actions button.active, .agent-actions .primary-action) { color: #111712; background: #d7ff38; }
+.theme-dark .data-workspace :is(p, small, dt, .data-intro > div > p:last-child) { color: var(--dark-muted); }
+.theme-dark .data-workspace :is(h1, h2, h3, b, strong, dd) { color: var(--dark-text); }
+
+/* 13. Workspace landing, onboarding form, and empty states. */
+.theme-dark :is(.workspace-home__work-item, .workspace-home__collaborator, .workspace-home__search, .workspace-home__actions button, .workspace-home__empty-client, .workspace-home__empty-search) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .workspace-home__project:hover,
+.theme-dark .workspace-home__work-item:hover,
+.theme-dark .workspace-home__collaborator:hover { background: var(--dark-surface-3); }
+.theme-dark :is(.workspace-onboarding .builder-panel, .workspace-onboarding .builder-review div, .workspace-onboarding .builder-check, .workspace-onboarding .skill-upload) {
+  color: var(--dark-text); background: var(--dark-surface-2); border-color: var(--dark-line);
+}
+.theme-dark .workspace-onboarding :is(input, select, textarea) { color: var(--dark-text); background: #202b24; border-color: #46544a; }
+.theme-dark .workspace-onboarding nav button { color: #cbd5ce; background: var(--dark-surface-2); border-color: var(--dark-line); }
+.theme-dark .workspace-onboarding nav button.active { color: #111712; background: #d7ff38; }

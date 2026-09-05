@@ -56,7 +56,7 @@ export type ApplicationBlueprint = {
 export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBlueprint> = {
   risk: {
     id: "risk",
-    name: "RiskRadar",
+    name: "Risk Radar",
     purpose: "Continuously rank external and internal threats by the business interruption they can cause, not by news volume alone.",
     decisionQuestion: "Which emerging dependency can stop customer commitments, when will impact occur, and which control should be activated first?",
     primaryUsers: "Chief supply chain officer · control tower · category leaders · business continuity",
@@ -148,7 +148,7 @@ export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBluep
   },
   flow: {
     id: "flow",
-    name: "FlowLens",
+    name: "Flow Lens",
     purpose: "Make the financial consequence of every material, order, and logistics movement visible to operations.",
     decisionQuestion: "Where is cash or margin trapped in the physical network, and which operational action releases it without harming service?",
     primaryUsers: "Working capital · supply chain finance · logistics · inventory · order management",
@@ -194,7 +194,7 @@ export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBluep
   },
   demand: {
     id: "demand",
-    name: "DemandSense",
+    name: "Demand Sense",
     purpose: "Create a probabilistic, explainable demand view that directs planners to exceptions requiring business judgment.",
     decisionQuestion: "What is the credible demand range, why has it changed, and which supply or commercial decision should respond?",
     primaryUsers: "Demand planning · sales · S&OP/IBP · supply planning · finance",
@@ -240,7 +240,7 @@ export const applicationBlueprints: Record<ApplicationDetailId, ApplicationBluep
   },
   suppliers: {
     id: "suppliers",
-    name: "SupplierGraph",
+    name: "Supplier Graph",
     purpose: "Understand n-tier supplier dependency, discover qualified alternatives, and manage supplier resilience as a portfolio.",
     decisionQuestion: "Which supplier capability, ownership, site, or sub-tier dependency matters—and what credible alternative or development action exists?",
     primaryUsers: "Procurement · supplier quality · engineering · risk · sustainability",

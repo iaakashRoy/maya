@@ -634,10 +634,12 @@ test("visible project navigation is app-first and keeps data, graph, and identit
 });
 
 test("decision lineage, interactive controls, uniform project leaves, and theme controls are explicit", async () => {
-  const [workspace, shell, inspector, css] = await Promise.all([
+  const [workspace, shell, inspector, applications, optimizer, css] = await Promise.all([
     read("../app/ProjectWorkspace.tsx"),
     read("../app/PlatformShell.tsx"),
     read("../app/WorkIdentityInspector.tsx"),
+    read("../app/ApplicationViews.tsx"),
+    read("../app/OptimizationWorkbench.tsx"),
     read("../app/globals.css"),
   ]);
 
@@ -658,6 +660,11 @@ test("decision lineage, interactive controls, uniform project leaves, and theme 
   assert.match(css, /\.decision-git-lanes/);
   assert.match(css, /\.governance-switch/);
   assert.match(css, /\.platform-shell\.theme-dark/);
+  assert.match(applications, /className="studio-header app-intro app-canonical-header"/);
+  assert.match(optimizer, /className="studio-header app-intro app-canonical-header optimizer-hero"/);
+  for (const darkFamily of ["Operations World", "Decision operations", "Data operations", "Specialist studios", "Playground side rails", "Controls, policies"]) {
+    assert.match(css, new RegExp(`/\\* [0-9]+\\. ${darkFamily}`));
+  }
 });
 
 test("project navigation keeps route context, closes transient chrome, and reveals selected ancestry", async () => {
@@ -703,7 +710,11 @@ test("session continuation and application assumptions expose truthful controls"
   assert.match(source, /<input aria-invalid=\{Boolean\(inputErrors\[input\.key\]\)\} type=\{input\.kind === "number" \? "number" : "text"\} min=\{input\.min\} max=\{input\.max\} step=\{input\.step\}/);
   assert.match(source, /event\.key === "Enter" && !event\.shiftKey && !event\.nativeEvent\.isComposing/);
   assert.match(source, /disabled=\{!selectedSession\}[^>]*onClick=\{onAdvance\}/);
-  assert.match(source, /Playground run blocked[\s\S]*?Complete Data & graph mapping/);
+  const submitChat = source.slice(source.indexOf("const submitChat ="), source.indexOf("const advanceRun ="));
+  assert.doesNotMatch(submitChat, /!dataContractReady/);
+  assert.match(source, /Ready to chat/);
+  assert.match(source, /Data setup needed for tools/);
+  assert.match(source, /disabled=\{!selectedSession \|\| !dataReady\}/);
   assert.match(source, /const replayPrompt = selectedWorkSession\.agentTrace\?\.prompt \?\? selectedWorkSession\.objective/);
   assert.match(source, /storedRunId = preferredAppId \? activityState\.selectedRunByProjectApp/);
   assert.match(source, /setArtifactReceipt\(referencedInputReceipt\(input\.evidenceRef!\)\)/);

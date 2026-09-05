@@ -108,7 +108,7 @@ test("server-renders the selected sector, client, project, data tab, and special
   assert.match(studioHtml, /class="project-os studio-mode"/);
   assert.match(studioHtml, /Lithium-to-Cell Provenance/);
   assert.match(studioHtml, /TerraMetals Alliance/);
-  assert.match(studioHtml, /MineralAtlas/);
+  assert.match(studioHtml, /Mineral Atlas/);
   assert.match(studioHtml, /RESERVE[\s\S]*?REFINERY[\s\S]*?PRODUCT/);
   assert.match(studioHtml, /Runs, reports, and reruns/);
   assert.match(studioHtml, /APP-P007-MA-019/);
@@ -158,11 +158,11 @@ test("Review renders an explicit lifecycle gate before approval", async () => {
 
 test("each decision app exposes a project-bound, decision-specific operating model", async () => {
   const applicationRoutes = [
-    ["risk", "RiskRadar", /Dependencies and exposure/, /CRITICAL PROCUREMENT REGISTER/],
+    ["risk", "Risk Radar", /Dependencies and exposure/, /CRITICAL PROCUREMENT REGISTER/],
     ["optimizer", "Network Optimizer", /Choose the decision shape before choosing an algorithm/, /HANDBOOK TRACE/],
-    ["flow", "FlowLens", /Material and cash flow/, /ORDER-TO-CASH FLOW/],
-    ["demand", "DemandSense", /Demand range and drivers/, /EXPLAINABLE FORECAST/],
-    ["suppliers", "SupplierGraph", /Supplier dependency and options/, /N-TIER SUPPLY NETWORK/],
+    ["flow", "Flow Lens", /Material and cash flow/, /ORDER-TO-CASH FLOW/],
+    ["demand", "Demand Sense", /Demand range and drivers/, /EXPLAINABLE FORECAST/],
+    ["suppliers", "Supplier Graph", /Supplier dependency and options/, /N-TIER SUPPLY NETWORK/],
   ];
 
   for (const [view, name, decisionFocus, distinctiveSurface] of applicationRoutes) {
@@ -207,6 +207,9 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
       assert.match(html, /SES-P002-024/);
       assert.match(html, /MSG-P002-024-001/);
       assert.match(html, /Continue as new session/);
+      assert.match(html, /Ready to chat/);
+      assert.match(html, /id="project-agent-prompt"/);
+      assert.match(html, /data-action-id="agents\.send-prompt"/);
     }
     if (path.includes("projectTab=data")) {
       assert.match(html, /class="dataset-card"/);
@@ -245,16 +248,16 @@ test("ships the two-root IA, onboarding, project accountability, ten apps, and w
     "Decisions",
     "Decision",
     "Review",
-    "RiskRadar",
+    "Risk Radar",
     "Network Optimizer",
-    "FlowLens",
-    "DemandSense",
-    "SupplierGraph",
-    "MineralAtlas",
-    "WorkforceStudio",
-    "ManufacturingTwin",
-    "LogisticsRadar",
-    "QualityGenealogy",
+    "Flow Lens",
+    "Demand Sense",
+    "Supplier Graph",
+    "Mineral Atlas",
+    "Workforce Studio",
+    "Manufacturing Twin",
+    "Logistics Radar",
+    "Quality Genealogy",
     "Data & graph",
     "Playground",
     "Agent accountability",
