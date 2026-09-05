@@ -21,6 +21,8 @@ import {
   createSessionProject,
   createSessionProjectMemberships,
   agentsFor,
+  datasetsFor,
+  decisionsFor,
   evaluateProjectAccess,
   humanExperts,
   membershipsForProject,
@@ -1162,7 +1164,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
               </div>
             </div>
           </section>}
-          <div className="statusbar">{canViewActiveProject ? <><span><i className="status-fixture" />{activeProject.stage}</span><span>{activeProject.client}</span><span>{activeProject.counts.observations} fixture observations</span><span>{membershipCatalog.filter((item) => item.projectId === activeProject.id).length} collaborators · project context</span></> : resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>
+          {canViewActiveProject ? <div className="project-section-bar" aria-label="Project sections and state">
+            <nav className="project-section-tabs" aria-label="Project workspace sections">{workspaceTabs.map((item) => {
+              const active = view === "company" && !activeProjectApp && (activeProjectTab === item.id || (item.id === "data" && activeProjectTab === "graph"));
+              const count = item.id === "decisions" ? decisionsFor(activeProject).length : item.id === "data" ? datasetsFor(activeProject).length : undefined;
+              return <button data-action-id={`workspace.tab.${item.id}`} type="button" aria-current={active ? "page" : undefined} className={active ? "active" : ""} key={item.id} onClick={() => openProjectTab(item.id)}><span>{item.label}</span>{count !== undefined && <em>{count}</em>}</button>;
+            })}</nav>
+            <aside className="project-section-state" aria-label={`Project state: ${activeProject.stage}`}><span><i className={`project-tone-${activeProject.health}`} />{activeProject.stage}</span><small>{activeProject.classification} · {activeProject.dataResidency}</small></aside>
+          </div> : <div className="statusbar">{resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>}
         </div>
 
         <main className="main-content">

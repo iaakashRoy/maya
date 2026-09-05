@@ -28,7 +28,6 @@ import {
   signedInCollaboratorId,
   workspaceCollaborators,
   workspaceProjects,
-  workspaceTabs,
   type EvidenceReceipt,
   type ExpertAgent,
   type ProjectAppId,
@@ -518,14 +517,6 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
     onOutcome("Policy review queued", `${reviewed.name} is marked for a browser-session policy review. No reviewer, ticket, identity, credential, endpoint, or network route was created.`, reviewed.evidenceRef, "Saved");
   };
 
-  const tabCounts: Partial<Record<WorkspaceTabId, number>> = {
-    decisions: decisionsFor(project).length,
-    apps: mountedApps.length,
-    data: datasetsFor(project).length + sessionDatasets.length + connectorDrafts.length,
-    agents: availableAgents.length,
-    team: projectMembers.length + assignedExperts.length,
-  };
-
   const deniedAccess = !projectViewAccess.allowed ? projectViewAccess : !activeTabAccess.allowed ? activeTabAccess : null;
   if (deniedAccess) return <section className="project-access-boundary" data-page-heading tabIndex={-1}><span>PROJECT ACCESS</span><h1>Project access required</h1><p>The signed-in collaborator has no project-scoped grant for this workspace section. No project data, app, decision, agent, or team surface was opened.</p><small>{deniedAccess.policyRef}</small><button data-action-id="project.access.view-receipt" type="button" onClick={() => onOutcome("Project access blocked", deniedAccess.reason, deniedAccess.policyRef, "Blocked")}>View access receipt</button></section>;
 
@@ -534,8 +525,6 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   return (
     <div className={`project-os ${tab === "agents" ? `playground-app-mode ${playgroundFullscreen ? "playground-fullscreen" : ""}` : ""}`.trim()} data-project-tab={tab} data-page-heading tabIndex={-1}>
       <section className="project-stage">
-        {tab !== "agents" && <><header className="project-commandbar"><div><p>{project.code} · Project workspace</p><h1>{project.name}</h1><span>{project.problem}</span></div><aside><small>PROJECT STATE</small><b><i className={`project-tone-${project.health}`} />{project.stage}</b><span>{project.classification} · {project.dataResidency}</span></aside></header>
-        <nav className="project-tabs" aria-label="Project workspace sections">{workspaceTabs.map((item) => { const active = tab === item.id || (item.id === "data" && tab === "graph"); return <button data-action-id={`workspace.tab.${item.id}`} type="button" aria-current={active ? "page" : undefined} className={active ? "active" : ""} key={item.id} onClick={() => changeTab(item.id)}><span>{item.label}</span>{tabCounts[item.id] !== undefined && <em>{tabCounts[item.id]}</em>}</button>; })}</nav></>}
          {tab === "overview" && <><OverviewPanel project={project} mounted={mountedApps} onTab={changeTab} onEvidence={openEvidence} onOpenApp={openApp} /><RecentWorkPanel sessions={workSessions} onOpen={openWorkSession} onContinue={continueWorkSession} />{project.operationsWorldIntake && <ProjectIntakeSummary project={project} onEvidence={openEvidence} />}</>}
         {tab === "decisions" && <DecisionPanel project={project} selected={selectedDecision} onSelect={setSelectedDecision} onEvidence={openEvidence} onOpenCase={onOpenCase} onOutcome={onOutcome} onCreateDraft={() => { if (!dataContractReady) { onOutcome("Decision draft blocked", "Complete the Data mapping review before creating a decision brief. No empty decision or case was created.", `DECISION-${project.code}-DATA-REQUIRED`, "Blocked"); return; } setDecisionDraftReady(true); setSelectedDecision("D0"); onProjectSetupChange?.(project.id, { counts: { ...project.counts, decisions: 1 } }); onOutcome("Decision brief draft created", `A browser-session decision brief was created for ${project.name} with a human review boundary; no approval or operational release occurred.`, `DECISION-${project.code}-DRAFT-01`, "Saved"); }} draftReady={decisionDraftReady} />}
          {tab === "apps" && <AppsPanel project={project} mounted={mountedApps} runs={projectAppRuns} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenPlayground={() => changeTab("agents")} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete the Data mapping review before starting an application run." : undefined} focusedRunId={focusedAppRunId} onRunChange={onRunChange} />}
@@ -632,7 +621,7 @@ function DecisionPanel({ project, selected, onSelect, onEvidence, onOpenCase, on
 function AppsPanel({ project, mounted, runs, activityState, dispatchActivity, onOpen, onOpenPlayground, onOpenSession, onEvidence, onOutcome, canRun, runBlockedReason, focusedRunId, onRunChange }: { project: WorkspaceProject; mounted: readonly ProjectAppId[]; runs: readonly ProjectAppRun[]; activityState: ProjectActivityState; dispatchActivity: Dispatch<ProjectActivityAction>; onOpen: (id: ProjectAppId) => void; onOpenPlayground: () => void; onOpenSession: (sessionId: string) => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; canRun: boolean; runBlockedReason?: string; focusedRunId?: string | null; onRunChange?: (sessionId: string, runId: string) => void }) {
   const mountReceipt = fixtureEvidenceFor(project, { id: "EV-APP-MOUNT-MANIFEST", claim: "Project app mount manifest", displayedValue: `${mounted.length + 1} mounted of ${projectApps.length + 1} available`, source: "Browser-session project app manifest", formula: "Count of app contracts mounted to the selected project fixture, including the always-available Playground", inputs: ["playground", ...mounted], grain: "Project × app contract" });
   return <div className="apps-os">
-    <header className="section-hero"><div><p>APPS</p><h2>Project applications</h2><span>Mount specialist tools against this project&apos;s data, variables, methods, agents, and evidence.</span></div><button data-action-id="apps.trace-mount-manifest" type="button" onClick={() => onEvidence(mountReceipt)}>Trace app manifest</button></header>
+    <div className="project-page-actions project-apps-actions"><span>{mounted.length + 1} mounted applications · project graph connected</span><button data-action-id="apps.trace-mount-manifest" type="button" onClick={() => onEvidence(mountReceipt)}>Trace mount manifest</button></div>
     <section className="app-graph-canvas"><div className="app-graph-core"><span>PROJECT GRAPH</span><b>{project.code}</b><small>{project.counts.relationships} synthetic relationships</small></div>{projectApps.map((app,index) => <button data-action-id={`apps.graph.${app.id}`} className={`app-graph-node n${index+1} ${mounted.includes(app.id) ? "mounted" : "available"}`} style={{"--node-accent":app.accent} as React.CSSProperties} type="button" key={app.id} onClick={() => onOpen(app.id)}><AppGlyph appId={app.id} /><b>{app.name}</b><small>{mounted.includes(app.id) ? "Mounted" : "Mount"}</small></button>)}<div className="app-edge-ledger">{appDependencyEdges.slice(0,6).map((edge) => <span key={`${edge[0]}-${edge[1]}`}><b>{edge[0]}</b> → {edge[1]} <em>{edge[2]}</em></span>)}</div></section>
     <section className="app-catalog-grid"><article className="playground-catalog-card" data-app-theme="playground" style={{"--app-accent":"#7d5cf4"} as React.CSSProperties}><header><AppGlyph appId="playground" /><div><small>Agent workbench</small><h3>Playground</h3></div><em>MOUNTED</em></header><p>Run project-scoped expert agents in a live terminal, attach files, steer traces, and inspect evidence-linked results.</p><dl><div><dt>Terminal artifact</dt><dd>Session transcript + review package</dd></div><div><dt>Methods</dt><dd>{project.methodCodes.slice(0, 4).join(" · ")}</dd></div><div><dt>Agents</dt><dd>{project.counts.agents} project specialists</dd></div></dl><button data-action-id="apps.open.playground" type="button" onClick={onOpenPlayground}>Open Playground →</button></article>{projectApps.map((app) => <article data-app-theme={app.id} key={app.id} style={{"--app-accent":app.accent} as React.CSSProperties}><header><AppGlyph appId={app.id} /><div><small>{app.archetype}</small><h3>{app.name}</h3></div><em>{mounted.includes(app.id) ? "MOUNTED" : app.status.toUpperCase()}</em></header><p>{app.outcome}</p><dl><div><dt>Terminal artifact</dt><dd>{app.artifact}</dd></div><div><dt>Methods</dt><dd>{app.methodCodes.join(" · ")}</dd></div><div><dt>Variables</dt><dd>{app.variableIds.join(" · ")}</dd></div></dl><button data-action-id={`apps.open.${app.id}`} type="button" onClick={() => onOpen(app.id)}>{mounted.includes(app.id) ? `Open ${app.name}` : `Mount ${app.name}`} →</button></article>)}</section>
     <AppRunHistory key={focusedRunId ?? "project-app-runs"} project={project} runs={runs} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={onOpen} onOpenSession={onOpenSession} onEvidence={onEvidence} onOutcome={onOutcome} canRun={canRun} runBlockedReason={runBlockedReason} focusedRunId={focusedRunId} initialAppId={mounted[0]} onRunChange={onRunChange} />
@@ -800,20 +789,19 @@ function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadSta
   const hitCount = datasetHits.length + previewHits.length + documentHits.length + connectorTemplateHits.length + connectorHits.length + graphHits.length + metricHits.length + variableHits.length;
 
   return <div className="project-data-workspace">
-    <header className="data-graph-commandbar">
-      <div><p>PROJECT KNOWLEDGE</p><h2>Data &amp; graph</h2><span>Upload, inspect, query, and trace every governed project source from one workspace.</span></div>
+    <div className="data-graph-commandbar" aria-label="Data and graph tools">
       <nav aria-label="Data and graph views">
         <button data-action-id="data-graph.mode.sources" className={mode === "sources" ? "active" : ""} type="button" aria-pressed={mode === "sources"} onClick={() => onMode("sources")}>Sources <span>{datasetsFor(project).length + sessionDatasets.length}</span></button>
         <button data-action-id="data-graph.mode.graph" className={mode === "graph" ? "active" : ""} type="button" aria-pressed={mode === "graph"} onClick={() => onMode("graph")}>Knowledge graph <span>{nodes.length}</span></button>
       </nav>
-    </header>
-    <label className="data-graph-search">
-      <span aria-hidden="true">⌕</span>
-      <span className="sr-only">Query project data and knowledge graph</span>
-      <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search files, tables, PDFs, variables, evidence, connectors, and graph entities" />
-      <small aria-live="polite">{normalizedQuery ? `${hitCount} matches` : `${project.counts.documents} documents · ${project.counts.entities} entities · ${project.counts.claims} claims`}</small>
-      {query && <button data-action-id="data-graph.search.clear" type="button" aria-label="Clear data query" onClick={() => onQuery("")}>×</button>}
-    </label>
+      <label className="data-graph-search">
+        <span aria-hidden="true">⌕</span>
+        <span className="sr-only">Query project data and knowledge graph</span>
+        <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search files, tables, PDFs, variables, evidence, connectors, and graph entities" />
+        <small aria-live="polite">{normalizedQuery ? `${hitCount} matches` : `${project.counts.documents} documents · ${project.counts.entities} entities · ${project.counts.claims} claims`}</small>
+        {query && <button data-action-id="data-graph.search.clear" type="button" aria-label="Clear data query" onClick={() => onQuery("")}>×</button>}
+      </label>
+    </div>
     {normalizedQuery && <section className="data-query-results" aria-label="Project data query results">
       <header><b>Query results</b><span>{hitCount} project-scoped matches</span></header>
       <div>
@@ -1101,7 +1089,7 @@ function GovernancePanel({ project, onOutcome, onEvidence }: { project: Workspac
   };
   const activeCount = controls.filter((control) => controlStates[control.id]).length;
   return <div className="governance-os">
-    <header className="section-hero"><div><p>CONTROLS</p><h2>Project policy</h2><span>{project.classification} · {project.dataResidency} · owner {project.owner}</span></div><div className="governance-header-actions"><button data-action-id="governance.test" type="button" onClick={runTest}>Run policy test</button><button data-action-id="governance.export-manifest" type="button" onClick={() => onOutcome("Policy-draft receipt recorded", `${activeCount} of ${controls.length} browser controls, ${operatingMode} mode, quorum ${approvalQuorum}, and ${retention} retention were recorded. No backend policy, manifest file, or external system was changed.`, `GOV-MANIFEST-${project.code}`)}>Record configuration</button></div></header>
+    <div className="project-page-actions governance-header-actions"><span>{activeCount}/{controls.length} controls on · {operatingMode} · owner {project.owner}</span><div><button data-action-id="governance.test" type="button" onClick={runTest}>Run policy test</button><button data-action-id="governance.export-manifest" type="button" onClick={() => onOutcome("Policy-draft receipt recorded", `${activeCount} of ${controls.length} browser controls, ${operatingMode} mode, quorum ${approvalQuorum}, and ${retention} retention were recorded. No backend policy, manifest file, or external system was changed.`, `GOV-MANIFEST-${project.code}`)}>Record configuration</button></div></div>
     <section className="governance-console" aria-label="Interactive project policy draft">
       <aside className="governance-settings">
         <header><span>POLICY DRAFT</span><b>{activeCount}/{controls.length} controls on</b></header>

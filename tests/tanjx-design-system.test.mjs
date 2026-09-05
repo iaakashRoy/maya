@@ -89,10 +89,12 @@ test("the workspace uses a compact chrome and content density contract", async (
   assert.match(css, /--topbar-height:\s*56px/);
   assert.match(css, /--project-app-row-height:\s*48px/);
   assert.match(css, /--project-people-row-height:\s*38px/);
-  assert.match(css, /--statusbar-height:\s*24px/);
+  assert.match(css, /--statusbar-height:\s*30px/);
   assert.match(density, /\.context-mounted-apps\s*\{\s*height:\s*40px/);
   assert.match(density, /\.context-identity-tools\s*\{\s*height:\s*34px/);
-  assert.match(density, /\.project-tabs button\s*\{\s*min-height:\s*34px/);
+  assert.match(density, /\.project-section-tabs button\s*\{[\s\S]*?border-bottom:\s*2px solid transparent/);
+  assert.match(density, /\.upload-drop\s*\{[\s\S]*?min-height:\s*58px/);
+  assert.match(density, /\.project-metric-grid button\s*\{\s*min-height:\s*82px/);
   assert.match(density, /\.application-container \.app-canonical-header,[\s\S]*?min-height:\s*68px/);
   assert.match(density, /\.sidebar-project-leaves \.sidebar-project\s*\{\s*min-height:\s*56px/);
   assert.match(density, /@media \(max-width:\s*1180px\) and \(min-width:\s*761px\)[\s\S]*?--project-people-row-height:\s*66px/);

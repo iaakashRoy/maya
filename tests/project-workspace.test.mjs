@@ -161,8 +161,8 @@ test("project workspace buttons are action-identified and shell actions end in r
   assert.match(workspace, /projectSessionCache\[project\.id\] =/);
   assert.match(workspace, /datasetsFor\(project\)\.length \+ sessionDatasets\.length/);
   assert.match(workspace, /const availableAgents = \[\.\.\.agentsFor\(project\), \.\.\.createdAgents\]/);
-  assert.match(workspace, /agents: availableAgents\.length/);
-  assert.match(workspace, /assignedExperts\.length/);
+  assert.match(workspace, /onAgentRosterChange\?\.\(project\.id, \[\.\.\.agentsFor\(project\), \.\.\.createdAgents\]\)/);
+  assert.match(workspace, /assigned=\{assignedExperts\}/);
 });
 
 test("agent app-run links and run artifacts terminate on exact, concrete project records", async () => {
@@ -591,8 +591,12 @@ test("project chrome has one hierarchy, mounted context, and three accessible co
   assert.match(css, /\.side-rail \.rail-footer \{ display: none; \}/);
   assert.match(css, /--rail-width: 304px/);
   assert.match(css, /\.work-identity-inspector \{[\s\S]*?position: fixed/);
-  assert.match(css, /\.project-tabs \{[\s\S]*?grid-template-columns: repeat\(4/);
-  assert.doesNotMatch(css, /\.project-tabs[^}]*overflow-x:\s*(?:auto|scroll)/s);
+  assert.match(shell, /className="project-section-bar"/);
+  assert.match(shell, /className="project-section-tabs" aria-label="Project workspace sections"/);
+  assert.match(shell, /className="project-section-state"/);
+  assert.doesNotMatch(workspace, /className="project-commandbar"|className="project-tabs"/);
+  assert.match(css, /\.project-section-tabs \{[\s\S]*?grid-template-columns: repeat\(4/);
+  assert.doesNotMatch(css, /\.project-section-tabs[^}]*overflow-x:\s*(?:auto|scroll)/s);
 });
 
 test("visible project navigation is app-first and keeps data, graph, and identity work connected", async () => {
@@ -618,6 +622,13 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   assert.match(workspace, /data-action-id=\{`data-query\.connector-template\.\$\{template\.id\}`\}/);
   assert.match(shell, /visibleMountedApps/);
   assert.match(shell, /hiddenMountedAppCount/);
+  assert.match(shell, /workspaceTabs\.map/);
+  assert.match(shell, /decisionsFor\(activeProject\)\.length/);
+  assert.match(shell, /datasetsFor\(activeProject\)\.length/);
+  assert.match(shell, /Project state: \$\{activeProject\.stage\}/);
+  assert.doesNotMatch(workspace, /PROJECT KNOWLEDGE|<h1>\{project\.name\}<\/h1>/);
+  assert.match(workspace, /className="project-page-actions project-apps-actions"/);
+  assert.match(workspace, /className="project-page-actions governance-header-actions"/);
   assert.match(shell, /data-action-id="context\.open-playground"/);
   assert.match(workspace, /data-action-id="apps\.open\.playground"/);
   assert.match(shell, /selection=\{identitySelection\}/);

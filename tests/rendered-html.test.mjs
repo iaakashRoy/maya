@@ -193,8 +193,8 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
   const projectPath = "scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise";
   const routes = [
     [`/?view=decisions&${projectPath}`, "Branch, challenge, and merge"],
-    [`/?view=company&projectTab=apps&${projectPath}`, "Project applications"],
-    [`/?view=company&projectTab=data&${projectPath}`, "Data &amp; graph"],
+    [`/?view=company&projectTab=apps&${projectPath}`, "mounted applications"],
+    [`/?view=company&projectTab=data&${projectPath}`, "Search files, tables, PDFs"],
     [`/?view=graph&${projectPath}`, "AGENT TRAVERSAL"],
     [`/?view=agents&${projectPath}`, "SESSIONS"],
   ];
@@ -204,8 +204,9 @@ test("Decisions, apps, Data & graph, and Playground resolve inside the selected 
     assert.equal(response.status, 200, `${path} should render`);
     const html = await response.text();
     assert.match(html, /class="project-os(?: [^"]+)?"/);
-    if (path.includes("view=agents")) assert.doesNotMatch(html, /<h1>Playground<\/h1>/);
-    else assert.match(html, /<h1>Cold Chain Promise<\/h1>/);
+    assert.doesNotMatch(html, /<h1>(?:Playground|Cold Chain Promise)<\/h1>/);
+    assert.match(html, /class="project-section-bar"/);
+    assert.match(html, /aria-label="Project state: Simulate release"/);
     assert.match(html, /Helixora Therapeutics/);
     assert.ok(html.includes(expected), `${path} should render ${expected}`);
     if (path.includes("view=agents")) {
@@ -294,15 +295,16 @@ test("ships the two-root IA, onboarding, project accountability, ten apps, and w
   assert.match(workspaceModel, /counts: \{ entities: "0", relationships: "0", observations: "0", documents: "0", events: "0", claims: "0", decisions: 0, runs: 0, apps: 0, agents: 0, experts: 2 \}/);
   assert.match(workspaceModel, /createSessionProjectMemberships/);
   assert.match(workspaceModel, /Access fails closed and no project resource is opened or changed/);
-  assert.match(projectWorkspace, /aria-label="Project workspace sections"/);
+  assert.doesNotMatch(projectWorkspace, /className="project-commandbar"|className="project-tabs"/);
+  assert.match(shell, /aria-label="Project workspace sections"/);
 
   const wrappingRules = css.slice(css.indexOf("Project tabs and every tab-like control wrap"));
   assert.ok(wrappingRules.length < css.length, "the final no-horizontal-tabs override should exist");
-  assert.match(wrappingRules, /\.project-tabs\s*\{[\s\S]*?display:\s*grid;[\s\S]*?overflow:\s*visible;/);
-  assert.match(wrappingRules, /\.project-tabs button\s*\{[\s\S]*?white-space:\s*normal;/);
+  assert.match(wrappingRules, /\.project-section-tabs\s*\{[\s\S]*?display:\s*grid;/);
+  assert.match(wrappingRules, /\.project-section-tabs button\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(wrappingRules, /\.decision-controls,[\s\S]*?\.agent-steering-bar,[\s\S]*?overflow-x:\s*visible\s*!important;/);
-  assert.match(wrappingRules, /@media \(max-width: 980px\)[\s\S]*?\.project-tabs \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
-  assert.match(wrappingRules, /@media \(max-width: 760px\)[\s\S]*?\.project-tabs \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+  assert.match(wrappingRules, /@media \(max-width: 760px\)[\s\S]*?\.project-section-bar \{ height: auto; grid-template-columns: 1fr; \}/);
+  assert.match(wrappingRules, /@media \(max-width: 760px\)[\s\S]*?\.project-section-tabs button \{ min-height: 30px;[\s\S]*?white-space: normal; \}/);
 
   const studioLightRules = css.slice(css.indexOf("Specialist studios use the light workspace shell"));
   assert.ok(studioLightRules.length < css.length, "the specialist light-mode override should exist");

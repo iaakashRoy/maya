@@ -6526,3 +6526,280 @@ textarea:focus-visible,
   .project-os.playground-app-mode > .project-stage { padding: 4px !important; }
   .project-os.playground-app-mode .agent-os { min-height: 680px !important; }
 }
+
+/* Project-first compact workspace: the top breadcrumb names the project, while
+   this single row owns section navigation and live project state. */
+:root { --statusbar-height: 30px; }
+
+.project-section-bar {
+  height: var(--statusbar-height);
+  min-height: var(--statusbar-height);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, auto);
+  align-items: stretch;
+  overflow: hidden;
+  color: #26352c;
+  background: #f7f8f5;
+  border-bottom: 1px solid #d5dbd4;
+}
+.project-section-tabs {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.project-section-tabs button {
+  min-width: 0;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  overflow: hidden;
+  color: #526159;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #e0e5df;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-section-tabs button:hover { color: #17231b; background: #eef3e9; }
+.project-section-tabs button.active { color: #17231b; background: #fff; border-bottom-color: #86a313; }
+.project-section-tabs em {
+  padding: 1px 5px;
+  color: #526159;
+  background: #e6ebe5;
+  border-radius: 9px;
+  font-size: 8px;
+  font-style: normal;
+}
+.project-section-state {
+  min-width: 0;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  overflow: hidden;
+  background: #fff;
+  border-left: 1px solid #d5dbd4;
+}
+.project-section-state > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.project-section-state i { width: 7px; height: 7px; flex: 0 0 auto; background: #e7b643; border-radius: 50%; }
+.project-section-state i.project-tone-healthy { background: var(--green); }
+.project-section-state i.project-tone-critical { background: var(--red); }
+.project-section-state small { max-width: 300px; overflow: hidden; color: #637168; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Page content begins with work, not a repeated project or page title. */
+.project-stage { padding: 7px 12px 18px !important; }
+.project-commandbar,
+.project-tabs { display: none !important; }
+.project-overview,
+.apps-os,
+.project-data-workspace,
+.governance-os { gap: 6px; }
+.project-page-actions {
+  min-height: 34px;
+  padding: 3px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  overflow: hidden;
+  color: #4e5d54;
+  background: #fff;
+  border: 1px solid #d4dad3;
+}
+.project-page-actions > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-page-actions > div { display: flex; gap: 4px; }
+.project-page-actions button {
+  min-height: 27px;
+  padding: 0 8px;
+  color: #2d3d33;
+  background: #f3f6f1;
+  border: 1px solid #cbd4cb;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* One compact data toolbar: source/graph mode, query, counts, and clear. */
+.data-graph-commandbar {
+  min-height: 38px;
+  padding: 3px;
+  display: grid;
+  grid-template-columns: minmax(210px, auto) minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+}
+.data-graph-commandbar nav { width: auto; grid-template-columns: repeat(2, minmax(100px, 1fr)); padding: 1px; }
+.data-graph-commandbar nav button { min-height: 30px; }
+.data-graph-commandbar .data-graph-search { min-height: 30px; padding: 0 7px; border: 0; border-left: 1px solid #d8ded7; }
+.data-graph-commandbar .data-graph-search input { height: 28px; }
+
+/* Compact ingestion preserves every step and action without a presentation-sized drop zone. */
+.ingestion-workbench,
+.dataset-register,
+.source-file-register,
+.iot-sources { border-radius: 3px; }
+.ingestion-steps article {
+  min-height: 44px;
+  padding: 5px 7px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 1px 6px;
+  align-content: center;
+}
+.ingestion-steps article > span { width: 18px; height: 18px; grid-row: 1 / -1; }
+.ingestion-steps article b { font-size: 9px; }
+.ingestion-steps article small { overflow: hidden; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.upload-drop {
+  min-height: 58px;
+  margin: 6px;
+  padding: 7px 9px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+}
+.upload-drop > div { min-width: 0; }
+.upload-drop > div > span { margin-right: 8px; font-size: 20px; }
+.upload-drop h3 { margin: 0 0 2px; font-size: 12px; }
+.upload-drop p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-drop label,
+.upload-drop button { min-height: 30px; padding: 0 8px; }
+.upload-contract { margin: 0 6px 6px; padding: 7px; }
+.upload-contract h3 { font-size: 11px; }
+.upload-contract > div { margin: 6px 0; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+.upload-contract dl { padding: 4px; }
+.upload-contract dd { margin-top: 2px; }
+.upload-contract > button { min-height: 30px; }
+.dataset-register > header { min-height: 46px; padding: 7px 10px; }
+.dataset-card-grid { padding: 6px; gap: 5px; }
+.dataset-card { padding: 8px; }
+.dataset-card h3 { font-size: 12px; }
+.dataset-card > p { margin: 5px 0 2px; }
+.dataset-card dl { margin: 6px 0; gap: 3px; }
+.dataset-card dl div { padding: 4px; }
+.dataset-bindings { gap: 3px; }
+.dataset-bindings > b { padding: 2px 4px; font-size: 8px; }
+.dataset-card > button { min-height: 28px; margin-top: 6px; }
+.source-file-register > header { min-height: 46px; padding: 7px 10px; }
+.source-file-register > div > button { min-height: 48px; padding: 6px 8px; }
+.iot-sources { padding: 8px; }
+.iot-template-grid { margin-top: 7px; gap: 5px; }
+.iot-template-grid article { padding: 8px; gap: 4px; }
+.iot-template-grid dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.iot-template-grid dl div { padding: 4px; }
+
+/* Denser project cards expose more real work before the first fold. */
+.project-metric-grid { margin-top: 0; gap: 6px; }
+.project-metric-grid button { min-height: 82px !important; padding: 8px !important; gap: 3px !important; }
+.project-metric-grid strong { font-size: 21px; }
+.project-home-grid { margin-top: 6px; gap: 6px; }
+.project-home-grid > section { min-height: 210px; padding: 10px; }
+.project-home-grid ol { margin-top: 7px; }
+.project-home-grid li { min-height: 39px; }
+.portfolio-footprint { margin-top: 6px; }
+.portfolio-footprint > header { padding: 8px 10px; }
+.portfolio-footprint button { min-height: 58px; padding: 8px; gap: 3px; }
+.portfolio-footprint button b { font-size: 16px; }
+.portfolio-footprint > footer { padding: 6px 9px; }
+.recent-work-panel { margin-top: 6px; }
+.recent-work-panel > header,
+.app-run-workspace > header { min-height: 52px; padding: 7px 10px; }
+.recent-work-list > article { padding: 8px; }
+.recent-work-list dl { margin: 6px 0; gap: 3px; }
+.recent-work-list dl div { padding: 4px; }
+.recent-work-continue { min-height: 28px; }
+.app-graph-canvas { min-height: 360px; }
+.app-catalog-grid { gap: 5px; }
+.app-catalog-grid article { padding: 9px; gap: 7px; }
+.app-catalog-grid dl { gap: 3px; }
+.app-catalog-grid dl div { padding: 5px; }
+.app-catalog-grid article > button { min-height: 30px; }
+.app-run-list > button { min-height: 54px; padding: 6px 8px; }
+.app-run-detail { padding: 9px; }
+.app-run-receipts { margin: 7px 0 5px; gap: 4px; }
+.app-run-receipts button { min-height: 43px; padding: 5px; }
+.app-run-inputs label { padding: 6px; }
+.app-run-output { margin-top: 6px; padding: 7px; }
+.decision-tree-panel > header,
+.method-library > header { min-height: 62px; padding: 9px 11px; }
+.decision-commit-copy,
+.decision-commit-value { padding: 7px 9px; }
+.decision-git-lanes { min-height: 62px; }
+.decision-merge-gate { min-height: 60px; padding: 7px 9px; }
+.decision-inspector { padding: 10px; }
+.decision-inspector > h2 { font-size: 19px; }
+.decision-evidence { min-height: 56px; margin: 9px 0; padding: 8px; }
+.taxonomy-stack article { padding: 5px; }
+.method-library article { min-height: 82px; padding: 9px; }
+.method-library article b { margin: 5px 0 3px; }
+.governance-console { gap: 6px; }
+.governance-settings,
+.governance-audit { padding: 8px; }
+.governance-settings fieldset,
+.governance-settings > label { margin-top: 8px; }
+.governance-settings select,
+.control-reset { min-height: 31px; }
+.control-reset { margin-top: 8px; }
+.governance-control-list > article { min-height: 66px; padding: 7px; gap: 7px; }
+.governance-control-icon { width: 30px; height: 30px; }
+.governance-switch { min-height: 28px; }
+.governance-audit > div > button { min-height: 44px; padding: 5px 0; }
+.governance-audit > small { margin-top: 6px; }
+
+.theme-dark .project-section-bar { color: var(--dark-text); background: var(--dark-surface); border-color: var(--dark-line); }
+.theme-dark .project-section-tabs button { color: #adb7b0; border-color: var(--dark-line); }
+.theme-dark .project-section-tabs button:hover,
+.theme-dark .project-section-tabs button.active { color: #fff; background: #23282c; }
+.theme-dark .project-section-tabs em { color: #c8d0cb; background: #2b3236; }
+.theme-dark .project-section-state { background: #161a1d; border-color: var(--dark-line); }
+.theme-dark .project-section-state small { color: #98a29b; }
+.theme-dark .project-page-actions { color: #c7d0ca; background: #171a1d; border-color: var(--dark-line); }
+.theme-dark .project-page-actions button { color: #e7ece9; background: #22282c; border-color: #41494e; }
+
+@media (max-width: 1180px) {
+  .project-section-bar { grid-template-columns: minmax(0, 1fr) minmax(140px, auto); }
+  .project-section-state small { display: none; }
+}
+
+@media (max-width: 820px) {
+  .data-graph-commandbar { grid-template-columns: minmax(190px, auto) minmax(0, 1fr); }
+  .data-graph-commandbar .data-graph-search small { display: none; }
+  .dataset-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .upload-contract > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .project-section-bar { height: auto; grid-template-columns: 1fr; }
+  .project-section-tabs button { min-height: 30px; padding-inline: 5px; white-space: normal; }
+  .project-section-state { min-height: 28px; justify-content: flex-start; border-top: 1px solid #d5dbd4; border-left: 0; }
+  .project-stage { padding: 6px 8px 14px !important; }
+  .data-graph-commandbar { grid-template-columns: 1fr; }
+  .data-graph-commandbar .data-graph-search { border-top: 1px solid #d8ded7; border-left: 0; }
+  .upload-drop { grid-template-columns: 1fr auto; }
+  .upload-drop > div { grid-column: 1 / -1; }
+  .governance-header-actions { align-items: flex-start; flex-direction: column; }
+}
+
+@media (max-width: 520px) {
+  .project-section-tabs em { display: none; }
+  .project-section-state small { display: block; }
+  .project-section-state { align-items: flex-start; flex-direction: column; justify-content: center; gap: 1px; padding-block: 4px; }
+  .project-section-state small { max-width: 100%; }
+  .ingestion-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .upload-drop { grid-template-columns: 1fr; }
+  .upload-drop > div { grid-column: auto; }
+  .dataset-card-grid { grid-template-columns: 1fr; }
+  .upload-contract > div { grid-template-columns: 1fr 1fr; }
+  .project-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-home-grid { grid-template-columns: 1fr; }
+}

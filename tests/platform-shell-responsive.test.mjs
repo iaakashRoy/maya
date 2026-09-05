@@ -28,6 +28,9 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.match(shell, /querySelector<HTMLElement>\('\[aria-current="page"\]'\)\?\.scrollIntoView/);
 
   assert.match(shell, /className="project-context-stack"/);
+  assert.match(shell, /className="project-section-bar"/);
+  assert.match(shell, /className="project-section-tabs" aria-label="Project workspace sections"/);
+  assert.match(shell, /className="project-section-state"/);
   assert.match(shell, /className="project-people-bar"/);
   assert.match(shell, /className="context-identity-tools context-agent-tools"/);
   assert.match(shell, /className="context-identity-tools context-team-tools"/);
@@ -36,6 +39,7 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.doesNotMatch(css, /\.context-session/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.project-people-bar\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(css, /\.mobile-project-path\s*>\s*span,[\s\S]*?white-space:\s*normal;/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.project-section-bar \{ height: auto; grid-template-columns: 1fr; \}/);
 
   assert.match(shell, /aria-label=\{`Open account menu for/);
   assert.match(shell, /aria-controls="tanjx-profile-panel"/);
