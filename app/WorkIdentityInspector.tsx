@@ -21,6 +21,15 @@ type WorkIdentityInspectorProps = {
 };
 
 const initialsFor = (name: string) => name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+const activityGlyph: Readonly<Record<SessionActivity["type"], string>> = {
+  "evidence-read": "EV",
+  "graph-traverse": "GR",
+  "app-call": "AP",
+  "tool-call": "TL",
+  steering: "ST",
+  validation: "CK",
+  "human-gate": "HG",
+};
 
 export default function WorkIdentityInspector({ project, selection, agents, members, sessions, activities, appRuns, onClose, onOpenSession, onOpenRun, onReceipt }: WorkIdentityInspectorProps) {
   if (!selection) return null;
@@ -58,7 +67,7 @@ export default function WorkIdentityInspector({ project, selection, agents, memb
       <section className="identity-worklog">
         <header><div><small>PROJECT LEDGER</small><h3>Work and involvement</h3></div><span>{relatedActivities.length} exact events · {relatedSessions.length} sessions</span></header>
         {relatedActivities.length > 0 && <h4>Exactly attributed events</h4>}
-        {relatedActivities.slice(0, 4).map((activity) => <button data-action-id={`identity.activity.${activity.id}`} type="button" key={activity.id} onClick={() => onReceipt("Attributed activity opened", `${activity.actor} · ${activity.title} · ${activity.detail}`, activity.id)}><i>{String(activity.sequence).padStart(2, "0")}</i><span><b>{activity.title}</b><small>{activity.actor} · {activity.state}</small></span><em>Trace</em></button>)}
+        {relatedActivities.slice(0, 6).map((activity) => <button data-activity-type={activity.type} data-action-id={`identity.activity.${activity.id}`} type="button" key={activity.id} onClick={() => activity.appRunId ? onOpenRun(activity.sessionId, activity.appRunId) : onReceipt("Attributed activity opened", `${activity.actor} · ${activity.title} · ${activity.detail}`, activity.id)}><i>{activityGlyph[activity.type]}</i><span><b>{activity.title}</b><small>{activity.id} · {activity.state}</small><p>{activity.detail}</p></span><em>{activity.appRunId ? "Open run" : "Trace"}</em></button>)}
         {relatedSessions.length > 0 && <h4>Involved sessions</h4>}
         {relatedSessions.slice(0, 4).map((session) => <button data-action-id={`identity.session.${session.id}`} type="button" key={session.id} onClick={() => onOpenSession(session.id)}><i>SES</i><span><b>{session.title}</b><small>{session.id} · lead or participant</small></span><em>Open</em></button>)}
         {involvedRuns.length > 0 && <h4>Runs in involved sessions</h4>}

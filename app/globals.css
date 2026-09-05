@@ -4433,3 +4433,396 @@ textarea:focus-visible,
   .topbar { gap: 5px; }
   .topbar-actions { gap: 4px; }
 }
+
+/* Decision-history, operable controls, accountable activity, and theme pass. */
+.theme-toggle { display: grid; place-items: center; color: #304037; }
+.theme-toggle > span { font-size: 17px; line-height: 1; }
+
+/* Every leaf occupies the same branch width and height, independent of label length. */
+.sidebar-project-leaves { width: calc(100% - 20px); min-width: 0; }
+.sidebar-project-leaves .sidebar-project {
+  width: 100% !important;
+  min-width: 0;
+  min-height: 64px !important;
+  margin-inline: 0 !important;
+  grid-template-columns: 10px minmax(0, 1fr) 16px !important;
+  justify-self: stretch;
+  text-align: left !important;
+}
+.sidebar-project-leaves .sidebar-project > div { width: 100%; justify-items: start; text-align: left; }
+.sidebar-project-leaves .sidebar-project > div > b,
+.sidebar-project-leaves .sidebar-project > div > small { width: 100%; text-align: left; }
+.sidebar-project-leaves .sidebar-project > em { justify-self: end; }
+
+.decision-lineage-panel { overflow: hidden; }
+.decision-lineage-panel > header { min-height: 78px; }
+.decision-lineage-toolbar {
+  min-height: 44px;
+  padding: 5px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  background: #f5f7f3;
+  border-bottom: 1px solid #d7ddd6;
+}
+.decision-lineage-toolbar > button {
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #425148;
+  background: #fff;
+  border: 1px solid #cdd5cd;
+  cursor: pointer;
+}
+.decision-lineage-toolbar > button:last-child { margin-left: auto; }
+.decision-lineage-toolbar > button.active { color: #fff; background: #24372d; border-color: #24372d; }
+.decision-lineage-toolbar > button > span { color: #78930d; font-size: 15px; }
+.decision-lineage-toolbar > button.active > span { color: #d7ff38; }
+.decision-lineage-toolbar small { padding: 2px 5px; color: inherit; background: rgba(127, 147, 134, .16); border-radius: 10px; }
+.decision-commit-list { padding: 8px; display: grid; gap: 4px; }
+.decision-commit-row {
+  width: 100%;
+  min-height: 78px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(90px, auto);
+  align-items: stretch;
+  color: #213128;
+  background: #fff;
+  border: 1px solid #d9dfd8;
+  text-align: left;
+  cursor: pointer;
+}
+.decision-commit-row:hover { background: #f7faf3; border-color: #b9c5b6; }
+.decision-commit-row.active { background: #f1f6e7; border-color: #9eae6d; box-shadow: inset 3px 0 #8aa30f; }
+.decision-commit-row.merge { background-image: linear-gradient(90deg, rgba(110, 205, 245, .08), transparent 38%); }
+.decision-git-lanes { position: relative; min-height: 76px; border-right: 1px solid #e1e6e0; }
+.decision-git-lanes > i { position: absolute; inset-block: -5px; width: 2px; background: #d7ded6; }
+.decision-git-lanes > i:nth-child(1) { left: 15px; background: #8aa30f; }
+.decision-git-lanes > i:nth-child(2) { left: 31px; background: #51a7cf; }
+.decision-git-lanes > i:nth-child(3) { left: 47px; background: #d49338; }
+.decision-git-lanes > b {
+  position: absolute;
+  z-index: 2;
+  top: calc(50% - 10px);
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #25372d;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  font-size: 9px;
+}
+.decision-commit-row[data-lane="0"] .decision-git-lanes > b { left: 6px; background: #78910d; }
+.decision-commit-row[data-lane="1"] .decision-git-lanes > b { left: 22px; background: #3e9cc8; }
+.decision-commit-row[data-lane="2"] .decision-git-lanes > b { left: 38px; background: #cf8427; }
+.decision-commit-row.merge .decision-git-lanes > b { border-radius: 3px; transform: rotate(45deg); }
+.decision-commit-copy { min-width: 0; padding: 10px 12px; display: grid; align-content: center; gap: 5px; }
+.decision-commit-copy > small { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.decision-commit-copy code { color: #405506; font: 750 10px/1 var(--font-code); }
+.decision-commit-copy small > em { padding: 3px 6px; color: #21516a; background: #e5f3fa; border-radius: 9px; font-style: normal; }
+.decision-commit-copy small > i { color: #6b5540; font-style: normal; }
+.decision-commit-copy > strong { overflow-wrap: anywhere; font-size: 12px; }
+.decision-commit-copy > span { overflow-wrap: anywhere; color: #607067; font-size: 9px; line-height: 1.35; }
+.decision-commit-value { min-width: 0; padding: 10px; display: grid; align-content: center; justify-items: end; gap: 4px; border-left: 1px solid #e1e6e0; }
+.decision-commit-value :is(small, em) { color: #627168; font-style: normal; }
+.decision-commit-value b { max-width: 140px; overflow-wrap: anywhere; text-align: right; }
+.decision-commit-value em { color: #536906; }
+.decision-merge-gate { min-height: 74px; padding: 10px 12px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: #eef5e6; border: 1px solid #cbd8be; }
+.decision-merge-gate > span { width: 28px; height: 28px; display: grid; place-items: center; color: #1f4e35; background: #ccebd8; border-radius: 50%; }
+.decision-merge-gate > div { min-width: 0; display: grid; gap: 3px; }
+.decision-merge-gate :is(small, b, p) { margin: 0; }
+.decision-merge-gate small { color: #53670b; font-weight: 750; letter-spacing: .05em; }
+.decision-merge-gate p { color: #5b6a61; }
+.decision-merge-gate button { min-height: 34px; padding: 0 10px; color: #fff; background: #26382e; border: 0; cursor: pointer; }
+.decision-branch-compare { padding: 12px; display: grid; gap: 10px; }
+.decision-branch-compare > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.decision-branch-compare > header :is(small, h3, span) { margin: 0; }
+.decision-branch-compare > header small { color: #5c6b62; font-weight: 750; letter-spacing: .06em; }
+.decision-compare-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.decision-compare-picker button { min-height: 38px; padding: 0 9px; display: flex; align-items: center; gap: 6px; color: #3f4e45; background: #f6f8f4; border: 1px solid #d5dcd4; cursor: pointer; }
+.decision-compare-picker button.active { background: #e8f1dc; border-color: #9ead76; }
+.decision-compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.decision-compare-grid article { padding: 13px; border: 1px solid #d6ddd5; box-shadow: inset 3px 0 #54a7ce; }
+.decision-compare-grid article[data-compare-lane="1"] { box-shadow: inset 3px 0 #d59032; }
+.decision-compare-grid article > header { display: flex; justify-content: space-between; }
+.decision-compare-grid article > header span { color: #4c6108; font-family: var(--font-code); font-weight: 750; }
+.decision-compare-grid article > header em { color: #647169; font-style: normal; }
+.decision-compare-grid article h3 { min-height: 42px; margin: 8px 0 !important; font-size: 15px !important; }
+.decision-compare-grid dl { margin: 0 0 10px; display: grid; gap: 4px; }
+.decision-compare-grid dl div { padding: 6px; display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; background: #f4f6f2; }
+.decision-compare-grid dd { margin: 0; overflow-wrap: anywhere; }
+.decision-compare-grid button,
+.decision-compare-result button { min-height: 34px; padding: 0 10px; color: #26372d; background: #fff; border: 1px solid #bfc9bf; cursor: pointer; }
+.decision-compare-result { padding: 12px; display: grid; gap: 5px; background: #f1f5ed; border: 1px solid #d4ddd0; }
+.decision-compare-result :is(span, b, p) { margin: 0; }
+.decision-compare-result > span { color: #546a09; font-weight: 750; letter-spacing: .06em; }
+.decision-compare-result button { width: max-content; margin-top: 4px; }
+
+.governance-header-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
+.governance-header-actions > button { min-height: 36px; padding: 0 11px; color: #25362c; background: #fff; border: 1px solid #bcc7bd; cursor: pointer; }
+.governance-header-actions > button:last-child { color: #fff; background: #26382e; border-color: #26382e; }
+.governance-console { display: grid; grid-template-columns: minmax(190px, .62fr) minmax(430px, 1.5fr) minmax(250px, .82fr); align-items: start; gap: 9px; }
+.governance-settings,
+.governance-control-list,
+.governance-audit { min-width: 0; background: #fff; border: 1px solid #d4dbd4; }
+.governance-settings,
+.governance-audit { padding: 12px; }
+.governance-settings > header,
+.governance-audit > header { padding-bottom: 9px; display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid #e0e5df; }
+.governance-settings > header span,
+.governance-audit > header span { color: #5e6c63; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.governance-settings fieldset { margin: 12px 0 0; padding: 0; border: 0; }
+.governance-settings legend,
+.governance-settings > label { color: #45544a; font-size: 10px; font-weight: 700; }
+.control-segmented { margin-top: 6px; display: grid; grid-template-columns: repeat(3, 1fr); }
+.control-segmented button { min-height: 34px; color: #4c5b52; background: #f3f5f1; border: 1px solid #d1d8d1; cursor: pointer; }
+.control-segmented button + button { border-left: 0; }
+.control-segmented button.active { color: #fff; background: #26382e; }
+.control-stepper { width: 120px; margin-top: 6px; display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; border: 1px solid #ccd4cc; }
+.control-stepper button { min-height: 34px; background: #f3f5f1; border: 0; cursor: pointer; }
+.control-stepper b { text-align: center; }
+.governance-settings fieldset > small { display: block; margin-top: 5px; color: #637168; }
+.governance-settings > label { margin-top: 12px; display: grid; gap: 6px; }
+.governance-settings select { width: 100%; min-height: 36px; padding: 0 8px; background: #fff; border: 1px solid #cbd3cb; }
+.control-reset { width: 100%; min-height: 36px; margin-top: 12px; color: #704138; background: #fff7f4; border: 1px solid #e0b9b1; cursor: pointer; }
+.governance-control-list { display: grid; }
+.governance-control-list > article {
+  --control-accent: #7c9511;
+  min-height: 88px;
+  padding: 11px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  border-bottom: 1px solid #e0e5df;
+  box-shadow: inset 3px 0 var(--control-accent);
+}
+.governance-control-list > article:last-child { border-bottom: 0; }
+.governance-control-list > article.disabled { opacity: .72; box-shadow: inset 3px 0 #aeb8b0; }
+.governance-control-list > article[data-control-tone="approval"] { --control-accent: #d59032; }
+.governance-control-list > article[data-control-tone="evidence"] { --control-accent: #459ac3; }
+.governance-control-list > article[data-control-tone="solver"] { --control-accent: #806ec9; }
+.governance-control-list > article[data-control-tone="learning"] { --control-accent: #4fa271; }
+.governance-control-list > article[data-control-tone="external"] { --control-accent: #dd6f5d; }
+.governance-control-icon { width: 34px; height: 34px; display: grid; place-items: center; color: #25362c; background: color-mix(in srgb, var(--control-accent) 16%, #fff); border: 1px solid color-mix(in srgb, var(--control-accent) 45%, #d8ded7); }
+.governance-control-list article > div { min-width: 0; display: grid; gap: 3px; }
+.governance-control-list article > div small { color: var(--control-accent); font-size: 8px; font-weight: 800; letter-spacing: .06em; }
+.governance-control-list article > div b { font-size: 12px; }
+.governance-control-list article > div p { margin: 0; color: #5c6a61; font-size: 10px; line-height: 1.4; }
+.governance-switch { min-width: 62px; min-height: 32px; padding: 3px 7px; display: flex; align-items: center; gap: 6px; color: #526159; background: #eef1ed; border: 1px solid #cbd3cb; border-radius: 18px; cursor: pointer; }
+.governance-switch > i { width: 18px; height: 18px; background: #9da79f; border-radius: 50%; transition: transform .16s ease, background .16s ease; }
+.enabled .governance-switch { color: #fff; background: #26382e; border-color: #26382e; }
+.enabled .governance-switch > i { background: #d7ff38; transform: translateX(4px); }
+.governance-switch > span { font-size: 9px; font-weight: 750; }
+.governance-inspect { min-height: 31px; padding: 0 7px; color: #36536a; background: #edf6fa; border: 1px solid #bdd7e3; cursor: pointer; }
+.governance-test-result { margin: 10px 0; padding: 9px; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; background: #eef5e7; border: 1px solid #ccdabf; }
+.governance-test-result > span { width: 26px; height: 26px; display: grid; place-items: center; color: #214c35; background: #ccebd8; border-radius: 50%; }
+.governance-test-result :is(b, p) { margin: 0; }
+.governance-test-result p { margin-top: 3px; color: #5b6960; font-size: 9px; }
+.governance-audit > div { display: grid; }
+.governance-audit > div > button { min-height: 54px; padding: 7px 0; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 7px; align-items: center; color: #28382e; background: transparent; border: 0; border-bottom: 1px solid #e1e6e0; text-align: left; cursor: pointer; }
+.governance-audit > div > button > i { color: #52670a; font: 750 9px/1 var(--font-code); font-style: normal; }
+.governance-audit > div > button > span { min-width: 0; display: grid; gap: 2px; }
+.governance-audit > div > button b { overflow-wrap: anywhere; }
+.governance-audit > div > button small,
+.governance-audit > small { color: #637168; }
+.governance-audit > div > button em { color: #4d6207; font-style: normal; }
+.governance-audit > small { display: block; margin-top: 10px; line-height: 1.45; }
+
+.identity-worklog > button { min-height: 68px; padding: 8px 0; }
+.identity-worklog > button > i { width: 28px; height: 28px; display: grid; place-items: center; background: #eef3df; border: 1px solid #d2dcae; border-radius: 4px; }
+.identity-worklog > button[data-activity-type="app-call"] > i { color: #285f7a; background: #e7f4fa; border-color: #c3dfe9; }
+.identity-worklog > button[data-activity-type="human-gate"] > i { color: #764536; background: #fff0eb; border-color: #ecc8bd; }
+.identity-worklog > button[data-activity-type="validation"] > i { color: #3c3473; background: #f0edff; border-color: #d1c9ef; }
+.identity-worklog > button[data-activity-type="steering"] > i { color: #2b6544; background: #e7f5ec; border-color: #c2e1cd; }
+.identity-worklog > button > span > p { margin: 2px 0 0; display: -webkit-box; overflow: hidden; color: #647269; font-size: 9px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.identity-worklog > button:hover { background: #f5f8f1; }
+
+@media (max-width: 1280px) {
+  .governance-console { grid-template-columns: minmax(190px, .6fr) minmax(0, 1.4fr); }
+  .governance-audit { grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+  .decision-compare-grid,
+  .governance-console { grid-template-columns: 1fr; }
+  .governance-audit { grid-column: auto; }
+  .decision-lineage-toolbar > button:last-child { margin-left: 0; }
+}
+
+@media (max-width: 620px) {
+  .decision-commit-row { grid-template-columns: 50px minmax(0, 1fr); }
+  .decision-git-lanes > i:nth-child(1) { left: 11px; }
+  .decision-git-lanes > i:nth-child(2) { left: 25px; }
+  .decision-git-lanes > i:nth-child(3) { left: 39px; }
+  .decision-commit-row[data-lane="0"] .decision-git-lanes > b { left: 2px; }
+  .decision-commit-row[data-lane="1"] .decision-git-lanes > b { left: 16px; }
+  .decision-commit-row[data-lane="2"] .decision-git-lanes > b { left: 30px; }
+  .decision-commit-value { grid-column: 2; padding-top: 0; align-content: start; justify-items: start; border-left: 0; }
+  .decision-commit-value b { text-align: left; }
+  .decision-merge-gate { grid-template-columns: 30px minmax(0, 1fr); }
+  .decision-merge-gate button { grid-column: 2; width: max-content; }
+  .governance-control-list > article { grid-template-columns: 38px minmax(0, 1fr) auto; }
+  .governance-inspect { grid-column: 2; width: max-content; }
+}
+
+/* Dark mode intentionally changes the workspace chrome and light work surfaces;
+   spatial operations canvases keep their application-specific visual language. */
+.platform-shell.theme-dark {
+  --ink: #eef4ef;
+  --ink-2: #dce7df;
+  --paper: #0e1411;
+  --panel: #151d18;
+  --soft: #1d2721;
+  --line: #344139;
+  --muted: #a3afa7;
+  --strong-muted: #c0cbc3;
+  color-scheme: dark;
+  color: #e8f0ea;
+  background: #0e1411;
+}
+.theme-dark .side-rail { color: #e8f0ea; background: #101712; border-color: #303c34; box-shadow: 8px 0 24px rgba(0, 0, 0, .22); }
+.theme-dark .brand,
+.theme-dark .rail-close,
+.theme-dark .scope-nav b,
+.theme-dark .app-nav b,
+.theme-dark .data-nav b { color: #e9f1eb; }
+.theme-dark .brand small,
+.theme-dark .nav-section > p,
+.theme-dark .scope-nav small,
+.theme-dark .sidebar-section-heading p { color: #95a299; }
+.theme-dark .rail-quick-actions > button,
+.theme-dark .scope-nav,
+.theme-dark .app-nav,
+.theme-dark .data-nav { color: #c0cbc3; background: transparent; border-color: transparent; }
+.theme-dark .rail-quick-actions > button:hover,
+.theme-dark .scope-nav:hover,
+.theme-dark .app-nav:hover,
+.theme-dark .data-nav:hover { color: #fff; background: #1d2821; border-color: #39463d; }
+.theme-dark .shell-chrome,
+.theme-dark .topbar { color: #e7efe9; background: rgba(16, 23, 18, .97); border-color: #344139; }
+.theme-dark .breadcrumb,
+.theme-dark .breadcrumb button,
+.theme-dark .breadcrumb i,
+.theme-dark .user-button small { color: #a7b3aa; }
+.theme-dark .breadcrumb b,
+.theme-dark .breadcrumb-label,
+.theme-dark .user-button b { color: #edf4ef; }
+.theme-dark .environment-badge,
+.theme-dark .search-trigger,
+.theme-dark .topbar-icon,
+.theme-dark .search-trigger kbd { color: #c6d0c8; background: #1b241e; border-color: #3a473f; }
+.theme-dark .search-trigger b { color: #dce6df; }
+.theme-dark .topbar-icon em { border-color: #101712; }
+.theme-dark .project-context-stack,
+.theme-dark .project-context-bar,
+.theme-dark .project-people-bar,
+.theme-dark .context-mounted-apps,
+.theme-dark .context-identity-tools { color: #e5ede7; background: #121a15; border-color: #344139; }
+.theme-dark :is(.context-current, .context-group-home, .context-back-button, .context-identity-home, .context-mounted-apps > button, .context-identity-tools > button) { color: #dce6df; background: #1a241e; border-color: #3a473f; }
+.theme-dark .statusbar { color: #aab6ad; background: #1a221d; border-color: #344139; }
+.theme-dark .main-content,
+.theme-dark .project-os,
+.theme-dark .project-stage,
+.theme-dark .workspace-home { color: #e6eee8; background: #0e1411 !important; }
+.theme-dark .project-commandbar > aside,
+.theme-dark .project-tabs { color: #dfe8e1; background: #141c17; border-color: #344139; }
+.theme-dark .project-tabs button { color: #abb8af; background: transparent; border-color: #344139; }
+.theme-dark .project-tabs button:hover,
+.theme-dark .project-tabs button.active { color: #f4f8f5; background: #1e2922; }
+.theme-dark .project-tabs em { color: #c0cbc3; background: #29352d; }
+.theme-dark .sidebar-path-tree,
+.theme-dark .sidebar-path-branches { background: #111813; }
+.theme-dark .sidebar-path-root { background: #151d18; border-color: #354138; }
+.theme-dark .sidebar-path-root > button,
+.theme-dark .sidebar-path-branches > .sidebar-path-branch > button,
+.theme-dark .sidebar-project-leaves .sidebar-project { color: #e4ede6; background: #18211b !important; border-color: #35433a !important; }
+.theme-dark .sidebar-path-root.open > button,
+.theme-dark .sidebar-path-root > button.active-context,
+.theme-dark .sidebar-path-branches > .sidebar-path-branch > button.active-context,
+.theme-dark .sidebar-project-leaves .sidebar-project.active { background: #25301f !important; border-color: #687b3e !important; }
+.theme-dark .sidebar-path-root > button > b,
+.theme-dark .sidebar-path-branches > section > button > b,
+.theme-dark .sidebar-project > div > b { color: #edf4ef; }
+.theme-dark .sidebar-project > div > small,
+.theme-dark .sidebar-path-branches > .sidebar-path-branch > button > span { color: #9eaba2; }
+.theme-dark :is(
+  .project-thesis,
+  .project-metric-grid button,
+  .project-home-grid > section,
+  .project-placeholder,
+  .portfolio-footprint,
+  .section-hero,
+  .decision-tree-panel,
+  .decision-inspector,
+  .method-library,
+  .app-catalog-grid article,
+  .ingestion-workbench,
+  .dataset-register,
+  .future-adapters,
+  .expert-grid > button,
+  .expert-inspector,
+  .project-memberships,
+  .iot-sources,
+  .governance-settings,
+  .governance-control-list,
+  .governance-audit,
+  .work-identity-inspector,
+  .identity-contract,
+  .identity-worklog
+) { color: #e5ede7; background: #151d18; border-color: #344139; }
+.theme-dark :is(.project-thesis, .app-catalog-grid article) { background-image: linear-gradient(135deg, #1b251f, #141b17 64%); }
+.theme-dark :is(.project-metric-grid button, .project-home-grid li, .decision-commit-row, .decision-compare-grid article, .decision-compare-result, .taxonomy-stack article, .method-chips button, .identity-summary, .identity-metrics > div, .governance-test-result, .governance-settings select) { color: #e4ece6; background: #1c261f; border-color: #3a483f; }
+.theme-dark :is(.project-metric-grid span, .project-metric-grid small, .project-home-grid small, .section-hero > div > span, .decision-inspector > span, .method-library article p, .method-library > footer, .app-catalog-grid p, .app-catalog-grid dt, .app-catalog-grid dd, .identity-summary small, .identity-summary p, .identity-worklog small, .identity-boundary, .governance-control-list article > div p, .governance-audit small) { color: #a8b4ab; }
+.theme-dark .decision-lineage-toolbar,
+.theme-dark .decision-compare-grid dl div { background: #111813; border-color: #344139; }
+.theme-dark .decision-lineage-toolbar > button,
+.theme-dark .decision-compare-picker button,
+.theme-dark .decision-compare-grid button,
+.theme-dark .decision-compare-result button,
+.theme-dark .governance-header-actions > button,
+.theme-dark .control-segmented button,
+.theme-dark .control-stepper,
+.theme-dark .control-stepper button,
+.theme-dark .governance-inspect { color: #dfe8e1; background: #1b251f; border-color: #3b493f; }
+.theme-dark .decision-lineage-toolbar > button.active,
+.theme-dark .control-segmented button.active,
+.theme-dark .governance-header-actions > button:last-child { color: #111712; background: #d7ff38; border-color: #d7ff38; }
+.theme-dark .decision-commit-row.active { background: #27321f; border-color: #718443; }
+.theme-dark .decision-git-lanes,
+.theme-dark .decision-commit-value,
+.theme-dark .identity-worklog > button,
+.theme-dark .governance-control-list > article,
+.theme-dark .governance-audit > div > button { border-color: #334138; }
+.theme-dark .decision-git-lanes > b { border-color: #151d18; }
+.theme-dark .decision-commit-copy > span,
+.theme-dark .decision-commit-value :is(small, em),
+.theme-dark .governance-settings legend,
+.theme-dark .governance-settings > label { color: #a8b4ab; }
+.theme-dark .decision-merge-gate { color: #e5ede7; background: #22301f; border-color: #4e603b; }
+.theme-dark .governance-switch { color: #aeb9b1; background: #263129; border-color: #46534a; }
+.theme-dark .enabled .governance-switch { color: #111712; background: #d7ff38; border-color: #d7ff38; }
+.theme-dark .identity-worklog > button { color: #e2ebe4; }
+.theme-dark .work-identity-inspector > header { color: #e5ede7; background: #121a15; border-color: #344139; }
+.theme-dark .work-identity-inspector > header h2,
+.theme-dark .identity-contract p b,
+.theme-dark .identity-metrics dd { color: #ecf3ee; }
+.theme-dark .work-identity-inspector > header button { color: #e5ede7; background: #1c261f; border-color: #3b493f; }
+.theme-dark .notification-panel,
+.theme-dark .profile-panel { color: #e5ede7; background: #151d18; border-color: #344139; }
+.theme-dark .notification-panel > button:hover,
+.theme-dark .profile-panel > button:hover { background: #202b24; }
+.theme-dark .workspace-home__hero,
+.theme-dark .workspace-home__metrics > div,
+.theme-dark .workspace-home__portfolio,
+.theme-dark .workspace-home__sector,
+.theme-dark .workspace-home__client,
+.theme-dark .workspace-home__side-panel,
+.theme-dark .workspace-home__project { color: #e4ece6; background: #151d18; border-color: #344139; }
+.theme-dark .workspace-home :is(p, small, span, em, dt) { color: #a7b3aa; }
+.theme-dark .workspace-home :is(h1, h2, h3, h4, b, strong, dd) { color: #edf4ef; }

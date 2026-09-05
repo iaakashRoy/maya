@@ -188,7 +188,7 @@ test("each decision app exposes a project-bound, decision-specific operating mod
 test("Decisions, apps, Data & graph, and Playground resolve inside the selected project", async () => {
   const projectPath = "scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise";
   const routes = [
-    [`/?view=decisions&${projectPath}`, "Decision decomposition"],
+    [`/?view=decisions&${projectPath}`, "Branch, challenge, and merge"],
     [`/?view=company&projectTab=apps&${projectPath}`, "Project applications"],
     [`/?view=company&projectTab=data&${projectPath}`, "Data &amp; graph"],
     [`/?view=graph&${projectPath}`, "AGENT TRAVERSAL"],

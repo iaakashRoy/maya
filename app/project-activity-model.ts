@@ -1,4 +1,13 @@
-import { expertAgents, projectApps, projectHasDataContract as hasProjectDataContract, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
+import {
+  expertAgents,
+  membershipsForProject,
+  projectApps,
+  projectHasDataContract as hasProjectDataContract,
+  projectMemberships,
+  workspaceCollaborators,
+  type ProjectAppId,
+  type WorkspaceProject,
+} from "./workspace-model";
 
 /** Backward-compatible export for activity and UI consumers; the contract rule lives in the workspace model. */
 export const projectHasDataContract = hasProjectDataContract;
@@ -268,14 +277,123 @@ function detailedMessages(project: WorkspaceProject, session: ProjectWorkSession
   }));
 }
 
+const activityTypeForAgent = (agentId: string): SessionActivityType => ({
+  orchestrator: "steering",
+  evidence: "validation",
+  minerals: "evidence-read",
+  geo: "evidence-read",
+  demand: "tool-call",
+  procurement: "human-gate",
+  cartographer: "graph-traverse",
+  manufacturing: "tool-call",
+  workforce: "tool-call",
+  logistics: "app-call",
+  formulator: "tool-call",
+  solver: "validation",
+}[agentId] as SessionActivityType | undefined) ?? "tool-call";
+
+const preferredAppForAgent: Readonly<Record<string, ProjectAppId>> = {
+  orchestrator: "risk",
+  evidence: "quality",
+  minerals: "minerals",
+  geo: "risk",
+  demand: "demand",
+  procurement: "suppliers",
+  cartographer: "suppliers",
+  manufacturing: "manufacturing",
+  workforce: "workforce",
+  logistics: "logistics",
+  formulator: "optimizer",
+  solver: "optimizer",
+};
+
+const agentWorkFor = (project: WorkspaceProject, agentId: string, index: number) => {
+  const metric = project.metrics[index % project.metrics.length] ?? project.metrics[0];
+  const variable = project.variablePack.l0[index % Math.max(project.variablePack.l0.length, 1)] ?? "L0 mapping pending";
+  const method = project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "Method mapping pending";
+  const work: Readonly<Record<string, readonly [string, string]>> = {
+    orchestrator: ["Reconcile the project work graph", `Sequenced ${project.mountedAppIds.length} mounted app contracts around ${project.problem.toLowerCase()} and retained the stop at ${resultFor(project).reviewGate.toLowerCase()}.`],
+    evidence: ["Challenge the claim package", `Checked ${metric?.label ?? "the selected metric"} (${metric?.value ?? "pending"}), units, source boundary, and receipt ${metric?.evidenceRef ?? "pending"} before review.`],
+    minerals: ["Map origin and material constraints", `Traced ${variable} through the ${project.sector.toLowerCase()} scenario and separated reserve, refining, policy, and qualification assumptions.`],
+    geo: ["Draft disruption branches", `Prepared policy, trade, weather, and regional disruption branches for ${project.regions}; probabilities remain deterministic demonstration inputs.`],
+    demand: ["Reconcile demand signals", `Compared orders, commercial assumptions, and ${metric?.label.toLowerCase() ?? "demand"} at the project decision grain; no customer system was queried.`],
+    procurement: ["Frame the sourcing decision", `Translated ${project.name} constraints into supplier, contract, qualification, and approval questions with value anchored to ${metric?.value ?? "the project fixture"}.`],
+    cartographer: ["Resolve the dependency chain", `Traversed the project-only supplier graph from ${project.client} to ${variable} and flagged unresolved n-tier identities for human review.`],
+    manufacturing: ["Test plant feasibility", `Checked capacity, yield, changeover, maintenance, and quality gates against ${variable}; retained a synthetic feasibility boundary.`],
+    workforce: ["Check skill and roster capacity", `Tested the ${project.name} plan against project skill, shift, fatigue, and safety assumptions without reading an HR system.`],
+    logistics: ["Evaluate movement alternatives", `Compared ocean, road, port, handoff, and last-mile constraints across ${project.regions} for the ${metric?.label.toLowerCase() ?? "selected outcome"}.`],
+    formulator: ["Version the mathematical formulation", `Bound ${variable} to ${method}, recorded objective and hard-constraint assumptions, and prepared a formulation candidate for independent review.`],
+    solver: ["Replay and validate the candidate", `Replayed the ${method} fixture, checked feasibility metadata and incumbent outputs, and made no live-solver or optimality claim.`],
+  };
+  return work[agentId] ?? ["Contribute project analysis", `Reviewed ${project.name} within the declared project boundary.`];
+};
+
+const memberWorkFor = (project: WorkspaceProject, projectRole: string, collaboratorName: string, index: number): readonly [string, string, SessionActivity["state"]] => {
+  const metric = project.metrics[index % project.metrics.length] ?? project.metrics[0];
+  const work: Readonly<Record<string, readonly [string, string, SessionActivity["state"]]>> = {
+    "Client owner": ["Review the decision package", `${collaboratorName} reviewed the ${project.name} recommendation, ${metric?.label.toLowerCase() ?? "project outcome"}, and named release conditions; approval remains a synthetic human gate.`, "Review"],
+    "Kearney engagement lead": ["Steer the expert workstream", `${collaboratorName} reconciled the client brief, specialist challenge, value narrative, and next-review agenda for ${project.client}.`, "Complete"],
+    "Kearney OR scientist": ["Review formulation fitness", `${collaboratorName} checked objective, decision variables, constraints, method ${project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "mapping"}, and claim language.`, "Complete"],
+    "Kearney data steward": ["Review data and lineage contract", `${collaboratorName} checked project isolation, ${project.counts.observations} fixture observations, variable mappings, and evidence references before merge.`, "Complete"],
+  };
+  return work[projectRole] ?? ["Contribute to project review", `${collaboratorName} recorded a project-specific review note for ${project.name}.`, "Complete"];
+};
+
 function activitiesFor(project: WorkspaceProject, sessionId: string, runs: readonly ProjectAppRun[]): readonly SessionActivity[] {
   const token = projectToken(project);
+  const evidenceRefs = project.metrics.map((item) => item.evidenceRef);
+  const primaryMetric = project.metrics[0] ?? { label: "Project outcome", value: "Pending", detail: "No metric fixture", evidenceRef: `${project.code}-EV-ACTIVITY` };
+  const agentActivities: readonly Omit<SessionActivity, "id" | "projectId" | "sessionId" | "sequence">[] = expertAgents.flatMap((agent, index) => {
+    const [title, detail] = agentWorkFor(project, agent.id, index);
+    const preferredRun = runs.find((run) => run.appId === preferredAppForAgent[agent.id]);
+    const primary: Omit<SessionActivity, "id" | "projectId" | "sessionId" | "sequence"> = {
+      type: activityTypeForAgent(agent.id),
+      actor: agent.name,
+      title,
+      detail,
+      state: agent.id === "procurement" || agent.id === "geo" ? "Review" : "Complete",
+      evidenceRefs: [evidenceRefs[index % evidenceRefs.length], evidenceRefs[(index + 1) % evidenceRefs.length]].filter((ref): ref is string => Boolean(ref)),
+      appRunId: preferredRun?.id,
+    };
+    const handoffMetric = project.metrics[(index + 2) % project.metrics.length] ?? primaryMetric;
+    const handoff: Omit<SessionActivity, "id" | "projectId" | "sessionId" | "sequence"> = {
+      type: preferredRun ? "app-call" as const : "validation" as const,
+      actor: agent.name,
+      title: `Record ${agent.role.split(" ").slice(0, 3).join(" ").toLowerCase()} handoff`,
+      detail: `${project.code} handoff linked ${handoffMetric.label} (${handoffMetric.value}) to ${preferredRun?.id ?? "the project review package"}; the next named reviewer can reopen the exact synthetic context.`,
+      state: agent.state === "Shadow" ? "Review" as const : "Complete" as const,
+      evidenceRefs: [handoffMetric.evidenceRef],
+      appRunId: preferredRun?.id,
+    };
+    return [primary, handoff];
+  });
+  const projectMembers = membershipsForProject(project.id, projectMemberships).flatMap((membership, index) => {
+    const collaborator = workspaceCollaborators.find((item) => item.id === membership.collaboratorId);
+    if (!collaborator) return [];
+    const [title, detail, state] = memberWorkFor(project, membership.projectRole, collaborator.name, index);
+    const primary = {
+      type: membership.projectRole === "Client owner" ? "human-gate" as const : membership.projectRole === "Kearney data steward" ? "validation" as const : "steering" as const,
+      actor: collaborator.name,
+      title,
+      detail,
+      state,
+      evidenceRefs: [evidenceRefs[index % evidenceRefs.length]].filter((ref): ref is string => Boolean(ref)),
+    };
+    const reviewMetric = project.metrics[(index + 1) % project.metrics.length] ?? primaryMetric;
+    const followup = {
+      type: membership.projectRole === "Client owner" ? "human-gate" as const : "validation" as const,
+      actor: collaborator.name,
+      title: membership.projectRole === "Client owner" ? "Return with approval conditions" : "Record a review comment",
+      detail: `${collaborator.name} linked ${reviewMetric.label} (${reviewMetric.value}) to the ${membership.projectRole.toLowerCase()} review lane for ${project.name}.`,
+      state: membership.projectRole === "Client owner" ? "Review" as const : "Complete" as const,
+      evidenceRefs: [reviewMetric.evidenceRef],
+    };
+    return [primary, followup];
+  });
   const specs: readonly Omit<SessionActivity, "id" | "projectId" | "sessionId" | "sequence">[] = [
-    { type: "evidence-read", actor: "Evidence Auditor", title: "Read project evidence", detail: `${project.counts.observations} project fixture observations; no cross-client traversal`, state: "Complete", evidenceRefs: project.metrics.slice(0, 2).map((item) => item.evidenceRef) },
-    { type: "graph-traverse", actor: "Supplier Cartographer", title: "Trace dependency path", detail: `${project.client} source to ${project.name} outcome`, state: "Complete", evidenceRefs: project.metrics.slice(1, 3).map((item) => item.evidenceRef) },
+    ...agentActivities,
     ...runs.slice(0, 3).map((run) => ({ type: "app-call" as const, actor: projectApps.find((app) => app.id === run.appId)?.name ?? run.appId, title: `Replay ${run.title}`, detail: run.summary, state: "Complete" as const, evidenceRefs: run.outputs.map((output) => output.evidenceRef), appRunId: run.id })),
-    { type: "validation", actor: "Evidence Auditor", title: "Validate candidate claim", detail: "Units and declared hard constraints checked against the synthetic receipt manifest", state: "Complete", evidenceRefs: project.metrics.slice(0, 3).map((item) => item.evidenceRef) },
-    { type: "human-gate", actor: project.owner, title: "Await human decision", detail: resultFor(project).reviewGate, state: "Review", evidenceRefs: resultFor(project).evidenceRefs },
+    ...projectMembers,
   ];
   return specs.map((activity, index) => ({ ...activity, id: `ACT-${token}-024-${String(index + 1).padStart(3, "0")}`, projectId: project.id, sessionId, sequence: index + 1 }));
 }
@@ -325,7 +443,7 @@ function fixtureForProject(project: WorkspaceProject) {
   const primaryId = `SES-${token}-024`;
   const primary: ProjectWorkSession = {
     id: primaryId, projectId: project.id, entryPoint: "Agent", title: project.id === "anode-shield" ? "Protect the 800V launch" : `${project.name} response`, objective: project.problem,
-    status: "Awaiting review", startedAt: "04 Sep 2026 - 14:08 IST", updatedAt: "04 Sep 2026 - 15:02 IST", leadAgentId: "orchestrator", participantAgentIds: ["evidence", "cartographer", "formulator", "solver"], appIds: [...project.mountedAppIds], finalResult: resultFor(project), origin: "Synthetic fixture",
+    status: "Awaiting review", startedAt: "04 Sep 2026 - 14:08 IST", updatedAt: "04 Sep 2026 - 15:02 IST", leadAgentId: "orchestrator", participantAgentIds: expertAgents.map((agent) => agent.id), appIds: [...project.mountedAppIds], finalResult: resultFor(project), origin: "Synthetic fixture",
   };
   const previous: readonly ProjectWorkSession[] = [
     { ...primary, id: `SES-${token}-023`, entryPoint: "Application", title: `Validate ${project.metrics[1]?.label.toLowerCase() ?? "service exposure"}`, objective: `Validate ${project.metrics[1]?.label.toLowerCase() ?? "service exposure"} with the linked application fixtures and retain the evidence trail.`, status: "Completed", startedAt: "03 Sep 2026 - 10:20 IST", updatedAt: "03 Sep 2026 - 11:06 IST", appIds: project.mountedAppIds.slice(0, 2), finalResult: { ...resultFor(project), headline: `${project.metrics[1]?.label ?? project.name} validation fixture completed`, recommendation: `Retain the declared ${project.metrics[1]?.value ?? "project"} result as a historical synthetic review; no operational release occurred.` } },

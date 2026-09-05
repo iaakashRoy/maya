@@ -156,8 +156,17 @@ const getRailPreference = () => {
   try { return window.sessionStorage.getItem("maya.railCollapsed") === "true"; }
   catch { return false; }
 };
+const getThemePreference = (): "light" | "dark" => {
+  try { return window.localStorage.getItem("maya.workspaceTheme") === "dark" ? "dark" : "light"; }
+  catch { return "light"; }
+};
 const setPreference = (key: string, value: string) => {
   try { window.sessionStorage.setItem(key, value); }
+  catch { /* Keep the current rendered preference when storage is unavailable. */ }
+  window.dispatchEvent(new Event(preferenceEvent));
+};
+const setPersistentPreference = (key: string, value: string) => {
+  try { window.localStorage.setItem(key, value); }
   catch { /* Keep the current rendered preference when storage is unavailable. */ }
   window.dispatchEvent(new Event(preferenceEvent));
 };
@@ -171,6 +180,12 @@ function useProjectPathModePreference() {
 function useRailCollapsedPreference() {
   const value = useSyncExternalStore(subscribeToPreferences, getRailPreference, () => false);
   const update = useCallback((next: boolean) => setPreference("maya.railCollapsed", String(next)), []);
+  return [value, update] as const;
+}
+
+function useWorkspaceThemePreference() {
+  const value = useSyncExternalStore(subscribeToPreferences, getThemePreference, () => "light" as const);
+  const update = useCallback((next: "light" | "dark") => setPersistentPreference("maya.workspaceTheme", next), []);
   return [value, update] as const;
 }
 
@@ -306,6 +321,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const [collapsedSidebarBranches, setCollapsedSidebarBranches] = useState<readonly string[]>([]);
   const [projectNavQuery, setProjectNavQuery] = useState("");
   const [railCollapsed, setRailCollapsed] = useRailCollapsedPreference();
+  const [workspaceTheme, setWorkspaceTheme] = useWorkspaceThemePreference();
   const [activityState, dispatchActivity] = useReducer(projectActivityReducer, workspaceProjects, (projects) => {
     const seeded = seedProjectActivity(projects);
     const session = initialSessionId ? seeded.sessions.find((item) => item.id === initialSessionId && item.projectId === initialProjectId) : undefined;
@@ -1058,7 +1074,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     : defaultVisibleMountedApps;
   const hiddenMountedAppCount = Math.max(0, effectiveMountedApps.length - visibleMountedApps.length);
   return (
-    <div className={`platform-shell ${railCollapsed ? "rail-collapsed" : ""}`}>
+    <div className={`platform-shell theme-${workspaceTheme} ${railCollapsed ? "rail-collapsed" : ""}`} data-theme={workspaceTheme}>
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside ref={mobileRailRef} className={`side-rail ${mobileOpen ? "open" : ""}`} inert={drawerMode && !mobileOpen ? true : undefined} aria-hidden={drawerMode && !mobileOpen ? true : undefined} role={drawerMode ? "dialog" : undefined} aria-modal={drawerMode && mobileOpen ? true : undefined} aria-label={drawerMode ? "Project navigation" : undefined} tabIndex={drawerMode ? -1 : undefined}>
         <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open Maya Workspace"><span>M</span><div><b>Maya</b><small>Supply network workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
@@ -1117,6 +1133,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           <div className="topbar-actions">
             <span className="environment-badge">Synthetic workspace</span>
             <button className="search-trigger" type="button" onClick={() => setSearchOpen(true)}><span>⌕</span><b>Search workspace</b><kbd>⌘ K</kbd></button>
+            <button data-action-id="theme.toggle" className="topbar-icon theme-toggle" type="button" aria-label={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} title={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} aria-pressed={workspaceTheme === "dark"} onClick={() => setWorkspaceTheme(workspaceTheme === "light" ? "dark" : "light")}><span aria-hidden="true">{workspaceTheme === "light" ? "◐" : "☀"}</span></button>
             <button className="topbar-icon" type="button" aria-label="Open notifications" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}>◌<em>{notificationItems.length}</em></button>
             <button ref={profileButtonRef} data-action-id="profile.toggle" className="user-button" type="button" aria-label={`Open account menu for ${signedInCollaborator?.name ?? "Maya Rao"}`} title={`Account · ${signedInCollaborator?.name ?? "Maya Rao"}`} aria-expanded={profileOpen} aria-controls="maya-profile-panel" onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator?.organization ?? "Kearney"}</small></div></button>
           </div>

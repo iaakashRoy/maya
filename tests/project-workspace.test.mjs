@@ -633,6 +633,33 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   assert.doesNotMatch(inspector, /session\.id === sessions\[0\]\?\.id/);
 });
 
+test("decision lineage, interactive controls, uniform project leaves, and theme controls are explicit", async () => {
+  const [workspace, shell, inspector, css] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/PlatformShell.tsx"),
+    read("../app/WorkIdentityInspector.tsx"),
+    read("../app/globals.css"),
+  ]);
+
+  assert.match(workspace, /className="decision-commit-list"/);
+  assert.match(workspace, /parentLabel = isMerge \? "D2-A \+ D2-B"/);
+  assert.match(workspace, /data-action-id="decisions\.view\.compare"/);
+  assert.match(workspace, /data-action-id="decisions\.compare\.record"/);
+  assert.match(workspace, /Evidence lineage remains in Data &amp; graph/);
+  assert.match(workspace, /role="switch" aria-checked=\{controlStates\[control\.id\]\}/);
+  assert.match(workspace, /data-action-id="governance\.test"/);
+  assert.match(workspace, /data-action-id="governance\.reset"/);
+  assert.match(workspace, /className="governance-audit"/);
+  assert.match(inspector, /data-activity-type=\{activity\.type\}/);
+  assert.match(inspector, /activity\.appRunId \? onOpenRun/);
+  assert.match(shell, /data-action-id="theme\.toggle"/);
+  assert.match(shell, /localStorage\.setItem\(key, value\)/);
+  assert.match(css, /\.sidebar-project-leaves \.sidebar-project \{[\s\S]*?width: 100% !important;[\s\S]*?min-height: 64px !important;/);
+  assert.match(css, /\.decision-git-lanes/);
+  assert.match(css, /\.governance-switch/);
+  assert.match(css, /\.platform-shell\.theme-dark/);
+});
+
 test("project navigation keeps route context, closes transient chrome, and reveals selected ancestry", async () => {
   const [shell, workspace, studios] = await Promise.all([
     read("../app/PlatformShell.tsx"),

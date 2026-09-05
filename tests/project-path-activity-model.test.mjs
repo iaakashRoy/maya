@@ -157,6 +157,29 @@ test("seeded and browser-created work IDs remain deterministic, ordered, and pro
   ]);
 });
 
+test("every seeded project attributes distinct recent work to every agent and project member", async () => {
+  const { workspace, activity } = await loadModels();
+  const seeded = activity.seedProjectActivity(workspace.workspaceProjects);
+
+  for (const project of workspace.workspaceProjects) {
+    const primary = activity.sessionsForProject(seeded, project.id).find((session) => session.id.endsWith("-024"));
+    assert.ok(primary, `${project.code} is missing its primary project session`);
+    const events = activity.activitiesForSession(seeded, project.id, primary.id);
+    assert.deepEqual([...primary.participantAgentIds].sort(), workspace.expertAgents.map((agent) => agent.id).sort());
+
+    for (const agent of workspace.expertAgents) {
+      const attributed = events.filter((event) => event.actor === agent.name);
+      assert.ok(attributed.length >= 2, `${project.code} has insufficient activity for ${agent.name}`);
+      assert.ok(attributed.some((event) => event.detail.includes(project.code) || event.detail.includes(project.name) || event.detail.includes(project.client) || event.detail.includes(project.regions) || event.detail.includes(project.sector)), `${project.code} agent activity is not project-specific for ${agent.name}`);
+    }
+
+    const memberNames = workspace.membershipsForProject(project.id).map((membership) => workspace.workspaceCollaborators.find((collaborator) => collaborator.id === membership.collaboratorId)?.name).filter(Boolean);
+    for (const name of memberNames) {
+      assert.ok(events.filter((event) => event.actor === name).length >= 2, `${project.code} has insufficient member activity for ${name}`);
+    }
+  }
+});
+
 test("fixture sessions auto-fork before steering and preserve result activity on the browser session", async () => {
   const { workspace, activity } = await loadModels();
   const project = workspace.workspaceProjects[0];
