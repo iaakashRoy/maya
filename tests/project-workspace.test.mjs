@@ -28,6 +28,15 @@ async function loadNavigation() {
   return import(asModuleUrl(transpile(linkedSource)));
 }
 
+async function loadActivityModel() {
+  const [activitySource, workspaceSource] = await Promise.all([
+    read("../app/project-activity-model.ts"),
+    read("../app/workspace-model.ts"),
+  ]);
+  const workspaceUrl = asModuleUrl(transpile(workspaceSource));
+  return import(asModuleUrl(transpile(activitySource.replace('"./workspace-model"', JSON.stringify(workspaceUrl)))));
+}
+
 test("ten clients and their cross-tower projects are isolated, evidence-aware, and mounted to distinct app contracts", async () => {
   const model = await loadWorkspaceModel();
   const { workspaceProjects, projectApps, evidenceFor, decisionsFor, graphNodesFor, datasetsFor } = model;
@@ -149,7 +158,7 @@ test("project workspace buttons are action-identified and shell actions end in r
   assert.match(shell, /result\.projectId \? openProject\(result\.projectId\)/);
   assert.match(shell, /onToast=\{\(message\) => completeAction/);
   assert.match(workspace, /const projectSessionCache: Record<string, ProjectSessionState>/);
-  assert.match(workspace, /projectSessionCache\[projectId\] =/);
+  assert.match(workspace, /projectSessionCache\[project\.id\] =/);
   assert.match(workspace, /datasetsFor\(project\)\.length \+ sessionDatasets\.length/);
   assert.match(workspace, /const availableAgents = \[\.\.\.agentsFor\(project\), \.\.\.createdAgents\]/);
   assert.match(workspace, /agents: availableAgents\.length/);
@@ -159,30 +168,32 @@ test("project workspace buttons are action-identified and shell actions end in r
 test("agent app-run links and run artifacts terminate on exact, concrete project records", async () => {
   const workspace = await read("../app/ProjectWorkspace.tsx");
   assert.match(workspace, /const openAppRun = \(runId: string\)/);
-  assert.match(workspace, /setFocusedAppRunId\(linkedRun\.id\)/);
+  assert.match(workspace, /onRunChange\(linkedRun\.sessionId, linkedRun\.id\)/);
   assert.match(workspace, /onClick=\{\(\) => onOpenRun\(ref\)\}/);
   assert.match(workspace, /const \[selectedRunId, setSelectedRunId\] = useState\(fallback\?\.id \?\? ""\)/);
   assert.match(workspace, /setArtifactReceipt\(reportReceipt\)/);
   assert.match(workspace, /setArtifactReceipt\(traceReceipt\)/);
-  assert.match(workspace, /planAppRerun\(activityState, project\.id, selected\.id, activeSessionId\)/);
+  assert.match(workspace, /planAppRerun\(activityState, project\.id, selected\.id, selected\.sessionId\)/);
   assert.match(workspace, /plan\.runId} was created in \$\{plan\.sessionId\}/);
   assert.doesNotMatch(workspace, /Application report opened/);
   assert.doesNotMatch(workspace, /\$\{selected\.id\}-REPLAY/);
 });
 
-test("project route wiring preserves project, tab, and mounted-studio parameters", async () => {
-  const [navigation, page, workspace] = await Promise.all([
+test("the shell owns project, tab, session, run, and mounted-studio navigation", async () => {
+  const [navigation, page, workspace, shell] = await Promise.all([
     read("../app/navigation.ts"),
     read("../app/page.tsx"),
     read("../app/ProjectWorkspace.tsx"),
+    read("../app/PlatformShell.tsx"),
   ]);
   assert.match(navigation, /projectTab\?: SearchValue/);
   assert.match(navigation, /projectApp\?: SearchValue/);
   assert.match(navigation, /project\.mountedAppIds\.includes/);
   assert.match(page, /initialProjectId=\{navigation\.projectId\}/);
   assert.match(page, /initialProjectApp=\{navigation\.projectApp\}/);
-  assert.match(workspace, /url\.searchParams\.set\("projectApp", id\)/);
-  assert.match(workspace, /window\.addEventListener\("popstate", restore\)/);
+  assert.match(shell, /url\.searchParams\.set\("projectApp", appId\)/);
+  assert.match(shell, /window\.addEventListener\("popstate", onPopState\)/);
+  assert.doesNotMatch(workspace, /window\.history|window\.addEventListener\("popstate"/);
   assert.match(navigation, /workspaceStudioIds\.includes/);
 });
 
@@ -292,6 +303,10 @@ test("project-only capabilities require a resolvable project and canonicalize va
   assert.equal(graph.view, "company");
   assert.equal(graph.projectTab, "graph");
   assert.equal(graph.projectId, "cold-chain-promise");
+
+  const legacyTeam = resolveNavigation({ view: "company", project: "cold-chain-promise", projectTab: "team" });
+  assert.equal(legacyTeam.view, "company");
+  assert.equal(legacyTeam.projectTab, "overview");
 });
 
 test("a session-created project has zero resources and explicit project memberships", async () => {
@@ -359,6 +374,88 @@ test("projectApp requires the company apps tab and a mounted specialist studio",
   assert.equal(resolveNavigation({ ...mounted, project: "cold-chain-promise" }).projectApp, null);
 });
 
+test("restored application routes fail closed to Data & graph until the project has an L0 contract", async () => {
+  const [navigation, model] = await Promise.all([loadNavigation(), loadWorkspaceModel()]);
+  const seed = model.workspaceProjects[0];
+  const empty = {
+    ...seed,
+    id: "empty-app-route-fixture",
+    code: "P-S099",
+    mountedAppIds: ["risk", "minerals"],
+    variablePack: { ...seed.variablePack, l0: [] },
+  };
+
+  const restoredRoutes = [
+    { view: "risk", project: empty.id, run: "APP-P-S099-RR-001" },
+    { view: "company", project: empty.id, projectTab: "apps", projectApp: "minerals", run: "APP-P-S099-MA-001" },
+  ];
+
+  for (const route of restoredRoutes) {
+    const result = navigation.resolveNavigation(route, [empty]);
+    assert.equal(result.view, "company");
+    assert.equal(result.scope, "company");
+    assert.equal(result.projectId, empty.id);
+    assert.equal(result.sectorId, empty.sectorId);
+    assert.equal(result.clientId, empty.clientId);
+    assert.equal(result.projectTab, "data");
+    assert.equal(result.projectApp, null);
+    assert.equal(result.sessionId, null);
+    assert.equal(result.runId, null);
+  }
+
+  const catalog = navigation.resolveNavigation({ view: "company", project: empty.id, projectTab: "apps" }, [empty]);
+  assert.equal(catalog.projectTab, "apps", "the app catalog remains reachable for project setup");
+  assert.equal(catalog.projectApp, null);
+});
+
+test("session and app-run deep links are project scoped and canonical for their visible surface", async () => {
+  const [navigation, activity, workspace] = await Promise.all([loadNavigation(), loadActivityModel(), loadWorkspaceModel()]);
+  const state = activity.seedProjectActivity(workspace.workspaceProjects);
+  const base = { project: "anode-shield" };
+
+  const agentRoutes = [
+    navigation.resolveNavigation({ ...base, view: "company", projectTab: "agents", session: "SES-P001-023" }, workspace.workspaceProjects, state),
+    navigation.resolveNavigation({ ...base, view: "agents", session: "SES-P001-023" }, workspace.workspaceProjects, state),
+  ];
+  for (const result of agentRoutes) {
+    assert.equal(result.view, "company");
+    assert.equal(result.projectTab, "agents");
+    assert.equal(result.sessionId, "SES-P001-023");
+    assert.equal(result.runId, null);
+  }
+
+  const genericRun = navigation.resolveNavigation({ ...base, view: "company", projectTab: "overview", run: "APP-P001-NO-019" }, workspace.workspaceProjects, state);
+  assert.equal(genericRun.projectTab, "apps");
+  assert.equal(genericRun.sessionId, "SES-P001-024");
+  assert.equal(genericRun.runId, "APP-P001-NO-019");
+
+  const riskRun = navigation.resolveNavigation({ ...base, view: "risk", run: "APP-P001-RR-019" }, workspace.workspaceProjects, state);
+  assert.equal(riskRun.view, "risk");
+  assert.equal(riskRun.runId, "APP-P001-RR-019");
+
+  const wrongRiskRun = navigation.resolveNavigation({ ...base, view: "risk", run: "APP-P001-NO-019" }, workspace.workspaceProjects, state);
+  assert.equal(wrongRiskRun.view, "risk");
+  assert.equal(wrongRiskRun.sessionId, null);
+  assert.equal(wrongRiskRun.runId, null);
+
+  const mineralRun = navigation.resolveNavigation({ ...base, view: "company", projectTab: "apps", projectApp: "minerals", run: "APP-P001-MA-019" }, workspace.workspaceProjects, state);
+  assert.equal(mineralRun.projectApp, "minerals");
+  assert.equal(mineralRun.runId, "APP-P001-MA-019");
+
+  const wrongStudioRun = navigation.resolveNavigation({ ...base, view: "company", projectTab: "apps", projectApp: "minerals", run: "APP-P001-NO-019" }, workspace.workspaceProjects, state);
+  assert.equal(wrongStudioRun.projectApp, "minerals");
+  assert.equal(wrongStudioRun.sessionId, null);
+  assert.equal(wrongStudioRun.runId, null);
+
+  const mismatchedPair = navigation.resolveNavigation({ ...base, view: "company", projectTab: "apps", session: "SES-P001-023", run: "APP-P001-NO-019" }, workspace.workspaceProjects, state);
+  assert.equal(mismatchedPair.sessionId, null);
+  assert.equal(mismatchedPair.runId, null);
+
+  const foreignPair = navigation.resolveNavigation({ ...base, view: "company", projectTab: "apps", session: "SES-P002-024", run: "APP-P002-NO-019" }, workspace.workspaceProjects, state);
+  assert.equal(foreignPair.sessionId, null);
+  assert.equal(foreignPair.runId, null);
+});
+
 test("browser-session specialist mounts become canonical and survive route restoration", async () => {
   const [{ resolveNavigation }, model, shell] = await Promise.all([
     loadNavigation(),
@@ -398,11 +495,11 @@ test("browser-session specialist mounts become canonical and survive route resto
   assert.doesNotMatch(shell, /mountedAppsByProject/);
 });
 
-test("workspace hydration independently rejects an unmounted specialist studio", async () => {
-  const source = await read("../app/ProjectWorkspace.tsx");
-  assert.match(source, /mountedForTarget\.includes\(requestedApp\)/);
+test("project rendering accepts only shell-validated mounted studios", async () => {
+  const [source, navigation] = await Promise.all([read("../app/ProjectWorkspace.tsx"), read("../app/navigation.ts")]);
   assert.match(source, /initialSession\.mountedApps\.includes\(initialApp\)/);
-  assert.match(source, /searchParams\.delete\("projectApp"\)/);
+  assert.match(navigation, /project\.mountedAppIds\.includes\(requestedProjectApp as ProjectAppId\)/);
+  assert.doesNotMatch(source, /searchParams|popstate|window\.history/);
 });
 
 test("project authorization evaluates the explicit signed-in collaborator", async () => {
@@ -415,7 +512,7 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
   assert.match(source, /evaluateProjectAccess\(project\.id, activeCollaboratorId, capability, memberships\)/);
   assert.match(source, /projectViewAccess = evaluateProjectAccess\(project\.id, activeCollaboratorId, "project\.view", memberships\)/);
   assert.match(source, /if \(deniedAccess\) return <section className="project-access-boundary"/);
-  assert.match(source, /evaluateProjectAccess\(next\.id, activeCollaboratorId, "project\.view", memberships\)/);
+  assert.match(shell, /evaluateProjectAccess\(project\.id, signedInCollaboratorId, "project\.view", memberships\)/);
   assert.match(source, /if \(!authorize\("agents\.run"\)\) return/);
   assert.match(source, /if \(!authorize\("agents\.create"\)\) return/);
   assert.match(source, /if \(!authorize\("team\.manage"\)\) return/);
@@ -423,7 +520,7 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
   assert.match(shell, /activeRouteAccess = resolvedProject && activeRouteCapability/);
   assert.match(shell, /accessibleProjects = useMemo\(\(\) => projectCatalog\.filter/);
   assert.match(shell, /accessibleClients = useMemo\(\(\) => clientCatalog\.filter/);
-  assert.match(shell, /groupProjectsByPath\(accessibleProjects, projectPathMode\)/);
+  assert.match(shell, /groupProjectsByPath\(pathProjects, projectPathMode\)/);
   assert.match(shell, /sidebarPathGroups/);
   assert.match(shell, /projectPathSegments\(resolvedProject, projectPathMode\)/);
   assert.match(shell, /className="project-context-bar"/);
@@ -438,7 +535,7 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
 });
 
 test("all primary clickflow buttons have a terminal handler or submit a handled form", async () => {
-  const paths = ["../app/ProjectWorkspace.tsx", "../app/ProjectAppStudios.tsx", "../app/PlatformShell.tsx", "../app/ApplicationViews.tsx", "../app/DecisionWorkspaces.tsx"];
+  const paths = ["../app/ProjectWorkspace.tsx", "../app/ProjectAppStudios.tsx", "../app/PlatformShell.tsx", "../app/ApplicationViews.tsx", "../app/DecisionWorkspaces.tsx", "../app/WorkIdentityInspector.tsx"];
   for (const path of paths) {
     const source = await read(path);
     const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -457,7 +554,7 @@ test("all primary clickflow buttons have a terminal handler or submit a handled 
   }
 });
 
-test("project chrome exposes both hierarchy modes, mounted context, and four accessible collapse controls", async () => {
+test("project chrome has one hierarchy, mounted context, and three accessible collapse controls", async () => {
   const [workspace, shell, css] = await Promise.all([
     read("../app/ProjectWorkspace.tsx"),
     read("../app/PlatformShell.tsx"),
@@ -467,13 +564,125 @@ test("project chrome exposes both hierarchy modes, mounted context, and four acc
   assert.match(shell, />By tower</);
   assert.match(shell, /projectPathSegments\(resolvedProject, projectPathMode\)/);
   assert.match(shell, /className="project-context-bar"/);
+  assert.match(shell, /className="rail-quick-actions"/);
+  assert.match(shell, /data-action-id="nav\.onboard-client"/);
+  assert.match(shell, /data-action-id="nav\.new-project"/);
+  assert.match(shell, /className="context-work-tools"/);
+  assert.match(shell, /data-action-id="context\.open-apps"/);
+  assert.match(shell, /data-action-id="context\.agents"/);
+  assert.match(shell, /data-action-id="context\.team"/);
+  assert.match(shell, /className="mobile-project-path"/);
   assert.match(shell, /aria-label="Open clients and projects"/);
   assert.match(shell, /data-action-id="nav\.collapse"[^>]*aria-expanded=/);
-  assert.match(workspace, /data-action-id="workspace\.toggle-project-tree"[^>]*aria-expanded=/);
   assert.match(workspace, /data-action-id="agents\.toggle-sessions"[^>]*aria-expanded=/);
   assert.match(workspace, /data-action-id="agents\.toggle-inspector"[^>]*aria-expanded=/);
+  assert.doesNotMatch(workspace, /ProjectTree|MobileProjectSwitcher|workspace\.toggle-project-tree|className="project-tree"/);
+  assert.doesNotMatch(css, /\.project-tree|\.mobile-project-switcher|\.project-panel-controls/);
   assert.match(css, /@container project-stage \(max-width: 960px\)/);
   assert.match(css, /\.dataset-card-grid \{ grid-template-columns: repeat\(2/);
   assert.match(css, /\.breadcrumb-segment \{[^}]*display: inline-flex/s);
+  assert.match(css, /\.mobile-project-path \{[^}]*display: grid/s);
+  assert.match(css, /\.context-session \{[^}]*display: grid/s);
+  assert.match(css, /\.side-rail \.rail-footer \{ display: none; \}/);
+  assert.match(css, /--rail-width: 304px/);
+  assert.match(css, /\.work-identity-inspector \{[\s\S]*?position: fixed/);
+  assert.match(css, /\.project-tabs \{[\s\S]*?grid-template-columns: repeat\(5/);
   assert.doesNotMatch(css, /\.project-tabs[^}]*overflow-x:\s*(?:auto|scroll)/s);
+});
+
+test("visible project navigation is app-first and keeps data, graph, and identity work connected", async () => {
+  const [workspace, model, shell, inspector] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/workspace-model.ts"),
+    read("../app/PlatformShell.tsx"),
+    read("../app/WorkIdentityInspector.tsx"),
+  ]);
+  const visibleTabs = model.slice(model.indexOf("export const workspaceTabs"), model.indexOf("export const workspaceSurfaceIds"));
+  assert.match(visibleTabs, /label: "Data & graph"/);
+  assert.match(visibleTabs, /label: "Playground"/);
+  assert.doesNotMatch(visibleTabs, /id: "apps"|id: "graph"|id: "team"/);
+  assert.match(workspace, /function ProjectDataWorkspace/);
+  assert.match(workspace, /Search files, tables, PDFs, variables, evidence, connectors, and graph entities/);
+  assert.match(workspace, /data-action-id="data-graph\.mode\.sources"/);
+  assert.match(workspace, /data-action-id="data-graph\.mode\.graph"/);
+  assert.match(workspace, /data-action-id=\{`data-query\.graph\.\$\{node\.id\}`\}/);
+  assert.match(workspace, /const connectorTemplateHits = connectorTemplates\.filter/);
+  assert.match(workspace, /hitCount = datasetHits\.length \+ previewHits\.length \+ documentHits\.length \+ connectorTemplateHits\.length/);
+  assert.match(workspace, /kind: "Excel workbook" \| "PDF" \| "CSV" \| "SQL table" \| "JSON"/);
+  assert.match(workspace, /data-action-id=\{`data-query\.document\.\$\{document\.id\}`\}/);
+  assert.match(workspace, /data-action-id=\{`data-query\.connector-template\.\$\{template\.id\}`\}/);
+  assert.match(shell, /visibleMountedApps/);
+  assert.match(shell, /hiddenMountedAppCount/);
+  assert.match(shell, /selection=\{identitySelection\}/);
+  assert.match(inspector, /export type WorkIdentitySelection = \{ kind: "agent" \| "member"/);
+  assert.match(inspector, /directlyAttributedActivities/);
+  assert.match(inspector, /Exactly attributed events/);
+  assert.match(inspector, /session context, not ownership/);
+  assert.match(inspector, /Only named actor events are attributed/);
+  assert.match(inspector, /disabled=\{!agents\.length\}/);
+  assert.match(workspace, /className="playground-runner-bar"/);
+  assert.match(workspace, /aria-label="Select Playground agent"/);
+  assert.doesNotMatch(inspector, /session\.id === sessions\[0\]\?\.id/);
+});
+
+test("project navigation keeps route context, closes transient chrome, and reveals selected ancestry", async () => {
+  const shell = await read("../app/PlatformShell.tsx");
+  const openProject = shell.slice(shell.indexOf("const openProject ="), shell.indexOf("const openMountedProjectApp ="));
+  const startOnboarding = shell.slice(shell.indexOf("const startOnboarding ="), shell.indexOf("const saveClientDraft ="));
+  const popState = shell.slice(shell.indexOf("const onPopState ="), shell.indexOf("window.addEventListener(\"popstate\""));
+
+  assert.match(openProject, /projectPathKeys\(project, projectPathMode\)/);
+  assert.match(openProject, /setCollapsedSidebarRoots/);
+  assert.match(openProject, /setCollapsedSidebarBranches/);
+  assert.match(openProject, /setExpandedSidebarRoots/);
+  assert.match(openProject, /setExpandedSidebarBranches/);
+  assert.match(openProject, /setProjectNavQuery\(""\)/);
+  assert.match(openProject, /setMobileOpen\(false\)/);
+  assert.match(openProject, /setNotificationsOpen\(false\)/);
+  assert.doesNotMatch(startOnboarding, /openWorkspaceHome/);
+  assert.match(popState, /setOnboardingMode\(null\)/);
+  assert.match(popState, /projectCatalog\.find\(\(project\) => project\.id === navigation\.projectId\)/);
+  assert.match(popState, /projectPathKeys\(restoredProject, projectPathMode\)/);
+  assert.match(popState, /setProjectNavQuery\(""\)/);
+  assert.match(shell, /type MayaHistoryState = \{ mayaReturn\?: \{ surface: "project"; projectId: string; tab: WorkspaceTabId \} \}/);
+  assert.match(shell, /const projectSurfaceTransition = \(\) =>/);
+  assert.match(shell, /replace: alreadyOnProjectSurface/);
+  assert.match(shell, /const returnFromProjectApp = \(\) =>/);
+  assert.match(shell, /window\.history\.back\(\)/);
+  assert.match(shell, /openProjectTab\(historyState\?\.mayaReturn\?\.tab \?\? activeProjectTab, true\)/);
+  assert.match(shell, /onCloseStudio=\{returnFromProjectApp\}/);
+  assert.match(shell, /data-action-id="context\.back-to-project"[^>]*onClick=\{returnFromProjectApp\}/);
+});
+
+test("session continuation and application assumptions expose truthful controls", async () => {
+  const source = await read("../app/ProjectWorkspace.tsx");
+  assert.match(source, />Continue as new session</);
+  assert.match(source, /runState === "Running" \? "Trace running"/);
+  assert.match(source, /input\.kind === "choice"[\s\S]*?<select[\s\S]*?input\.options\?\.map/);
+  assert.match(source, /<input aria-invalid=\{Boolean\(inputErrors\[input\.key\]\)\} type=\{input\.kind === "number" \? "number" : "text"\} min=\{input\.min\} max=\{input\.max\} step=\{input\.step\}/);
+  assert.match(source, /event\.key === "Enter" && !event\.shiftKey && !event\.nativeEvent\.isComposing/);
+  assert.match(source, /disabled=\{!selectedSession\}[^>]*onClick=\{onAdvance\}/);
+  assert.match(source, /Playground run blocked[\s\S]*?Complete Data & graph mapping/);
+  assert.match(source, /const replayPrompt = selectedWorkSession\.agentTrace\?\.prompt \?\? selectedWorkSession\.objective/);
+  assert.match(source, /storedRunId = preferredAppId \? activityState\.selectedRunByProjectApp/);
+  assert.match(source, /setArtifactReceipt\(referencedInputReceipt\(input\.evidenceRef!\)\)/);
+  assert.doesNotMatch(source, /setRunState|setTraceIndex|setActivePrompt|setSteeringInstructions|setChatMessages/);
+});
+
+test("dialogs trap focus, close with Escape, restore focus, and isolate their background", async () => {
+  const [lifecycle, onboarding, workspace, shell] = await Promise.all([
+    read("../app/useDialogLifecycle.ts"),
+    read("../app/WorkspaceOnboarding.tsx"),
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/PlatformShell.tsx"),
+  ]);
+  assert.match(lifecycle, /event\.key === "Escape"/);
+  assert.match(lifecycle, /event\.key !== "Tab"/);
+  assert.match(lifecycle, /element\.inert = true/);
+  assert.match(lifecycle, /previousFocus\?\.isConnected/);
+  assert.match(onboarding, /useDialogLifecycle<HTMLFormElement>\(open, onClose\)/);
+  assert.match(workspace, /useDialogLifecycle<HTMLElement>\(true, onClose\)/);
+  assert.match(shell, /useDialogLifecycle<HTMLElement>\(searchOpen/);
+  assert.match(shell, /useDialogLifecycle<HTMLElement>\(Boolean\(outcome\)/);
+  for (const source of [onboarding, workspace, shell]) assert.match(source, /data-modal-root/);
 });

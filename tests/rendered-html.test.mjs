@@ -95,7 +95,8 @@ test("server-renders the selected sector, client, project, data tab, and special
   assert.match(projectHtml, /Cold Chain Promise/);
   assert.match(projectHtml, /Helixora Therapeutics/);
   assert.match(projectHtml, /data-action-id="workspace\.tab\.data"[^>]*class="active"/);
-  assert.match(projectHtml, /Project data and sources/);
+  assert.match(projectHtml, /Data &amp; graph/);
+  assert.match(projectHtml, /Search files, tables, PDFs, variables, evidence, connectors, and graph entities/);
   assert.match(projectHtml, /filename metadata only/i);
   assert.match(projectHtml, /Source integration requests/);
   assert.match(projectHtml, /Restricted clinical supply/);
@@ -184,15 +185,14 @@ test("each decision app exposes a project-bound, decision-specific operating mod
   }
 });
 
-test("Decisions, apps, data, graph, agents, and members resolve inside the selected project", async () => {
+test("Decisions, apps, Data & graph, and Playground resolve inside the selected project", async () => {
   const projectPath = "scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise";
   const routes = [
     [`/?view=decisions&${projectPath}`, "Decision decomposition"],
     [`/?view=company&projectTab=apps&${projectPath}`, "Project applications"],
-    [`/?view=company&projectTab=data&${projectPath}`, "Project data and sources"],
-    [`/?view=graph&${projectPath}`, "Project knowledge graph"],
+    [`/?view=company&projectTab=data&${projectPath}`, "Data &amp; graph"],
+    [`/?view=graph&${projectPath}`, "AGENT TRAVERSAL"],
     [`/?view=agents&${projectPath}`, "SESSIONS"],
-    [`/?view=company&projectTab=team&${projectPath}`, "Client and Kearney access"],
   ];
 
   for (const [path, expected] of routes) {
@@ -214,10 +214,16 @@ test("Decisions, apps, data, graph, agents, and members resolve inside the selec
     }
     assert.doesNotMatch(html, /class="workspace-home"/);
   }
+
+  const legacyTeamResponse = await render(`/?view=company&projectTab=team&${projectPath}`);
+  assert.equal(legacyTeamResponse.status, 200);
+  const legacyTeamHtml = await legacyTeamResponse.text();
+  assert.match(legacyTeamHtml, /Knowledge footprint/);
+  assert.doesNotMatch(legacyTeamHtml, /Client and Kearney access/);
 });
 
-test("ships the two-root IA, onboarding, project memberships, ten apps, and wrapped project tabs", async () => {
-  const [page, shell, navigation, workspaceHome, onboarding, projectWorkspace, workspaceModel, applications, decisionWorkspaces, css, packageJson] = await Promise.all([
+test("ships the two-root IA, onboarding, project accountability, ten apps, and wrapped project tabs", async () => {
+  const [page, shell, navigation, workspaceHome, onboarding, projectWorkspace, workspaceModel, applications, decisionWorkspaces, workIdentityInspector, css, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/PlatformShell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/navigation.ts", import.meta.url), "utf8"),
@@ -227,10 +233,11 @@ test("ships the two-root IA, onboarding, project memberships, ten apps, and wrap
     readFile(new URL("../app/workspace-model.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/ApplicationViews.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/DecisionWorkspaces.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/WorkIdentityInspector.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
-  const source = [page, shell, navigation, workspaceHome, onboarding, projectWorkspace, workspaceModel, applications, decisionWorkspaces].join("\n");
+  const source = [page, shell, navigation, workspaceHome, onboarding, projectWorkspace, workspaceModel, applications, decisionWorkspaces, workIdentityInspector].join("\n");
 
   for (const moduleName of [
     "Workspace",
@@ -248,9 +255,10 @@ test("ships the two-root IA, onboarding, project memberships, ten apps, and wrap
     "ManufacturingTwin",
     "LogisticsRadar",
     "QualityGenealogy",
-    "Project data and sources",
-    "Project knowledge graph",
-    "Client and Kearney access",
+    "Data & graph",
+    "Playground",
+    "Agent accountability",
+    "Team accountability",
   ]) {
     assert.match(source, new RegExp(moduleName, "i"));
   }

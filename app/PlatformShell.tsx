@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import ApplicationViews from "./ApplicationViews";
 import DataOperations from "./DataOperations";
 import DecisionWorkspaces from "./DecisionWorkspaces";
@@ -8,6 +8,8 @@ import ProjectWorkspace, { AppRunHistory } from "./ProjectWorkspace";
 import ScopeDashboard, { regionalOperationsProfiles } from "./ScopeDashboard";
 import WorkspaceHome from "./WorkspaceHome";
 import WorkspaceOnboarding from "./WorkspaceOnboarding";
+import WorkIdentityInspector, { type WorkIdentitySelection } from "./WorkIdentityInspector";
+import { useDialogLifecycle } from "./useDialogLifecycle";
 import type { MapSelectionContext } from "./WorldNetworkMap";
 import type { NetworkRegion } from "./network-operations-model";
 import { resolveNavigation, scopeIds, viewLabels } from "./navigation";
@@ -17,8 +19,10 @@ import {
   createSessionClient,
   createSessionProject,
   createSessionProjectMemberships,
+  agentsFor,
   evaluateProjectAccess,
   humanExperts,
+  membershipsForProject,
   projectApps,
   projectMemberships,
   signedInCollaboratorId,
@@ -34,11 +38,12 @@ import {
   type SessionProjectDraft,
   type WorkspaceClient,
   type WorkspaceCollaborator,
+  type ExpertAgent,
   type WorkspaceProject,
   type WorkspaceTabId,
 } from "./workspace-model";
-import { appRunsFor, projectActivityReducer, seedProjectActivity, sessionsForProject } from "./project-activity-model";
-import { groupProjectsByPath, projectPathSegments, type ProjectPathMode } from "./project-path-model";
+import { appRunsFor, projectActivityReducer, projectHasDataContract, seedProjectActivity, sessionsForProject } from "./project-activity-model";
+import { groupProjectsByPath, projectPathKeys, projectPathSegments, type ProjectPathMode } from "./project-path-model";
 import {
   applications,
   decisionCases,
@@ -53,8 +58,8 @@ import {
 } from "./platform-model";
 
 const dataViews = [
-  { id: "agents" as const, label: "Data agents", icon: "DA", detail: "Source adapters and controls" },
-  { id: "graph" as const, label: "Knowledge Graph", icon: "KG", detail: "8.4M entities" },
+  { id: "agents" as const, label: "Playground", icon: "PG", detail: "Project sessions and expert agents" },
+  { id: "graph" as const, label: "Data & graph", icon: "DG", detail: "Sources, files, tables, and knowledge graph" },
 ];
 
 const workflowViews = [
@@ -82,6 +87,8 @@ type PlatformShellProps = {
   initialProjectId: string;
   initialProjectTab: WorkspaceTabId;
   initialProjectApp: ProjectAppId | null;
+  initialSessionId: string | null;
+  initialRunId: string | null;
 };
 
 const capabilityForProjectTab = (tab: WorkspaceTabId): ProjectCapability => {
@@ -99,6 +106,73 @@ const capabilityForProjectView = (target: ViewId): ProjectCapability | null => {
   if (target === "agents") return "agents.run";
   return null;
 };
+
+const routeParameterKeys = ["case", "sector", "client", "project", "projectTab", "projectApp", "session", "run"] as const;
+
+type MayaHistoryState = { mayaReturn?: { surface: "project"; projectId: string; tab: WorkspaceTabId } };
+
+function commitNavigationUrl(url: URL, replace = false, state: MayaHistoryState = {}) {
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next === current) return false;
+  window.history[replace ? "replaceState" : "pushState"](state, "", url);
+  return true;
+}
+
+function canonicalNavigationUrl(current: string, navigation: ReturnType<typeof resolveNavigation>) {
+  const url = new URL(current);
+  url.searchParams.set("view", navigation.view);
+  url.searchParams.set("scope", navigation.scope);
+  routeParameterKeys.forEach((key) => url.searchParams.delete(key));
+  if (navigation.scope === "global" || navigation.scope === "region") {
+    url.searchParams.set("case", navigation.caseId);
+  } else if (navigation.projectId && navigation.sectorId && navigation.clientId) {
+    url.searchParams.set("case", navigation.caseId);
+    url.searchParams.set("sector", navigation.sectorId);
+    url.searchParams.set("client", navigation.clientId);
+    url.searchParams.set("project", navigation.projectId);
+    url.searchParams.set("projectTab", navigation.projectTab);
+    if (navigation.projectApp) url.searchParams.set("projectApp", navigation.projectApp);
+    if (navigation.sessionId) url.searchParams.set("session", navigation.sessionId);
+    if (navigation.runId) url.searchParams.set("run", navigation.runId);
+  }
+  return url;
+}
+
+const preferenceEvent = "maya:workspace-preference";
+const subscribeToPreferences = (notify: () => void) => {
+  window.addEventListener("storage", notify);
+  window.addEventListener(preferenceEvent, notify);
+  return () => {
+    window.removeEventListener("storage", notify);
+    window.removeEventListener(preferenceEvent, notify);
+  };
+};
+const getPathModePreference = (): ProjectPathMode => {
+  try { return window.sessionStorage.getItem("maya.projectPathMode") === "tower" ? "tower" : "client"; }
+  catch { return "client"; }
+};
+const getRailPreference = () => {
+  try { return window.sessionStorage.getItem("maya.railCollapsed") === "true"; }
+  catch { return false; }
+};
+const setPreference = (key: string, value: string) => {
+  try { window.sessionStorage.setItem(key, value); }
+  catch { /* Keep the current rendered preference when storage is unavailable. */ }
+  window.dispatchEvent(new Event(preferenceEvent));
+};
+
+function useProjectPathModePreference() {
+  const value = useSyncExternalStore(subscribeToPreferences, getPathModePreference, () => "client" as const);
+  const update = useCallback((next: ProjectPathMode) => setPreference("maya.projectPathMode", next), []);
+  return [value, update] as const;
+}
+
+function useRailCollapsedPreference() {
+  const value = useSyncExternalStore(subscribeToPreferences, getRailPreference, () => false);
+  const update = useCallback((next: boolean) => setPreference("maya.railCollapsed", String(next)), []);
+  return [value, update] as const;
+}
 
 function ProjectAccessBoundary({ decision, onWorkspace, onReceipt }: { decision: ProjectAccessDecision; onWorkspace: () => void; onReceipt: () => void }) {
   return <section className="project-access-boundary" data-page-heading tabIndex={-1}><span>PROJECT ACCESS</span><h1>Project access required</h1><p>The signed-in collaborator has no project-scoped grant for this workspace. No project data, app, decision, agent, or team surface was opened.</p><small>{decision.policyRef}</small><div><button data-action-id="access.return-workspace" type="button" onClick={onWorkspace}>Return to workspace</button><button data-action-id="access.view-receipt" type="button" onClick={onReceipt}>View access receipt</button></div></section>;
@@ -134,18 +208,24 @@ const interactionStatus = (message: string): ActionOutcome["status"] => /\b(unav
 function snapshotForProject(project: WorkspaceProject): ScopeSnapshot {
   const base = scopeSnapshots.company;
   if (project.id === "anode-shield") return base;
+  const metrics: WorkspaceProject["metrics"] = project.metrics.length ? project.metrics : [
+    { label: "Data contract", value: "Not configured", detail: "Complete the project Data workflow", tone: "watch", evidenceRef: `EV-${project.code}-SETUP-01` },
+    { label: "Mapped observations", value: "0", detail: "No project observations are available", tone: "opportunity", evidenceRef: `EV-${project.code}-SETUP-02` },
+    { label: "Decision briefs", value: "0", detail: "No project decision has been drafted", tone: "opportunity", evidenceRef: `EV-${project.code}-SETUP-03` },
+    { label: "External writes", value: "0", detail: "Browser-session setup boundary", tone: "healthy", evidenceRef: `EV-${project.code}-SETUP-04` },
+  ];
   const entityNames = [`${project.client} source network`, `${project.sector} partner cluster`, `${project.name} operating node`, `${project.regions.split("·")[0]?.trim()} demand hub`, `${project.variablePack.l0[0] ?? "Unmapped variable"} constraint`, `${project.client} inventory buffer`];
   return {
     ...base,
     label: `${project.client} workspace`, shortLabel: project.client, title: project.outcome, description: project.problem,
     context: `${project.client} · ${project.name} · ${project.classification}`, currency: project.currency,
     updated: `${project.code} synthetic snapshot · project isolated`,
-    metrics: [...project.metrics.map((metric) => ({ label: metric.label, value: metric.value, detail: metric.detail, tone: metric.tone, trend: `Trace ${metric.evidenceRef}` })), { label: "Knowledge entities", value: project.counts.entities, detail: "Hydrated fixture manifest", tone: "info" as const, trend: project.code }, { label: "Expert coverage", value: String(project.counts.experts), detail: "Human expert assignments", tone: "healthy" as const, trend: `${project.counts.agents} agents` }],
+    metrics: [...metrics.map((metric) => ({ label: metric.label, value: metric.value, detail: metric.detail, tone: metric.tone, trend: `Trace ${metric.evidenceRef}` })), { label: "Knowledge entities", value: project.counts.entities, detail: "Hydrated fixture manifest", tone: "info" as const, trend: project.code }, { label: "Expert coverage", value: String(project.counts.experts), detail: "Human expert assignments", tone: "healthy" as const, trend: `${project.counts.agents} agents` }],
     nodes: base.nodes.map((node, index) => ({ ...node, name: entityNames[index] ?? `${project.code} node ${index + 1}`, detail: `${project.name} · ${project.variablePack.l0.length ? project.variablePack.l0[index % project.variablePack.l0.length] : "Mapping pending"}` })),
-    routes: base.routes.map((route, index) => ({ ...route, id: `${project.code}-R${index + 1}`, volume: project.metrics[index % project.metrics.length].value, value: project.metrics[0].value, asset: `${project.code} synthetic movement ${index + 1}` })),
-    intel: base.intel.map((item, index) => ({ ...item, id: `${project.code}-INT-${index + 1}`, title: `${project.metrics[index % project.metrics.length].label}: ${project.metrics[index % project.metrics.length].detail}`, detail: `${project.problem} This is a deterministic project fixture.`, impact: project.metrics[index % project.metrics.length].value, source: `${project.code} evidence ledger` })),
-    money: base.money.map((item, index) => ({ ...item, label: project.metrics[index % project.metrics.length].label, value: project.metrics[index % project.metrics.length].value, detail: project.metrics[index % project.metrics.length].detail })),
-    suppliers: base.suppliers.map((supplier, index) => ({ ...supplier, name: `${project.sector} partner ${String(index + 1).padStart(2, "0")}`, category: project.variablePack.l1.length ? project.variablePack.l1[index % project.variablePack.l1.length] : "Mapping pending", spend: project.metrics[0].value, region: project.regions.split("·")[index % project.regions.split("·").length]?.trim() ?? "Project region" })),
+    routes: base.routes.map((route, index) => ({ ...route, id: `${project.code}-R${index + 1}`, volume: metrics[index % metrics.length].value, value: metrics[0].value, asset: `${project.code} synthetic movement ${index + 1}` })),
+    intel: base.intel.map((item, index) => ({ ...item, id: `${project.code}-INT-${index + 1}`, title: `${metrics[index % metrics.length].label}: ${metrics[index % metrics.length].detail}`, detail: `${project.problem} This is a deterministic project fixture.`, impact: metrics[index % metrics.length].value, source: `${project.code} evidence ledger` })),
+    money: base.money.map((item, index) => ({ ...item, label: metrics[index % metrics.length].label, value: metrics[index % metrics.length].value, detail: metrics[index % metrics.length].detail })),
+    suppliers: base.suppliers.map((supplier, index) => ({ ...supplier, name: `${project.sector} partner ${String(index + 1).padStart(2, "0")}`, category: project.variablePack.l1.length ? project.variablePack.l1[index % project.variablePack.l1.length] : "Mapping pending", spend: metrics[0].value, region: project.regions.split("·")[index % project.regions.split("·").length]?.trim() ?? "Project region" })),
   };
 }
 
@@ -181,7 +261,7 @@ function caseForProject(project: WorkspaceProject, base: DecisionCase): Decision
   };
 }
 
-export default function PlatformShell({ initialView, initialScope, initialCaseId, initialProjectId, initialProjectTab, initialProjectApp }: PlatformShellProps) {
+export default function PlatformShell({ initialView, initialScope, initialCaseId, initialProjectId, initialProjectTab, initialProjectApp, initialSessionId, initialRunId }: PlatformShellProps) {
   const [view, setView] = useState<ViewId>(initialView);
   const [scope, setScope] = useState<ScopeId>(initialScope);
   const [cases, setCases] = useState<DecisionCase[]>(() => decisionCases.map((item) => ({ ...item })));
@@ -217,11 +297,25 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId);
   const [activeProjectTab, setActiveProjectTab] = useState<WorkspaceTabId>(initialProjectTab);
   const [activeProjectApp, setActiveProjectApp] = useState<ProjectAppId | null>(initialProjectApp);
-  const [projectPathMode, setProjectPathMode] = useState<ProjectPathMode>("client");
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(initialSessionId);
+  const [activeRunId, setActiveRunId] = useState<string | null>(initialRunId);
+  const [projectPathMode, setProjectPathMode] = useProjectPathModePreference();
   const [expandedSidebarRoots, setExpandedSidebarRoots] = useState<readonly string[]>([]);
   const [expandedSidebarBranches, setExpandedSidebarBranches] = useState<readonly string[]>([]);
-  const [railCollapsed, setRailCollapsed] = useState(false);
-  const [activityState, dispatchActivity] = useReducer(projectActivityReducer, workspaceProjects, seedProjectActivity);
+  const [collapsedSidebarRoots, setCollapsedSidebarRoots] = useState<readonly string[]>([]);
+  const [collapsedSidebarBranches, setCollapsedSidebarBranches] = useState<readonly string[]>([]);
+  const [projectNavQuery, setProjectNavQuery] = useState("");
+  const [railCollapsed, setRailCollapsed] = useRailCollapsedPreference();
+  const [activityState, dispatchActivity] = useReducer(projectActivityReducer, workspaceProjects, (projects) => {
+    const seeded = seedProjectActivity(projects);
+    const session = initialSessionId ? seeded.sessions.find((item) => item.id === initialSessionId && item.projectId === initialProjectId) : undefined;
+    const run = initialRunId ? seeded.appRuns.find((item) => item.id === initialRunId && item.projectId === initialProjectId) : undefined;
+    return {
+      ...seeded,
+      selectedSessionByProject: session || run ? { ...seeded.selectedSessionByProject, [initialProjectId]: run?.sessionId ?? session!.id } : seeded.selectedSessionByProject,
+      selectedRunByProjectApp: run ? { ...seeded.selectedRunByProjectApp, [`${run.projectId}:${run.appId}`]: run.id } : seeded.selectedRunByProjectApp,
+    };
+  });
   const handleMountedAppsChange = useCallback((projectId: string, appIds: readonly ProjectAppId[]) => {
     setProjectCatalog((current) => {
       const project = current.find((item) => item.id === projectId);
@@ -235,10 +329,23 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         : item);
     });
   }, []);
+  const handleProjectSetupChange = useCallback((projectId: string, patch: Partial<WorkspaceProject>) => {
+    setProjectCatalog((current) => current.map((project) => project.id === projectId ? { ...project, ...patch } : project));
+  }, []);
+  const [projectAgentRosters, setProjectAgentRosters] = useState<Record<string, readonly ExpertAgent[]>>({});
+  const handleAgentRosterChange = useCallback((projectId: string, agents: readonly ExpertAgent[]) => {
+    setProjectAgentRosters((current) => {
+      const existing = current[projectId];
+      if (existing?.length === agents.length && existing.every((agent, index) => agent.id === agents[index]?.id)) return current;
+      return { ...current, [projectId]: [...agents] };
+    });
+  }, []);
   const [horizon, setHorizon] = useState("Now");
   const [category, setCategory] = useState("All categories");
   const [operationsRegion, setOperationsRegion] = useState<NetworkRegion>("APAC");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState(false);
+  const [compactContext, setCompactContext] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -247,7 +354,13 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const [toast, setToast] = useState("");
   const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
   const [outcomeLedgers, setOutcomeLedgers] = useState<Record<string, readonly ActionOutcome[]>>({});
+  const [identitySelection, setIdentitySelection] = useState<WorkIdentitySelection>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profilePanelRef = useRef<HTMLElement>(null);
+  const searchDialogRef = useDialogLifecycle<HTMLElement>(searchOpen, () => setSearchOpen(false));
+  const outcomeDialogRef = useDialogLifecycle<HTMLElement>(Boolean(outcome), () => setOutcome(null));
+  const mobileRailRef = useDialogLifecycle<HTMLElement>(drawerMode && mobileOpen, () => setMobileOpen(false));
 
   const resolvedProject = projectCatalog.find((item) => item.id === activeProjectId);
   const activeProject = resolvedProject ?? unboundProject;
@@ -280,17 +393,51 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const accessibleClients = useMemo(() => clientCatalog.filter((client) => client.origin === "Browser-session draft" || accessibleProjects.some((project) => project.clientId === client.id)), [accessibleProjects, clientCatalog]);
   const effectiveMountedApps = resolvedProject?.mountedAppIds ?? [];
   const sidebarPathGroups = useMemo(() => {
-    const grouped = [...groupProjectsByPath(accessibleProjects, projectPathMode)];
+    const query = projectNavQuery.trim().toLowerCase();
+    const matchingClientIds = new Set(accessibleClients
+      .filter((client) => `${client.name} ${client.sector} ${client.id}`.toLowerCase().includes(query))
+      .map((client) => client.id));
+    const pathProjects = query
+      ? accessibleProjects.filter((project) => matchingClientIds.has(project.clientId) || `${project.sector} ${project.client} ${project.name} ${project.code} ${project.problem}`.toLowerCase().includes(query))
+      : accessibleProjects;
+    const pathClients = query
+      ? accessibleClients.filter((client) => matchingClientIds.has(client.id) || pathProjects.some((project) => project.clientId === client.id))
+      : accessibleClients;
+    const grouped = groupProjectsByPath(pathProjects, projectPathMode).map((group) => ({ ...group, branches: [...group.branches] }));
     if (projectPathMode === "client") {
-      for (const client of accessibleClients) {
+      for (const client of pathClients) {
         if (!grouped.some((group) => group.id === client.id)) grouped.push({ id: client.id, key: `client:${client.id}`, kind: "client", label: client.name, branches: [], projects: [] });
       }
+    } else {
+      for (const client of pathClients) {
+        if (pathProjects.some((project) => project.clientId === client.id)) continue;
+        let tower = grouped.find((group) => group.id === client.sectorId);
+        if (!tower) {
+          tower = { id: client.sectorId, key: `tower:${client.sectorId}`, kind: "tower", label: client.sector, branches: [], projects: [] };
+          grouped.push(tower);
+        }
+        tower.branches.push({ id: client.id, key: `tower:${client.sectorId}::client:${client.id}`, kind: "client", label: client.name, projects: [] });
+      }
     }
-    return grouped.sort((left, right) => left.label.localeCompare(right.label));
-  }, [accessibleClients, accessibleProjects, projectPathMode]);
+    return grouped
+      .map((group) => ({ ...group, branches: [...group.branches].sort((left, right) => left.label.localeCompare(right.label)) }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [accessibleClients, accessibleProjects, projectNavQuery, projectPathMode]);
+  const projectNavQueryActive = Boolean(projectNavQuery.trim());
   const projectPath = resolvedProject ? projectPathSegments(resolvedProject, projectPathMode) : [];
   const activeWorkSessions = resolvedProject ? sessionsForProject(activityState, resolvedProject.id) : [];
-  const activeWorkSessionId = resolvedProject ? activityState.selectedSessionByProject[resolvedProject.id] ?? "" : "";
+  const activeWorkSessionId = resolvedProject
+    ? activeSessionId && activeWorkSessions.some((session) => session.id === activeSessionId)
+      ? activeSessionId
+      : activityState.selectedSessionByProject[resolvedProject.id] ?? ""
+    : "";
+  const activeProjectAgents = resolvedProject ? projectAgentRosters[resolvedProject.id] ?? agentsFor(resolvedProject) : [];
+  const activeProjectMembers = resolvedProject ? membershipsForProject(resolvedProject.id, membershipCatalog).flatMap((membership) => {
+    const collaborator = collaboratorCatalog.find((item) => item.id === membership.collaboratorId);
+    return collaborator ? [{ membership, collaborator }] : [];
+  }) : [];
+  const activeProjectActivities = resolvedProject ? activityState.activities.filter((item) => item.projectId === resolvedProject.id) : [];
+  const activeProjectRuns = resolvedProject ? appRunsFor(activityState, resolvedProject.id) : [];
   const workspaceCollaboratorViews = useMemo(() => collaboratorCatalog.filter((collaborator) => {
     if (collaborator.id === signedInCollaboratorId) return true;
     if (collaborator.clientId && accessibleClients.some((client) => client.id === collaborator.clientId)) return true;
@@ -346,7 +493,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     return query ? catalog.filter((item) => `${item.label} ${item.detail}`.toLowerCase().includes(query)) : catalog;
   })();
 
-  const completeAction = (title: string, detail = title, artifact = "SESSION-ACTIVITY", status: ActionOutcome["status"] = "Completed", contextOverride?: string) => {
+  const completeAction = (title: string, detail = title, artifact = "SESSION-ACTIVITY", status: ActionOutcome["status"] = "Completed", contextOverride?: string, ledgerKeyOverride?: string) => {
     const now = new Date();
     const receipt: ActionOutcome = {
       id: `AUD-${now.getTime().toString(36).toUpperCase()}`,
@@ -358,7 +505,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       context: contextOverride ?? (scope === "company" && resolvedProject && activeProjectViewAccess?.allowed ? `${activeProject.client} / ${activeProject.name}` : scope === "company" ? "Workspace portfolio" : `Operations World / ${scope === "region" ? operationsRegion : snapshot.shortLabel}`),
     };
     setOutcome(receipt);
-    setOutcomeLedgers((current) => ({ ...current, [ledgerKey]: [receipt, ...(current[ledgerKey] ?? [])].slice(0, 24) }));
+    const receiptLedgerKey = ledgerKeyOverride ?? ledgerKey;
+    setOutcomeLedgers((current) => ({ ...current, [receiptLedgerKey]: [receipt, ...(current[receiptLedgerKey] ?? [])].slice(0, 24) }));
     setToast(title);
   };
 
@@ -372,7 +520,17 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     return decision.allowed;
   };
 
-  const pushNavigation = (nextView: ViewId, nextScope: ScopeId, nextCaseId: string) => {
+  const projectSurfaceTransition = () => {
+    const current = window.history.state as MayaHistoryState | null;
+    const currentReturn = current?.mayaReturn?.surface === "project" && current.mayaReturn.projectId === activeProject.id ? current : null;
+    const alreadyOnProjectSurface = scope === "company" && Boolean(resolvedProject) && (view !== "company" || activeProjectApp !== null);
+    return {
+      historyState: currentReturn ?? (alreadyOnProjectSurface ? {} : { mayaReturn: { surface: "project" as const, projectId: activeProject.id, tab: activeProjectTab } }),
+      replace: alreadyOnProjectSurface,
+    };
+  };
+
+  const pushNavigation = (nextView: ViewId, nextScope: ScopeId, nextCaseId: string, historyState: MayaHistoryState = {}, replace = false) => {
     const url = new URL(window.location.href);
     url.searchParams.set("view", nextView);
     url.searchParams.set("scope", nextScope);
@@ -381,37 +539,40 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       url.searchParams.set("sector", activeProject.sectorId);
       url.searchParams.set("client", activeProject.clientId);
       url.searchParams.set("project", activeProject.id);
-      if (nextView !== "company") url.searchParams.delete("projectApp");
+      if (nextView !== "company") {
+        url.searchParams.delete("projectApp");
+        url.searchParams.delete("session");
+        url.searchParams.delete("run");
+      }
     } else {
-      url.searchParams.delete("sector");
-      url.searchParams.delete("client");
-      url.searchParams.delete("project");
-      url.searchParams.delete("projectTab");
-      url.searchParams.delete("projectApp");
+      ["sector", "client", "project", "projectTab", "projectApp", "session", "run"].forEach((key) => url.searchParams.delete(key));
     }
-    window.history.pushState({}, "", url);
+    commitNavigationUrl(url, replace, historyState);
   };
 
   const openWorkspaceHome = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("view", "company");
     url.searchParams.set("scope", "company");
-    ["case", "sector", "client", "project", "projectTab", "projectApp"].forEach((key) => url.searchParams.delete(key));
-    window.history.pushState({}, "", url);
+    routeParameterKeys.forEach((key) => url.searchParams.delete(key));
+    commitNavigationUrl(url);
     setView("company");
     setScope("company");
     setActiveProjectId("");
     setActiveProjectTab("overview");
     setActiveProjectApp(null);
+    setActiveSessionId(null);
+    setActiveRunId(null);
     setNetworkSelection(null);
     setMobileOpen(false);
     setSearchOpen(false);
     setNotificationsOpen(false);
     setProfileOpen(false);
     setOutcome(null);
+    setIdentitySelection(null);
   };
 
-  const openProjectTab = (nextTab: WorkspaceTabId) => {
+  const openProjectTab = (nextTab: WorkspaceTabId, replace = false) => {
     if (!resolvedProject) {
       completeAction("Project workspace unavailable", "Select a valid client project before opening a project tab.", "PROJECT-CONTEXT", "Blocked");
       return;
@@ -426,21 +587,94 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     url.searchParams.set("project", activeProject.id);
     url.searchParams.set("projectTab", nextTab);
     url.searchParams.delete("projectApp");
-    window.history.pushState({}, "", url);
+    url.searchParams.delete("run");
+    if (nextTab === "agents" && activeSessionId) url.searchParams.set("session", activeSessionId);
+    else url.searchParams.delete("session");
+    commitNavigationUrl(url, replace);
     setScope("company");
     setView("company");
     setSelectedCaseId(caseIdForProject(activeProject));
     setActiveProjectTab(nextTab);
     setActiveProjectApp(null);
+    setActiveSessionId(nextTab === "agents" ? activeSessionId : null);
+    setActiveRunId(null);
     setMobileOpen(false);
     setSearchOpen(false);
     setNotificationsOpen(false);
     setProfileOpen(false);
     setOutcome(null);
-    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
-  const go = (next: ViewId) => {
+  const returnFromProjectApp = () => {
+    const historyState = window.history.state as MayaHistoryState | null;
+    if (historyState?.mayaReturn?.surface === "project" && historyState.mayaReturn.projectId === activeProject.id && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    openProjectTab(historyState?.mayaReturn?.tab ?? activeProjectTab, true);
+  };
+
+  const openProjectSession = (sessionId: string) => {
+    if (!resolvedProject) return;
+    setIdentitySelection(null);
+    dispatchActivity({ type: "select-session", projectId: activeProject.id, sessionId });
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "company");
+    url.searchParams.set("scope", "company");
+    url.searchParams.set("case", caseIdForProject(activeProject));
+    url.searchParams.set("sector", activeProject.sectorId);
+    url.searchParams.set("client", activeProject.clientId);
+    url.searchParams.set("project", activeProject.id);
+    url.searchParams.set("projectTab", "agents");
+    url.searchParams.set("session", sessionId);
+    url.searchParams.delete("projectApp");
+    url.searchParams.delete("run");
+    commitNavigationUrl(url);
+    setView("company");
+    setScope("company");
+    setActiveProjectTab("agents");
+    setActiveProjectApp(null);
+    setActiveSessionId(sessionId);
+    setActiveRunId(null);
+    setOutcome(null);
+  };
+
+  const openProjectRun = (sessionId: string, runId: string) => {
+    if (!resolvedProject) return;
+    setIdentitySelection(null);
+    const run = appRunsFor(activityState, activeProject.id).find((item) => item.id === runId && item.sessionId === sessionId);
+    if (run) {
+      dispatchActivity({ type: "select-session", projectId: activeProject.id, sessionId });
+      dispatchActivity({ type: "select-app-run", projectId: activeProject.id, appId: run.appId, runId });
+    }
+    const visibleLegacyApp = applications.some((item) => item.id === view) ? view as ProjectAppId : null;
+    const destinationApp = run?.appId ?? activeProjectApp ?? visibleLegacyApp;
+    const preserveLegacyApp = Boolean(visibleLegacyApp && destinationApp === visibleLegacyApp);
+    const preserveStudio = Boolean(activeProjectApp && destinationApp === activeProjectApp);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", preserveLegacyApp ? view : "company");
+    url.searchParams.set("scope", "company");
+    url.searchParams.set("case", caseIdForProject(activeProject));
+    url.searchParams.set("sector", activeProject.sectorId);
+    url.searchParams.set("client", activeProject.clientId);
+    url.searchParams.set("project", activeProject.id);
+    url.searchParams.set("projectTab", "apps");
+    url.searchParams.set("session", sessionId);
+    url.searchParams.set("run", runId);
+    if (preserveStudio && destinationApp) url.searchParams.set("projectApp", destinationApp);
+    else url.searchParams.delete("projectApp");
+    const transition = preserveLegacyApp || preserveStudio ? projectSurfaceTransition() : null;
+    commitNavigationUrl(url, transition?.replace ?? false, transition?.historyState ?? {});
+    setView(preserveLegacyApp ? view : "company");
+    setScope("company");
+    setActiveProjectTab("apps");
+    setActiveProjectApp(preserveStudio ? destinationApp : null);
+    setActiveSessionId(sessionId);
+    setActiveRunId(runId);
+    setOutcome(null);
+  };
+
+  const go = (next: ViewId, navigationOptions: { historyState?: MayaHistoryState; replace?: boolean } = {}) => {
     if (next === "company") {
       if (!resolvedProject) openWorkspaceHome();
       else {
@@ -478,6 +712,9 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     if (scopeIds.includes(next as ScopeId) && nextScope !== scope) setNetworkSelection(null);
     setSelectedCaseId(nextCaseId);
     setView(next);
+    setActiveProjectApp(null);
+    setActiveSessionId(null);
+    setActiveRunId(null);
     if (nextScope !== "company") {
       setActiveProjectId("");
       setActiveProjectTab("overview");
@@ -487,7 +724,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     setSearchOpen(false);
     setProfileOpen(false);
     if (nextScope !== scope) setOutcome(null);
-    pushNavigation(next, nextScope, nextCaseId);
+    if (nextScope !== "company") setIdentitySelection(null);
+    pushNavigation(next, nextScope, nextCaseId, navigationOptions.historyState ?? {}, navigationOptions.replace ?? false);
     window.setTimeout(() => document.querySelector<HTMLElement>("[data-page-heading]")?.focus(), 30);
   };
 
@@ -511,7 +749,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     setNotificationsOpen(false);
     setProfileOpen(false);
     setOutcome(null);
-    pushNavigation(destination, item.scope, item.scope === "company" ? activeCase.id : item.id);
+    const transition = projectSurfaceTransition();
+    pushNavigation(destination, item.scope, item.scope === "company" ? activeCase.id : item.id, transition.historyState, transition.replace);
     window.setTimeout(() => document.querySelector<HTMLElement>("[data-page-heading]")?.focus(), 30);
   };
 
@@ -547,17 +786,39 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     url.searchParams.set("client", project.clientId);
     url.searchParams.set("project", project.id);
     url.searchParams.set("projectTab", "overview");
-    window.history.pushState({}, "", url);
+    url.searchParams.delete("projectApp");
+    url.searchParams.delete("session");
+    url.searchParams.delete("run");
+    commitNavigationUrl(url);
     setScope("company");
     setView("company");
     setSelectedCaseId(nextCaseId);
     setActiveProjectId(project.id);
     setActiveProjectTab("overview");
     setActiveProjectApp(null);
+    setActiveSessionId(null);
+    setActiveRunId(null);
     setNetworkSelection(null);
+    const pathKeys = projectPathKeys(project, projectPathMode);
+    setCollapsedSidebarRoots((current) => current.filter((key) => key !== pathKeys.root));
+    setCollapsedSidebarBranches((current) => current.filter((key) => key !== pathKeys.branch));
+    setExpandedSidebarRoots((current) => current.includes(pathKeys.root) ? current : [...current, pathKeys.root]);
+    setExpandedSidebarBranches((current) => current.includes(pathKeys.branch) ? current : [...current, pathKeys.branch]);
+    setProjectNavQuery("");
+    setMobileOpen(false);
     setSearchOpen(false);
+    setNotificationsOpen(false);
     setProfileOpen(false);
     setOutcome(null);
+    setIdentitySelection(null);
+  };
+
+  const toggleRailDensity = () => {
+    if (drawerMode) {
+      setMobileOpen(false);
+      return;
+    }
+    setRailCollapsed(!railCollapsed);
   };
 
   const openMountedProjectApp = (appId: ProjectAppId) => {
@@ -565,8 +826,13 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       completeAction("Application unavailable", "Select a mounted application inside an accessible project.", "APP-NOT-MOUNTED", "Blocked");
       return;
     }
+    if (!projectHasDataContract(activeProject)) {
+      completeAction("Application open blocked", `${projectApps.find((item) => item.id === appId)?.name ?? "This application"} is mounted, but ${activeProject.name} has no governed variable mapping or data contract yet. Complete Data setup first.`, `APP-${activeProject.code}-${appId.toUpperCase()}-DATA-REQUIRED`, "Blocked");
+      return;
+    }
+    const transition = projectSurfaceTransition();
     if (applications.some((item) => item.id === appId)) {
-      go(appId as AppId);
+      go(appId as AppId, transition);
       return;
     }
     if (!requireActiveProjectCapability("apps.view")) return;
@@ -579,17 +845,19 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     url.searchParams.set("project", activeProject.id);
     url.searchParams.set("projectTab", "apps");
     url.searchParams.set("projectApp", appId);
-    window.history.pushState({}, "", url);
+    url.searchParams.delete("session");
+    url.searchParams.delete("run");
+    commitNavigationUrl(url, transition.replace, transition.historyState);
     setView("company");
     setScope("company");
     setActiveProjectTab("apps");
     setActiveProjectApp(appId);
+    setActiveSessionId(null);
+    setActiveRunId(null);
     setOutcome(null);
-    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const startOnboarding = (mode: "client" | "project", clientId?: string) => {
-    openWorkspaceHome();
     setOnboardingMode(mode);
     setOnboardingStep(0);
     if (mode === "client") {
@@ -631,8 +899,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       setMembershipCatalog(nextMemberships);
       dispatchActivity({ type: "ensure-project", project });
       setOnboardingMode(null);
-      completeAction("Project draft saved", `Project setup and two browser-session membership drafts were saved under ${project.client}. No database, identity grant, invitation, dataset, app deployment, connector, agent, or solver run was provisioned.`, `PROJECT-${project.code}`, "Saved");
-      window.setTimeout(() => openProject(project.id, nextCatalog, nextMemberships), 0);
+      openProject(project.id, nextCatalog, nextMemberships);
+      completeAction("Project draft saved", `Project setup and two browser-session membership drafts were saved under ${project.client}. No database, identity grant, invitation, dataset, app deployment, connector, agent, or solver run was provisioned.`, `PROJECT-${project.code}`, "Saved", `${project.client} / ${project.name}`, `project:${project.id}`);
     } catch (error) {
       completeAction("Project draft blocked", error instanceof Error ? error.message : "The project draft is incomplete.", "PROJECT-DRAFT", "Blocked");
     }
@@ -650,54 +918,119 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         project: url.searchParams.get("project") ?? undefined,
         projectTab: url.searchParams.get("projectTab") ?? undefined,
         projectApp: url.searchParams.get("projectApp") ?? undefined,
-      }, projectCatalog);
+        session: url.searchParams.get("session") ?? undefined,
+        run: url.searchParams.get("run") ?? undefined,
+      }, projectCatalog, activityState);
       setView(navigation.view);
       setScope(navigation.scope);
       setSelectedCaseId(navigation.caseId);
       setActiveProjectId(navigation.projectId);
       setActiveProjectTab(navigation.projectTab);
       setActiveProjectApp(navigation.projectApp);
+      setActiveSessionId(navigation.sessionId);
+      setActiveRunId(navigation.runId);
+      const restoredProject = projectCatalog.find((project) => project.id === navigation.projectId);
+      if (restoredProject) {
+        const pathKeys = projectPathKeys(restoredProject, projectPathMode);
+        setCollapsedSidebarRoots((current) => current.filter((key) => key !== pathKeys.root));
+        setCollapsedSidebarBranches((current) => current.filter((key) => key !== pathKeys.branch));
+        setExpandedSidebarRoots((current) => current.includes(pathKeys.root) ? current : [...current, pathKeys.root]);
+        setExpandedSidebarBranches((current) => current.includes(pathKeys.branch) ? current : [...current, pathKeys.branch]);
+      }
+      setProjectNavQuery("");
       setNetworkSelection(null);
       setMobileOpen(false);
       setSearchOpen(false);
       setNotificationsOpen(false);
       setProfileOpen(false);
       setOutcome(null);
+      setOnboardingMode(null);
+      setIdentitySelection(null);
+      commitNavigationUrl(canonicalNavigationUrl(window.location.href, navigation), true);
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [projectCatalog]);
+  }, [activityState, projectCatalog, projectPathMode]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const navigation = resolveNavigation({
+      view: url.searchParams.get("view") ?? undefined,
+      scope: url.searchParams.get("scope") ?? undefined,
+      case: url.searchParams.get("case") ?? undefined,
+      sector: url.searchParams.get("sector") ?? undefined,
+      client: url.searchParams.get("client") ?? undefined,
+      project: url.searchParams.get("project") ?? undefined,
+      projectTab: url.searchParams.get("projectTab") ?? undefined,
+      projectApp: url.searchParams.get("projectApp") ?? undefined,
+      session: url.searchParams.get("session") ?? undefined,
+      run: url.searchParams.get("run") ?? undefined,
+    }, projectCatalog, activityState);
+    commitNavigationUrl(canonicalNavigationUrl(window.location.href, navigation), true);
+  }, [activityState, projectCatalog]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1040px)");
+    const updateDrawerMode = () => setDrawerMode(media.matches);
+    updateDrawerMode();
+    media.addEventListener("change", updateDrawerMode);
+    return () => media.removeEventListener("change", updateDrawerMode);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1180px)");
+    const updateContextDensity = () => setCompactContext(media.matches);
+    updateContextDensity();
+    media.addEventListener("change", updateContextDensity);
+    return () => media.removeEventListener("change", updateContextDensity);
+  }, []);
+
+  useEffect(() => {
+    if (!activeProjectId || (drawerMode && !mobileOpen)) return;
+    const timer = window.setTimeout(() => {
+      mobileRailRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+    }, 30);
+    return () => window.clearTimeout(timer);
+  }, [activeProjectId, drawerMode, mobileOpen, mobileRailRef, projectPathMode]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.matches("input, textarea, select, [contenteditable='true']") ?? false;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setSearchOpen(true);
       }
+      if (!isTyping && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        if (drawerMode) setMobileOpen((current) => !current);
+        else setRailCollapsed(!railCollapsed);
+      }
       if (event.key === "Escape") {
+        const restoreProfileFocus = profileOpen;
         setSearchOpen(false);
         setNotificationsOpen(false);
         setProfileOpen(false);
         setMobileOpen(false);
+        setOutcome(null);
+        setOnboardingMode(null);
+        setIdentitySelection(null);
+        if (restoreProfileFocus) window.setTimeout(() => profileButtonRef.current?.focus(), 0);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.sessionStorage.setItem("maya.projectPathMode", projectPathMode);
-      window.sessionStorage.setItem("maya.railCollapsed", String(railCollapsed));
-    } catch {
-      // Ignore storage failures and retain the in-memory preference.
-    }
-  }, [projectPathMode, railCollapsed]);
+  }, [drawerMode, profileOpen, railCollapsed, setRailCollapsed]);
 
   useEffect(() => {
     if (searchOpen) window.setTimeout(() => searchRef.current?.focus(), 20);
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (profileOpen) window.setTimeout(() => profilePanelRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus(), 20);
+  }, [profileOpen]);
 
   useEffect(() => {
     document.title = `${viewLabels[view]} · Maya Workspace`;
@@ -712,91 +1045,122 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const currentProjectSurface = (() => {
     if (view === "company") {
       if (activeProjectApp) return projectApps.find((app) => app.id === activeProjectApp)?.name ?? "Application";
-      return workspaceTabs.find((item) => item.id === activeProjectTab)?.label ?? "Overview";
+      return workspaceTabs.find((item) => item.id === activeProjectTab)?.label
+        ?? (activeProjectTab === "apps" ? "Apps" : activeProjectTab === "graph" ? "Data & graph" : activeProjectTab === "agents" ? "Playground" : "Overview");
     }
     return applications.find((app) => app.id === view)?.name
       ?? workflowViews.find((item) => item.id === view)?.label
       ?? dataViews.find((item) => item.id === view)?.label
       ?? viewLabels[view];
   })();
-  const mountedAppPreview = effectiveMountedApps.slice(0, 4);
-  const toggleItem = (items: readonly string[], id: string) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id];
-
+  const activeMountedAppId = activeProjectApp
+    ?? (applications.some((app) => app.id === view) ? view as ProjectAppId : null);
+  const mountedAppPreviewLimit = compactContext ? 2 : 6;
+  const identityPreviewLimit = compactContext ? 1 : 2;
+  const defaultVisibleMountedApps = effectiveMountedApps.slice(0, mountedAppPreviewLimit);
+  const visibleMountedApps = activeMountedAppId && effectiveMountedApps.includes(activeMountedAppId) && !defaultVisibleMountedApps.includes(activeMountedAppId)
+    ? [...defaultVisibleMountedApps.slice(0, Math.max(0, mountedAppPreviewLimit - 1)), activeMountedAppId]
+    : defaultVisibleMountedApps;
+  const hiddenMountedAppCount = Math.max(0, effectiveMountedApps.length - visibleMountedApps.length);
+  const visibleProjectAgents = activeProjectAgents.slice(0, identityPreviewLimit);
+  const hiddenProjectAgentCount = Math.max(0, activeProjectAgents.length - visibleProjectAgents.length);
+  const visibleProjectMembers = activeProjectMembers.slice(0, identityPreviewLimit);
+  const hiddenProjectMemberCount = Math.max(0, activeProjectMembers.length - visibleProjectMembers.length);
   return (
     <div className={`platform-shell ${railCollapsed ? "rail-collapsed" : ""}`}>
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
-      <aside className={`side-rail ${mobileOpen ? "open" : ""}`}>
+      <aside ref={mobileRailRef} className={`side-rail ${mobileOpen ? "open" : ""}`} inert={drawerMode && !mobileOpen ? true : undefined} aria-hidden={drawerMode && !mobileOpen ? true : undefined} role={drawerMode ? "dialog" : undefined} aria-modal={drawerMode && mobileOpen ? true : undefined} aria-label={drawerMode ? "Project navigation" : undefined} tabIndex={drawerMode ? -1 : undefined}>
         <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open Maya Workspace"><span>M</span><div><b>Maya</b><small>Supply network workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
+        <div className="rail-quick-actions" aria-label="Workspace setup and navigation controls">
+          <button data-action-id="nav.onboard-client" type="button" aria-label="Onboard a new client" title="Onboard a new client" onClick={() => startOnboarding("client")}><span>＋</span><b>New client</b></button>
+          <button data-action-id="nav.new-project" type="button" aria-label="Create a new project" title="Create a new project" onClick={() => startOnboarding("project")}><span>＋</span><b>New project</b></button>
+          <button data-action-id="nav.collapse" type="button" aria-expanded={drawerMode ? mobileOpen : !railCollapsed} aria-controls="maya-primary-navigation" onClick={toggleRailDensity} title={drawerMode ? "Close navigation" : railCollapsed ? "Expand navigation" : "Collapse navigation"} aria-label={drawerMode ? "Close project navigation" : railCollapsed ? "Expand project navigation" : "Collapse project navigation"}><span>{drawerMode ? "×" : railCollapsed ? "›" : "‹"}</span><b>{drawerMode ? "Close" : railCollapsed ? "Expand" : "Collapse"}</b></button>
+        </div>
 
-        <nav aria-label="Main navigation">
+        <nav id="maya-primary-navigation" aria-label="Main navigation">
           <section className="nav-section workspace-primary-nav">
             <p>Workspace</p>
             <button data-action-id="nav.workspace" className={`scope-nav ${scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><span>⌂</span><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
             <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><span>◎</span><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
           </section>
           <section className="nav-section sidebar-projects">
-            <div className="sidebar-section-heading"><p>Project path</p><button data-action-id="nav.create-project" type="button" aria-label="Create project" onClick={() => startOnboarding("project")}>+</button></div>
+            <div className="sidebar-section-heading"><p>Project path</p><span>{sidebarPathGroups.reduce((count, group) => count + group.projects.length, 0)} shown</span></div>
             <div className="project-path-toggle sidebar-path-toggle" role="group" aria-label="Project hierarchy order">
               <button data-action-id="nav.path.client" className={projectPathMode === "client" ? "active" : ""} type="button" aria-pressed={projectPathMode === "client"} onClick={() => setProjectPathMode("client")}>By client</button>
               <button data-action-id="nav.path.tower" className={projectPathMode === "tower" ? "active" : ""} type="button" aria-pressed={projectPathMode === "tower"} onClick={() => setProjectPathMode("tower")}>By tower</button>
             </div>
+            <label className="sidebar-path-search"><span aria-hidden="true">⌕</span><span className="sr-only">Find a client, tower, or project</span><input value={projectNavQuery} onChange={(event) => setProjectNavQuery(event.target.value)} placeholder="Find client, tower, project" />{projectNavQueryActive && <button data-action-id="nav.path.clear-search" type="button" aria-label="Clear project search" onClick={() => setProjectNavQuery("")}>×</button>}</label>
             <div className="sidebar-path-tree">
               {sidebarPathGroups.map((group) => {
-                const rootOpen = expandedSidebarRoots.includes(group.key) || group.projects.some((project) => project.id === resolvedProject?.id);
+                const rootContainsActive = group.projects.some((project) => project.id === resolvedProject?.id)
+                  || group.branches.some((branch) => branch.projects.some((project) => project.id === resolvedProject?.id));
+                const rootOpen = projectNavQueryActive || (!collapsedSidebarRoots.includes(group.key) && (expandedSidebarRoots.includes(group.key) || rootContainsActive));
+                const rootPanelId = `nav-${group.key.replaceAll(":", "-")}`;
                 return <section key={group.key} className="sidebar-path-root">
-                  <button data-action-id={`nav.path.root.${group.key}`} className={group.projects.some((project) => project.id === resolvedProject?.id) ? "active-context" : ""} type="button" aria-expanded={rootOpen} onClick={() => setExpandedSidebarRoots((current) => toggleItem(current, group.key))}><span>{group.kind === "client" ? "C" : "T"}</span><b>{group.label}</b><em>{group.projects.length}</em><i>{rootOpen ? "−" : "+"}</i></button>
-                  {rootOpen && <div className="sidebar-path-branches">
+                  <button data-action-id={`nav.path.root.${group.key}`} className={rootContainsActive ? "active-context" : ""} type="button" aria-expanded={rootOpen} aria-controls={rootPanelId} disabled={projectNavQueryActive} onClick={() => { if (rootOpen) { setCollapsedSidebarRoots((current) => current.includes(group.key) ? current : [...current, group.key]); setExpandedSidebarRoots((current) => current.filter((item) => item !== group.key)); } else { setCollapsedSidebarRoots((current) => current.filter((item) => item !== group.key)); setExpandedSidebarRoots((current) => current.includes(group.key) ? current : [...current, group.key]); } }}><span>{group.kind === "client" ? "C" : "T"}</span><b>{group.label}</b><em>{group.projects.length}</em><i>{rootOpen ? "−" : "+"}</i></button>
+                  {rootOpen && <div className="sidebar-path-branches" id={rootPanelId}>
                     {group.branches.map((branch) => {
-                      const branchOpen = expandedSidebarBranches.includes(branch.key) || branch.projects.some((project) => project.id === resolvedProject?.id);
+                      const branchContainsActive = branch.projects.some((project) => project.id === resolvedProject?.id);
+                      const branchOpen = projectNavQueryActive || (!collapsedSidebarBranches.includes(branch.key) && (expandedSidebarBranches.includes(branch.key) || branchContainsActive));
+                      const branchPanelId = `nav-${branch.key.replaceAll(":", "-")}`;
                       return <section key={branch.key}>
-                        <button data-action-id={`nav.path.branch.${branch.key}`} className={branch.projects.some((project) => project.id === resolvedProject?.id) ? "active-context" : ""} type="button" aria-expanded={branchOpen} onClick={() => setExpandedSidebarBranches((current) => toggleItem(current, branch.key))}><span>{branch.kind === "client" ? "Client" : "Tower"}</span><b>{branch.label}</b><i>{branchOpen ? "−" : "+"}</i></button>
-                        {branchOpen && <div className="sidebar-project-leaves">{branch.projects.map((project) => <button data-action-id={`nav.project.${project.id}`} className={`sidebar-project ${resolvedProject?.id === project.id ? "active" : ""}`} type="button" key={project.id} onClick={() => openProject(project.id)}><span className={`project-health health-${project.health}`} /><div><b>{project.name}</b><small>{project.code}</small></div><em>›</em></button>)}</div>}
+                        <button data-action-id={`nav.path.branch.${branch.key}`} className={branchContainsActive ? "active-context" : ""} type="button" aria-expanded={branchOpen} aria-controls={branchPanelId} disabled={projectNavQueryActive} onClick={() => { if (branchOpen) { setCollapsedSidebarBranches((current) => current.includes(branch.key) ? current : [...current, branch.key]); setExpandedSidebarBranches((current) => current.filter((item) => item !== branch.key)); } else { setCollapsedSidebarBranches((current) => current.filter((item) => item !== branch.key)); setExpandedSidebarBranches((current) => current.includes(branch.key) ? current : [...current, branch.key]); } }}><span>{branch.kind === "client" ? "Client" : "Tower"}</span><b>{branch.label}</b><i>{branchOpen ? "−" : "+"}</i></button>
+                        {branchOpen && <div className="sidebar-project-leaves" id={branchPanelId}>{branch.projects.map((project) => <button data-action-id={`nav.project.${project.id}`} className={`sidebar-project ${resolvedProject?.id === project.id ? "active" : ""}`} type="button" aria-current={resolvedProject?.id === project.id ? "page" : undefined} key={project.id} onClick={() => openProject(project.id)}><span className={`project-health health-${project.health}`} /><div><b>{project.name}</b><small>{project.code}</small></div><em>›</em></button>)}{!branch.projects.length && <button data-action-id={`nav.path.empty.${branch.id}`} className="sidebar-empty-project" type="button" onClick={() => startOnboarding("project", branch.id)}>Create first project</button>}</div>}
                       </section>;
                     })}
                     {!group.branches.length && <button data-action-id={`nav.path.empty.${group.id}`} className="sidebar-empty-project" type="button" onClick={() => startOnboarding("project", group.id)}>Create first project</button>}
                   </div>}
                 </section>;
               })}
+              {!sidebarPathGroups.length && <div className="sidebar-path-empty"><b>No matches</b><span>Try a client, tower, project code, or problem.</span><button data-action-id="nav.path.reset-search" type="button" onClick={() => setProjectNavQuery("")}>Clear search</button></div>}
             </div>
-            <button data-action-id="nav.all-projects" className="sidebar-all-projects" type="button" onClick={openWorkspaceHome}>Open workspace</button>
-          </section>
-          <section className="nav-section sidebar-create">
-            <p>Set up</p>
-            <button data-action-id="nav.onboard-client" type="button" onClick={() => startOnboarding("client")}><span>＋</span><div><b>New client</b><small>Create a session draft</small></div></button>
-            <button data-action-id="nav.new-project" type="button" onClick={() => startOnboarding("project")}><span>＋</span><div><b>New project</b><small>Choose a client parent</small></div></button>
           </section>
         </nav>
-        <footer className="rail-footer">
-          <button data-action-id="nav.collapse" type="button" aria-expanded={!railCollapsed} onClick={() => setRailCollapsed((current) => !current)} title={railCollapsed ? "Expand navigation" : "Collapse navigation"}><b>{railCollapsed ? "›" : "‹"}</b><span><strong>{railCollapsed ? "Expand" : "Collapse"}</strong><small>Project navigation</small></span><em>{railCollapsed ? "" : "⌘B"}</em></button>
-        </footer>
       </aside>
 
       <div className="main-shell">
-        <header className="topbar">
-          <button className="menu-button" type="button" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>☰</button>
-          <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b>{segment.label}</b> : <button data-action-id={`breadcrumb.${segment.kind}.${segment.id}`} type="button" onClick={() => openProject(activeProject.id)}>{segment.label}</button>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}</nav>
+        <div className="shell-chrome">
+          <header className="topbar">
+          <button className="menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="maya-primary-navigation" onClick={() => setMobileOpen(true)}>☰</button>
+          <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b aria-current="page">{segment.label}</b> : <span className="breadcrumb-label">{segment.label}</span>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}</nav>
           <div className="topbar-actions">
             <span className="environment-badge">Synthetic workspace</span>
             <button className="search-trigger" type="button" onClick={() => setSearchOpen(true)}><span>⌕</span><b>Search workspace</b><kbd>⌘ K</kbd></button>
             <button className="topbar-icon" type="button" aria-label="Open notifications" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}>◌<em>{notificationItems.length}</em></button>
-            <button data-action-id="profile.toggle" className="user-button" type="button" aria-expanded={profileOpen} onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator?.organization ?? "Kearney"}</small></div></button>
+            <button ref={profileButtonRef} data-action-id="profile.toggle" className="user-button" type="button" aria-label={`Open account menu for ${signedInCollaborator?.name ?? "Maya Rao"}`} title={`Account · ${signedInCollaborator?.name ?? "Maya Rao"}`} aria-expanded={profileOpen} aria-controls="maya-profile-panel" onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator?.organization ?? "Kearney"}</small></div></button>
           </div>
           {notificationsOpen && <aside className="notification-panel"><header><div><p className="kicker">ACTIVITY</p><h2>Recent project work</h2></div><button data-action-id="notifications.close" type="button" onClick={() => setNotificationsOpen(false)}>×</button></header>{notificationItems.map((item) => <button data-action-id={`notifications.open.${item.caseId}.${item.tone}`} type="button" key={`${item.caseId}-${item.tone}`} onClick={() => "projectId" in item && item.projectId ? openProject(item.projectId) : openCase(item.caseId)}><i className={`tone-${item.tone}`} /><span><b>{item.title}</b><small>{item.detail}</small></span><em>›</em></button>)}</aside>}
-          {profileOpen && <aside className="profile-panel" aria-label="User menu"><header><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator ? `${signedInCollaborator.role} · ${signedInCollaborator.organization}` : "Identity unavailable"}</small></div></header><button data-action-id="profile.open-workspace" type="button" onClick={() => { setProfileOpen(false); if (canViewActiveProject) openProject(activeProject.id); else openWorkspaceHome(); }}><b>{canViewActiveProject ? "Open active project" : "Open workspace"}</b><small>{canViewActiveProject ? `${activeProject.client} · ${activeProject.name}` : `${accessibleProjects.length} accessible projects`}</small><i>›</i></button><button data-action-id="profile.open-receipts" type="button" disabled={!outcomeLedger.length} onClick={() => { setProfileOpen(false); setOutcome(outcomeLedger[0] ?? null); }}><b>Session receipts</b><small>{outcomeLedger.length ? `${outcomeLedger.length} browser-session receipts` : "No receipts recorded yet"}</small><i>›</i></button><button data-action-id="profile.decision-rights" type="button" onClick={() => { setProfileOpen(false); completeAction("Project rights opened", signedInProjectMembership && canViewActiveProject ? `${signedInCollaborator?.name ?? "Signed-in collaborator"} is ${signedInProjectMembership.projectRole} in ${activeProject.name} with ${signedInProjectMembership.capabilities.length} declared session capabilities.` : "Select an accessible project to inspect the signed-in collaborator's project-scoped rights.", canViewActiveProject ? signedInProjectMembership?.id ?? "RIGHTS-NO-PROJECT" : "RIGHTS-NO-PROJECT", "Saved"); }}><b>Project rights</b><small>{canViewActiveProject ? signedInProjectMembership?.projectRole ?? "No project membership" : "Select an accessible project"}</small><i>›</i></button><button data-action-id="profile.signout" type="button" onClick={() => { setProfileOpen(false); completeAction("Sign out unavailable", "Authentication is not configured for this workspace. No session was ended.", "AUTH-FUTURE", "Blocked"); }}><b>Sign out</b><small>Not configured</small><i>!</i></button></aside>}
-        </header>
+          {profileOpen && <aside ref={profilePanelRef} id="maya-profile-panel" className="profile-panel" aria-label="User menu"><header><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator ? `${signedInCollaborator.role} · ${signedInCollaborator.organization}` : "Identity unavailable"}</small></div></header><button data-action-id="profile.open-workspace" type="button" onClick={() => { setProfileOpen(false); if (canViewActiveProject) openProject(activeProject.id); else openWorkspaceHome(); }}><b>{canViewActiveProject ? "Open active project" : "Open workspace"}</b><small>{canViewActiveProject ? `${activeProject.client} · ${activeProject.name}` : `${accessibleProjects.length} accessible projects`}</small><i>›</i></button><button data-action-id="profile.open-receipts" type="button" disabled={!outcomeLedger.length} onClick={() => { setProfileOpen(false); setOutcome(outcomeLedger[0] ?? null); }}><b>Session receipts</b><small>{outcomeLedger.length ? `${outcomeLedger.length} browser-session receipts` : "No receipts recorded yet"}</small><i>›</i></button><button data-action-id="profile.decision-rights" type="button" onClick={() => { setProfileOpen(false); completeAction("Project rights opened", signedInProjectMembership && canViewActiveProject ? `${signedInCollaborator?.name ?? "Signed-in collaborator"} is ${signedInProjectMembership.projectRole} in ${activeProject.name} with ${signedInProjectMembership.capabilities.length} declared session capabilities.` : "Select an accessible project to inspect the signed-in collaborator's project-scoped rights.", canViewActiveProject ? signedInProjectMembership?.id ?? "RIGHTS-NO-PROJECT" : "RIGHTS-NO-PROJECT", "Saved"); }}><b>Project rights</b><small>{canViewActiveProject ? signedInProjectMembership?.projectRole ?? "No project membership" : "Select an accessible project"}</small><i>›</i></button><button data-action-id="profile.signout" type="button" onClick={() => { setProfileOpen(false); completeAction("Sign out unavailable", "Authentication is not configured for this workspace. No session was ended.", "AUTH-FUTURE", "Blocked"); }}><b>Sign out</b><small>Not configured</small><i>!</i></button></aside>}
+          </header>
 
-        {canViewActiveProject && <section className="project-context-bar" aria-label="Current project application context">
-          <button data-action-id="context.current-surface" className="context-current" type="button" onClick={() => view === "company" ? openProjectTab(activeProjectTab) : go("company")}><span>YOU ARE HERE</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></button>
-          <div className="context-mounted-apps"><span>Mounted</span>{mountedAppPreview.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><i>{app.icon}</i><b>{app.name}</b></button>; })}{effectiveMountedApps.length > mountedAppPreview.length && <button data-action-id="context.more-apps" className="context-more" type="button" onClick={() => openProjectTab("apps")}>+{effectiveMountedApps.length - mountedAppPreview.length}</button>}</div>
-          <button data-action-id="context.open-sessions" className="context-session" type="button" onClick={() => openProjectTab("agents")}><span>WORK</span><b>{activeWorkSessionId || "No session"}</b><small>{activeWorkSessions.length} sessions</small></button>
-        </section>}
-        <div className="statusbar">{canViewActiveProject ? <><span><i className="status-fixture" />{activeProject.stage}</span><span>{activeProject.client}</span><span>{activeProject.counts.observations} fixture observations</span><span>{membershipCatalog.filter((item) => item.projectId === activeProject.id).length} collaborators · project context</span></> : resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>
+          {canViewActiveProject && <section className="project-context-bar" aria-label="Current project application context">
+          <div className="mobile-project-path" aria-label={`Current project path: ${projectPath.map((segment) => segment.label).join(" / ")}`} title={projectPath.map((segment) => segment.label).join(" / ")}><span>{projectPath.slice(0, -1).map((segment) => segment.label).join(" / ")}</span><b>{projectPath[projectPath.length - 1]?.label ?? activeProject.name}</b></div>
+          {view === "company" ? <div className="context-current" aria-current="page"><span>YOU ARE HERE</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></div> : <button data-action-id="context.back-to-project" className="context-current" type="button" onClick={returnFromProjectApp}><span>APPLICATION</span><b>{currentProjectSurface}</b><small>Back to project</small></button>}
+          <div className="context-work-tools">
+            <div className="context-mounted-apps" aria-label="Mounted project applications">
+              <button data-action-id="context.open-apps" className={`context-group-home ${view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "active" : ""}`} type="button" aria-current={view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("apps")}><b>Apps</b><small>{effectiveMountedApps.length}</small></button>
+              {visibleMountedApps.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><i>{app.icon}</i><b>{app.name}</b></button>; })}
+              {hiddenMountedAppCount > 0 && <button data-action-id="context.open-apps.more" className="context-more" type="button" aria-label={`Open Apps to view ${hiddenMountedAppCount} more mounted applications`} title={`${hiddenMountedAppCount} more mounted apps`} onClick={() => openProjectTab("apps")}>+{hiddenMountedAppCount}</button>}
+            </div>
+            <div className="context-identity-tools" aria-label="Project agents and team">
+              <button data-action-id="context.agents" className="context-identity-home" type="button" disabled={!activeProjectAgents.length} title={activeProjectAgents.map((agent) => agent.name).join(", ")} onClick={() => activeProjectAgents[0] && setIdentitySelection({ kind: "agent", id: activeProjectAgents[0].id })}><b>Agents</b><small>{activeProjectAgents.length}</small></button>
+              {visibleProjectAgents.map((agent) => <button data-action-id={`context.agent.${agent.id}`} className={identitySelection?.kind === "agent" && identitySelection.id === agent.id ? "active" : ""} type="button" title={`${agent.name} · ${agent.role}`} aria-label={`Open accountability record for agent ${agent.name}`} key={agent.id} onClick={() => setIdentitySelection({ kind: "agent", id: agent.id })}><i>{agent.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</i><b>{agent.name.replace("Project ", "").replace("Supplier ", "").split(" ")[0]}</b></button>)}
+              {hiddenProjectAgentCount > 0 && <button data-action-id="context.agents.more" className="context-more" type="button" aria-label={`Open agent directory with ${hiddenProjectAgentCount} more agents`} title={`${hiddenProjectAgentCount} more agents`} onClick={() => activeProjectAgents[visibleProjectAgents.length] && setIdentitySelection({ kind: "agent", id: activeProjectAgents[visibleProjectAgents.length].id })}>+{hiddenProjectAgentCount}</button>}
+              <button data-action-id="context.team" className="context-identity-home" type="button" disabled={!activeProjectMembers.length} title={activeProjectMembers.map((item) => item.collaborator.name).join(", ")} onClick={() => activeProjectMembers[0] && setIdentitySelection({ kind: "member", id: activeProjectMembers[0].collaborator.id })}><b>Team</b><small>{activeProjectMembers.length}</small></button>
+              {visibleProjectMembers.map(({ collaborator }) => <button data-action-id={`context.member.${collaborator.id}`} className={identitySelection?.kind === "member" && identitySelection.id === collaborator.id ? "active" : ""} type="button" title={`${collaborator.name} · ${collaborator.role}`} aria-label={`Open accountability record for team member ${collaborator.name}`} key={collaborator.id} onClick={() => setIdentitySelection({ kind: "member", id: collaborator.id })}><i>{collaborator.initials}</i><b>{collaborator.name.split(" ").at(-1)}</b></button>)}
+              {hiddenProjectMemberCount > 0 && <button data-action-id="context.team.more" className="context-more" type="button" aria-label={`Open team directory with ${hiddenProjectMemberCount} more members`} title={`${hiddenProjectMemberCount} more members`} onClick={() => activeProjectMembers[visibleProjectMembers.length] && setIdentitySelection({ kind: "member", id: activeProjectMembers[visibleProjectMembers.length].collaborator.id })}>+{hiddenProjectMemberCount}</button>}
+            </div>
+          </div>
+          <button data-action-id="context.open-sessions" className={`context-session ${view === "company" && activeProjectTab === "agents" ? "active" : ""}`} type="button" aria-label={activeWorkSessionId ? `Open active Playground session ${activeWorkSessionId}` : "Open Playground and start a new session"} title={activeWorkSessionId ? `Active Playground session · ${activeWorkSessionId}` : "Open Playground"} aria-current={view === "company" && activeProjectTab === "agents" ? "page" : undefined} onClick={() => activeWorkSessionId ? openProjectSession(activeWorkSessionId) : openProjectTab("agents")}><span>PLAYGROUND</span><b>{activeWorkSessionId || "New session"}</b><small>{activeWorkSessions.length} sessions</small></button>
+          </section>}
+          <div className="statusbar">{canViewActiveProject ? <><span><i className="status-fixture" />{activeProject.stage}</span><span>{activeProject.client}</span><span>{activeProject.counts.observations} fixture observations</span><span>{membershipCatalog.filter((item) => item.projectId === activeProject.id).length} collaborators · project context</span></> : resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>
+        </div>
 
         <main className="main-content">
           {resolvedProject && scope === "company" && deniedProjectAccess ? (
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
           ) : view === "company" && resolvedProject ? (
-            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} pathMode={projectPathMode} onPathModeChange={setProjectPathMode} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onProjectChange={(project) => { setOutcome(null); setActiveProjectId(project.id); setSelectedCaseId(caseIdForProject(project)); }} onTabChange={setActiveProjectTab} onStudioChange={setActiveProjectApp} onOpenApp={(app) => go(app)} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
+            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} initialSessionId={activeSessionId} initialRunId={activeRunId} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onAgentRosterChange={handleAgentRosterChange} onProjectSetupChange={handleProjectSetupChange} onTabChange={(tab) => openProjectTab(tab)} onStudioChange={openMountedProjectApp} onCloseStudio={returnFromProjectApp} onSessionChange={openProjectSession} onRunChange={openProjectRun} onOpenApp={openMountedProjectApp} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
           ) : view === "company" ? (
             <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />
           ) : view === "global" || view === "region" ? (
@@ -823,20 +1187,35 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
               }));
             }} onTrace={(title, detail, artifact, context) => completeAction(title, detail, artifact, "Saved", context)} onRefresh={(context) => completeAction("Snapshot reconciled", "The fixed synthetic snapshot was reconciled; no source systems were contacted.", "SNAPSHOT-DEMO-01", "Completed", context)} />
           ) : resolvedProject && workflowViews.some((item) => item.id === view) ? (
-            <DecisionWorkspaces key={`workflow:${activeProject.id}:${view}`} view={view as WorkflowViewId} cases={visibleCases} activeCase={activeCase} scopeLabel={`${activeProject.client} / ${activeProject.name}`} financeReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 2) % humanExperts.length].name} executiveReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 3) % humanExperts.length].name} onOpenCase={openCase} onOpenApp={(app) => go(app)} onUpdateCase={updateCase} onToast={(message) => completeAction("Decision interaction recorded", message, "DECISION-INTERACTION", interactionStatus(message))} />
+            <DecisionWorkspaces key={`workflow:${activeProject.id}:${view}`} view={view as WorkflowViewId} cases={visibleCases} activeCase={activeCase} scopeLabel={`${activeProject.client} / ${activeProject.name}`} financeReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 2) % humanExperts.length].name} executiveReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 3) % humanExperts.length].name} onOpenCase={openCase} onOpenApp={(app) => app === "graph" ? go("graph") : openMountedProjectApp(app)} onUpdateCase={updateCase} onToast={(message) => completeAction("Decision interaction recorded", message, "DECISION-INTERACTION", interactionStatus(message))} />
           ) : resolvedProject && applications.some((item) => item.id === view) ? (
-            <div className="application-session-surface"><ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} /><AppRunHistory project={activeProject} runs={appRunsFor(activityState, activeProject.id, view as ProjectAppId)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openMountedProjectApp} onOpenSession={(sessionId) => { dispatchActivity({ type: "select-session", projectId: activeProject.id, sessionId }); go("agents"); }} onEvidence={(target) => { const ref = typeof target === "string" ? target : target.id; completeAction("Application evidence opened", `${ref} was opened from the selected application run.`, ref, "Saved", `${activeProject.client} / ${activeProject.name}`); }} onOutcome={completeAction} canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed} activeSessionId={activeWorkSessionId} /></div>
+            <div className="application-session-surface"><ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} /><AppRunHistory key={activeRunId ?? `application-${view}`} project={activeProject} runs={appRunsFor(activityState, activeProject.id, view as ProjectAppId)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openMountedProjectApp} onOpenSession={openProjectSession} onEvidence={(target) => { const ref = typeof target === "string" ? target : target.id; completeAction("Application evidence opened", `${ref} was opened from the selected application run.`, ref, "Saved", `${activeProject.client} / ${activeProject.name}`); }} onOutcome={completeAction} canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed && projectHasDataContract(activeProject)} runBlockedReason={!projectHasDataContract(activeProject) ? "Complete Data & graph setup before starting an application run." : undefined} focusedRunId={activeRunId} initialAppId={view as ProjectAppId} onRunChange={openProjectRun} /></div>
           ) : resolvedProject ? (
-            <DataOperations key={`data:${activeProject.id}:${view}`} view={view as DataViewId} snapshot={snapshot} onOpenApp={(app) => go(app)} onToast={(message) => completeAction("Data interaction recorded", message, "DATA-INTERACTION", interactionStatus(message))} />
+            <DataOperations key={`data:${activeProject.id}:${view}`} view={view as DataViewId} snapshot={snapshot} onOpenApp={openMountedProjectApp} onToast={(message) => completeAction("Data interaction recorded", message, "DATA-INTERACTION", interactionStatus(message))} />
           ) : <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />}
         </main>
 
         <footer className="app-footer"><span>Maya Workspace</span><span>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : resolvedProject && scope === "company" ? "Project access required" : scope === "company" ? `${accessibleProjects.length} projects` : `Operations World / ${scope === "global" ? "Global" : operationsRegion}`}</span></footer>
       </div>
 
-      {searchOpen && <div className="overlay" role="presentation"><button className="overlay-dismiss" type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} /><section className="search-dialog" role="dialog" aria-modal="true" aria-label="Search Maya Workspace"><div className="search-input"><span>⌕</span><input ref={searchRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search projects, clients, and project capabilities…" /><kbd>ESC</kbd></div><div className="search-context"><span>{searchResults.length} results</span><b>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : scope === "company" ? "Workspace" : `Operations World / ${scope === "region" ? operationsRegion : snapshot.shortLabel}`}</b></div><div className="search-results">{searchResults.map((result, index) => <button data-action-id={`search.open.${result.id}.${result.projectId ?? result.caseId ?? index}`} type="button" key={`${result.id}-${result.caseId ?? result.projectId ?? index}`} onClick={() => result.projectId ? openProject(result.projectId) : result.caseId ? openCase(result.caseId) : result.id === "company" ? openWorkspaceHome() : go(result.id)}><span>{result.group}</span><div><b>{result.label}</b><small>{result.detail}</small></div><i>›</i></button>)}</div></section></div>}
+      {canViewActiveProject && <WorkIdentityInspector
+        project={activeProject}
+        selection={identitySelection}
+        agents={activeProjectAgents}
+        members={activeProjectMembers}
+        sessions={activeWorkSessions}
+        activities={activeProjectActivities}
+        appRuns={activeProjectRuns}
+        onSelect={setIdentitySelection}
+        onClose={() => setIdentitySelection(null)}
+        onOpenSession={openProjectSession}
+        onOpenRun={openProjectRun}
+        onReceipt={(title, detail, artifact) => completeAction(title, detail, artifact, "Saved", `${activeProject.client} / ${activeProject.name}`)}
+      />}
+
+      {searchOpen && <div className="overlay" role="presentation" data-modal-root><button className="overlay-dismiss" type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} /><section ref={searchDialogRef} className="search-dialog" role="dialog" aria-modal="true" aria-label="Search Maya Workspace" tabIndex={-1}><div className="search-input"><span>⌕</span><input ref={searchRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search projects, clients, and project capabilities…" /><kbd>ESC</kbd></div><div className="search-context"><span>{searchResults.length} results</span><b>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : scope === "company" ? "Workspace" : `Operations World / ${scope === "region" ? operationsRegion : snapshot.shortLabel}`}</b></div><div className="search-results">{searchResults.map((result, index) => <button data-action-id={`search.open.${result.id}.${result.projectId ?? result.caseId ?? index}`} type="button" key={`${result.id}-${result.caseId ?? result.projectId ?? index}`} onClick={() => result.projectId ? openProject(result.projectId) : result.caseId ? openCase(result.caseId) : result.id === "company" ? openWorkspaceHome() : applications.some((app) => app.id === result.id) ? openMountedProjectApp(result.id as ProjectAppId) : go(result.id)}><span>{result.group}</span><div><b>{result.label}</b><small>{result.detail}</small></div><i>›</i></button>)}</div></section></div>}
       <WorkspaceOnboarding open={onboardingMode !== null} mode={onboardingMode ?? "client"} step={onboardingStep} clients={accessibleClients} clientDraft={clientDraft} projectDraft={projectDraft} onModeChange={(mode) => startOnboarding(mode)} onStepChange={setOnboardingStep} onClientDraftChange={setClientDraft} onProjectDraftChange={setProjectDraft} onClose={() => setOnboardingMode(null)} onSubmitClient={saveClientDraft} onSubmitProject={saveProjectDraft} />
-      {outcome && <div className="action-outcome-overlay" role="presentation"><button data-action-id="outcome.dismiss" className="action-outcome-scrim" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)} /><aside className="action-outcome" role="dialog" aria-modal="true" aria-label="Action receipt"><header><span className={`outcome-state state-${outcome.status.toLowerCase()}`}>{outcome.status}</span><button data-action-id="outcome.close" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)}>×</button></header><p>ACTION RECEIPT · {outcome.id}</p><h2>{outcome.title}</h2><span>{outcome.detail}</span><dl><div><dt>Artifact</dt><dd>{outcome.artifact}</dd></div><div><dt>Recorded context</dt><dd>{outcome.context}</dd></div><div><dt>Recorded</dt><dd>{outcome.timestamp}</dd></div><div><dt>Execution boundary</dt><dd>Browser-session concept</dd></div></dl><section className="session-receipt-ledger"><header><b>SESSION RECEIPT LEDGER</b><span>{outcomeLedger.length} retained · browser memory only</span></header>{outcomeLedger.slice(0, 5).map((entry) => <button data-action-id={`outcome.open.${entry.id}`} type="button" key={entry.id} onClick={() => setOutcome(entry)} className={entry.id === outcome.id ? "active" : ""}><span>{entry.status}</span><b>{entry.title}</b><small>{entry.artifact}</small></button>)}</section><button data-action-id="outcome.done" className="primary-dark-action" type="button" onClick={() => setOutcome(null)}>Done</button></aside></div>}
+      {outcome && <div className="action-outcome-overlay" role="presentation" data-modal-root><button data-action-id="outcome.dismiss" className="action-outcome-scrim" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)} /><aside ref={outcomeDialogRef} className="action-outcome" role="dialog" aria-modal="true" aria-label="Action receipt" tabIndex={-1}><header><span className={`outcome-state state-${outcome.status.toLowerCase()}`}>{outcome.status}</span><button data-action-id="outcome.close" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)}>×</button></header><p>ACTION RECEIPT · {outcome.id}</p><h2>{outcome.title}</h2><span>{outcome.detail}</span><dl><div><dt>Artifact</dt><dd>{outcome.artifact}</dd></div><div><dt>Recorded context</dt><dd>{outcome.context}</dd></div><div><dt>Recorded</dt><dd>{outcome.timestamp}</dd></div><div><dt>Execution boundary</dt><dd>Browser-session concept</dd></div></dl><section className="session-receipt-ledger"><header><b>SESSION RECEIPT LEDGER</b><span>{outcomeLedger.length} retained · browser memory only</span></header>{outcomeLedger.slice(0, 5).map((entry) => <button data-action-id={`outcome.open.${entry.id}`} type="button" key={entry.id} onClick={() => setOutcome(entry)} className={entry.id === outcome.id ? "active" : ""}><span>{entry.status}</span><b>{entry.title}</b><small>{entry.artifact}</small></button>)}</section><button data-action-id="outcome.done" className="primary-dark-action" type="button" onClick={() => setOutcome(null)}>Done</button></aside></div>}
       {toast && <div className="toast" role="status" aria-live="polite"><DotIcon /><span>{toast}</span></div>}
     </div>
   );

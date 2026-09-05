@@ -110,8 +110,9 @@ test("workflow routing enforces lifecycle gates and opens the project evidence g
 
   assert.match(shell, /next === "decisions" \|\| next === "agents" \|\| next === "graph"/);
   assert.match(shell, /openProjectTab\(next === "decisions" \? "decisions" : next\)/);
-  assert.match(shell, /<DecisionWorkspaces[^>]*onOpenApp=\{\(app\) => go\(app\)\}/);
-  assert.match(projectWorkspace, /tab === "graph" && <GraphPanel/);
+  assert.match(shell, /<DecisionWorkspaces[^>]*onOpenApp=\{\(app\) => app === "graph" \? go\("graph"\) : openMountedProjectApp\(app\)\}/);
+  assert.match(projectWorkspace, /\(tab === "data" \|\| tab === "graph"\) && <ProjectDataWorkspace/);
+  assert.match(projectWorkspace, /mode === "sources" \? <DataPanel[\s\S]*?: <GraphPanel/);
   assert.match(projectWorkspace, /graph\.evidence\.\$\{selected\.id\}[\s\S]*?onEvidence\(selectedReceipt\)/);
   assert.match(projectWorkspace, /\{evidence && <EvidenceDrawer receipt=\{evidence\}/);
 });

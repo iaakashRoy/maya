@@ -1,8 +1,13 @@
-import { projectApps, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
+import { expertAgents, projectApps, projectHasDataContract as hasProjectDataContract, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
+
+/** Backward-compatible export for activity and UI consumers; the contract rule lives in the workspace model. */
+export const projectHasDataContract = hasProjectDataContract;
 
 export type WorkSessionStatus = "Active" | "Awaiting review" | "Completed" | "Cancelled";
 export type SessionMessageKind = "Prompt" | "Response" | "Steering" | "Activity" | "Result";
 export type SessionActivityType = "evidence-read" | "graph-traverse" | "app-call" | "tool-call" | "steering" | "validation" | "human-gate";
+export type AgentTrace = { stepIndex: number; prompt: string; steeringInstructions: readonly string[] };
+export type AgentTraceView = { state: "Ready" | "Running" | "Completed" | "Cancelled"; stepIndex: number; prompt: string; steeringInstructions: readonly string[] };
 
 export type ProjectWorkResult = {
   headline: string;
@@ -26,6 +31,7 @@ export type ProjectWorkSession = {
   leadAgentId: string;
   participantAgentIds: readonly string[];
   appIds: readonly ProjectAppId[];
+  agentTrace?: AgentTrace;
   finalResult?: ProjectWorkResult;
   origin: "Synthetic fixture" | "Browser session";
 };
@@ -66,6 +72,11 @@ export type AppRunInput = {
   unit: string;
   editable: boolean;
   evidenceRef?: string;
+  kind?: "number" | "choice" | "text";
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: readonly string[];
 };
 
 export type ProjectAppRun = {
@@ -90,6 +101,13 @@ export type ProjectAppRun = {
   origin: "Synthetic fixture" | "Browser session";
 };
 
+export type ActivityEvidenceTarget = {
+  kind: "run" | "report" | "trace" | "output";
+  run: ProjectAppRun;
+  output?: ProjectAppRun["outputs"][number];
+  outputIndex?: number;
+};
+
 export type ProjectActivityState = {
   sessions: readonly ProjectWorkSession[];
   messages: readonly SessionMessage[];
@@ -104,11 +122,14 @@ export type ProjectActivityAction =
   | { type: "select-session"; projectId: string; sessionId: string }
   | { type: "fork-session"; projectId: string; sessionId: string }
   | { type: "create-session"; project: WorkspaceProject; prompt: string; agentId: string; agentName: string }
+  | { type: "start-agent-trace"; projectId: string; sessionId: string; prompt: string }
+  | { type: "advance-agent-trace"; projectId: string; sessionId: string; maxStepIndex: number }
   | { type: "append-message"; projectId: string; sessionId: string; role: SessionMessage["role"]; author: string; kind: SessionMessageKind; body: string; evidenceRefs?: readonly string[]; appRunRefs?: readonly string[] }
   | { type: "steer-session"; projectId: string; sessionId: string; instruction: string }
   | { type: "complete-session"; projectId: string; sessionId: string; result: ProjectWorkResult }
   | { type: "cancel-session"; projectId: string; sessionId: string }
   | { type: "select-app-run"; projectId: string; appId: ProjectAppId; runId: string }
+  | { type: "start-app-run"; project: WorkspaceProject; appId: ProjectAppId; sessionId?: string }
   | { type: "edit-app-input"; projectId: string; runId: string; key: string; value: string }
   | { type: "rerun-app"; projectId: string; runId: string; sessionId?: string }
   | { type: "ensure-project"; project: WorkspaceProject };
@@ -120,7 +141,25 @@ export type AppRerunPlan = {
   sessionId: string;
   reportId: string;
   traceId: string;
+  sessionForked: boolean;
   fixtureSessionForked: boolean;
+};
+
+export type SessionMutationPlan = {
+  sourceSessionId: string;
+  sessionId: string;
+  sessionForked: boolean;
+};
+
+export type AppStartPlan = {
+  appId: ProjectAppId;
+  runId: string;
+  sessionId: string;
+  reportId: string;
+  traceId: string;
+  sourceSessionId?: string;
+  sessionCreated: boolean;
+  sessionForked: boolean;
 };
 
 const appCodes: Record<ProjectAppId, string> = {
@@ -165,9 +204,9 @@ const resultFor = (project: WorkspaceProject): ProjectWorkResult => ({
 function runInputsFor(project: WorkspaceProject, appId: ProjectAppId): readonly AppRunInput[] {
   const serviceValue = project.id === "anode-shield" ? "95" : "93";
   return [
-    { key: "service_floor", label: "Service floor", value: serviceValue, unit: "%", editable: true },
-    { key: "planning_horizon", label: "Planning horizon", value: "12", unit: "weeks", editable: true },
-    { key: "scenario", label: "Scenario", value: appId === "risk" ? "P90 disruption" : "Balanced response", unit: "", editable: true },
+    { key: "service_floor", label: "Service floor", value: serviceValue, unit: "%", editable: true, kind: "number", min: 0, max: 100, step: 0.1 },
+    { key: "planning_horizon", label: "Planning horizon", value: "12", unit: "weeks", editable: true, kind: "number", min: 1, max: 104, step: 1 },
+    { key: "scenario", label: "Scenario", value: appId === "risk" ? "P90 disruption" : "Balanced response", unit: "", editable: true, kind: "choice", options: ["Balanced response", "P90 disruption", "Protect service", "Protect cash"] },
     { key: "project_snapshot", label: "Evidence snapshot", value: `${project.code}-SNAPSHOT-01`, unit: "", editable: false, evidenceRef: project.metrics[0]?.evidenceRef },
   ];
 }
@@ -349,7 +388,76 @@ export const appRunsFor = (state: ProjectActivityState, projectId: string, appId
   })
   .map(({ run }) => run);
 
+export function agentTraceView(session: ProjectWorkSession | null | undefined): AgentTraceView {
+  if (!session) return { state: "Ready", stepIndex: -1, prompt: "", steeringInstructions: [] };
+  if (session.status === "Cancelled") return { state: "Cancelled", stepIndex: session.agentTrace?.stepIndex ?? -1, prompt: session.agentTrace?.prompt ?? session.objective, steeringInstructions: session.agentTrace?.steeringInstructions ?? [] };
+  if (session.status === "Awaiting review" || session.status === "Completed") return { state: "Completed", stepIndex: session.agentTrace?.stepIndex ?? -1, prompt: session.agentTrace?.prompt ?? session.objective, steeringInstructions: session.agentTrace?.steeringInstructions ?? [] };
+  if (session.agentTrace) return { state: "Running", stepIndex: session.agentTrace.stepIndex, prompt: session.agentTrace.prompt, steeringInstructions: session.agentTrace.steeringInstructions };
+  return { state: "Ready", stepIndex: -1, prompt: session.objective, steeringInstructions: [] };
+}
+
+export function resolveActivityEvidence(state: ProjectActivityState, projectId: string, reference: string): ActivityEvidenceTarget | undefined {
+  for (const run of state.appRuns) {
+    if (run.projectId !== projectId) continue;
+    if (reference === run.id) return { kind: "run", run };
+    if (reference === run.reportId) return { kind: "report", run };
+    if (reference === run.traceId) return { kind: "trace", run };
+    const outputIndex = reference.startsWith(`${run.traceId}-OUT-`)
+      ? run.outputs.findIndex((output) => output.evidenceRef === reference)
+      : -1;
+    if (outputIndex >= 0) return { kind: "output", run, output: run.outputs[outputIndex], outputIndex };
+  }
+  return undefined;
+}
+
 const nextSessionId = (state: ProjectActivityState, projectId: string, projectCode: string) => `SES-${projectCode.replaceAll("-", "")}-S${String(state.sessions.filter((session) => session.projectId === projectId && session.origin === "Browser session").length + 1).padStart(3, "0")}`;
+
+export function planNewSession(state: ProjectActivityState, project: WorkspaceProject): string {
+  return nextSessionId(state, project.id, project.code);
+}
+
+export function planSessionMutation(state: ProjectActivityState, projectId: string, sessionId: string): SessionMutationPlan | undefined {
+  const session = state.sessions.find((item) => item.id === sessionId && item.projectId === projectId);
+  if (!session) return undefined;
+  const sessionForked = session.origin !== "Browser session" || session.status !== "Active";
+  return {
+    sourceSessionId: session.id,
+    sessionId: sessionForked ? nextSessionId(state, projectId, session.id.replace("SES-", "").split("-")[0]) : session.id,
+    sessionForked,
+  };
+}
+
+export function planSessionFork(state: ProjectActivityState, projectId: string, sessionId: string): SessionMutationPlan | undefined {
+  const session = state.sessions.find((item) => item.id === sessionId && item.projectId === projectId);
+  if (!session) return undefined;
+  return {
+    sourceSessionId: session.id,
+    sessionId: nextSessionId(state, projectId, session.id.replace("SES-", "").split("-")[0]),
+    sessionForked: true,
+  };
+}
+
+export function planAppStart(state: ProjectActivityState, project: WorkspaceProject, appId: ProjectAppId, requestedSessionId?: string): AppStartPlan | undefined {
+  if (!projectHasDataContract(project) || !projectApps.some((app) => app.id === appId) || !project.mountedAppIds.includes(appId)) return undefined;
+  const selectedSessionId = requestedSessionId || state.selectedSessionByProject[project.id] || undefined;
+  const sessionPlan = selectedSessionId ? planSessionMutation(state, project.id, selectedSessionId) : undefined;
+  if (selectedSessionId && !sessionPlan) return undefined;
+  const ordinal = state.appRuns.filter((run) => run.projectId === project.id && run.appId === appId && run.origin === "Browser session").length + 1;
+  const suffix = `S${String(ordinal).padStart(3, "0")}`;
+  const token = projectToken(project);
+  const code = appCodes[appId];
+  return {
+    appId,
+    runId: `APP-${token}-${code}-${suffix}`,
+    sessionId: sessionPlan?.sessionId ?? nextSessionId(state, project.id, project.code),
+    reportId: `RPT-${token}-${code}-${suffix}`,
+    traceId: `TRACE-${token}-${code}-${suffix}`,
+    sourceSessionId: sessionPlan?.sourceSessionId,
+    sessionCreated: !sessionPlan,
+    sessionForked: sessionPlan?.sessionForked ?? false,
+  };
+}
+
 const nextMessage = (state: ProjectActivityState, session: ProjectWorkSession, input: Omit<SessionMessage, "id" | "projectId" | "sessionId" | "sequence" | "time">): SessionMessage => {
   const sequence = state.messages.filter((message) => message.sessionId === session.id).length + 1;
   return { ...input, id: `MSG-${session.id.replace("SES-", "")}-${String(sequence).padStart(3, "0")}`, projectId: session.projectId, sessionId: session.id, sequence, time: "Now" };
@@ -371,6 +479,7 @@ function forkSessionState(state: ProjectActivityState, source: ProjectWorkSessio
     startedAt: "Now - browser session",
     updatedAt: "Now - browser session",
     appIds: [],
+    agentTrace: undefined,
     finalResult: undefined,
     origin: "Browser session",
   };
@@ -378,7 +487,7 @@ function forkSessionState(state: ProjectActivityState, source: ProjectWorkSessio
     role: "system",
     author: "Maya",
     kind: "Activity",
-    body: `Continued from ${source.id}. The source fixture remains immutable; new steering and replays will be recorded under ${id}.`,
+    body: `Continued from ${source.id}. The closed source session remains immutable; new steering and replays will be recorded under ${id}.`,
     evidenceRefs: [],
     appRunRefs: [],
   });
@@ -396,7 +505,7 @@ function forkSessionState(state: ProjectActivityState, source: ProjectWorkSessio
 function mutableSessionState(state: ProjectActivityState, projectId: string, sessionId: string): { state: ProjectActivityState; session: ProjectWorkSession } | undefined {
   const session = state.sessions.find((item) => item.id === sessionId && item.projectId === projectId);
   if (!session) return undefined;
-  return session.origin === "Browser session" ? { state, session } : forkSessionState(state, session);
+  return session.origin === "Browser session" && session.status === "Active" ? { state, session } : forkSessionState(state, session);
 }
 
 function recalculateOutputs(parent: ProjectAppRun, changeSet: readonly { key: string; before: string; after: string }[]): readonly ProjectAppRun["outputs"][number][] {
@@ -419,21 +528,42 @@ function recalculateOutputs(parent: ProjectAppRun, changeSet: readonly { key: st
   return outputs;
 }
 
+export function validateAppInputValue(input: AppRunInput, value: string): string | null {
+  if (input.kind === "choice") return input.options?.includes(value) ? null : "Choose one of the declared options.";
+  if (input.kind !== "number") return value.trim().length > 0 ? null : "Enter a value.";
+  if (!value.trim()) return "Enter a number.";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "Enter a valid number.";
+  if (input.min !== undefined && numeric < input.min) return `Minimum ${input.min}${input.unit}.`;
+  if (input.max !== undefined && numeric > input.max) return `Maximum ${input.max}${input.unit}.`;
+  if (input.step !== undefined && input.step > 0) {
+    const base = input.min ?? 0;
+    const steps = (numeric - base) / input.step;
+    if (Math.abs(steps - Math.round(steps)) > 1e-9) return `Use increments of ${input.step}${input.unit}.`;
+  }
+  return null;
+}
+
 export function planAppRerun(state: ProjectActivityState, projectId: string, runId: string, sessionId?: string): AppRerunPlan | undefined {
   const parent = state.appRuns.find((run) => run.id === runId && run.projectId === projectId);
   if (!parent) return undefined;
+  const draft = state.runDrafts[parent.id] ?? {};
+  if (parent.inputs.some((input) => draft[input.key] !== undefined && validateAppInputValue(input, draft[input.key]) !== null)) return undefined;
   const sourceSessionId = sessionId || state.selectedSessionByProject[projectId] || parent.sessionId;
   const sourceSession = state.sessions.find((session) => session.id === sourceSessionId && session.projectId === projectId);
   if (!sourceSession) return undefined;
+  const sessionPlan = planSessionMutation(state, projectId, sourceSession.id);
+  if (!sessionPlan) return undefined;
   const ordinal = state.appRuns.filter((run) => run.projectId === parent.projectId && run.appId === parent.appId && run.origin === "Browser session").length + 1;
   const suffix = `R${String(ordinal).padStart(2, "0")}`;
   return {
     sourceRunId: parent.id,
     sourceSessionId: sourceSession.id,
     runId: `${parent.id}-${suffix}`,
-    sessionId: sourceSession.origin === "Browser session" ? sourceSession.id : nextSessionId(state, projectId, sourceSession.id.replace("SES-", "").split("-")[0]),
+    sessionId: sessionPlan.sessionId,
     reportId: `${parent.reportId}-${suffix}`,
     traceId: `${parent.traceId}-${suffix}`,
+    sessionForked: sessionPlan.sessionForked,
     fixtureSessionForked: sourceSession.origin === "Synthetic fixture",
   };
 }
@@ -453,11 +583,22 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
   }
   if (action.type === "create-session") {
     const id = nextSessionId(state, action.project.id, action.project.code);
-    const session: ProjectWorkSession = { id, projectId: action.project.id, entryPoint: "Agent", title: action.prompt.slice(0, 70), objective: action.prompt, status: "Active", startedAt: "Now - browser session", updatedAt: "Now - browser session", leadAgentId: action.agentId, participantAgentIds: [action.agentId], appIds: [], origin: "Browser session" };
+    const session: ProjectWorkSession = { id, projectId: action.project.id, entryPoint: "Agent", title: action.prompt.slice(0, 70), objective: action.prompt, status: "Active", startedAt: "Now - browser session", updatedAt: "Now - browser session", leadAgentId: action.agentId, participantAgentIds: [action.agentId], appIds: [], agentTrace: { stepIndex: 0, prompt: action.prompt, steeringInstructions: [] }, origin: "Browser session" };
     const userMessage = nextMessage(state, session, { role: "user", author: action.project.owner, kind: "Prompt", body: action.prompt, evidenceRefs: [], appRunRefs: [] });
     const nextState = { ...state, sessions: [...state.sessions, session], selectedSessionByProject: { ...state.selectedSessionByProject, [action.project.id]: id } };
     const agentMessage = nextMessage({ ...nextState, messages: [...state.messages, userMessage] }, session, { role: "agent", author: action.agentName, kind: "Response", body: `Session ${id} is scoped to ${action.project.client} / ${action.project.name}. This visible replay uses deterministic fixtures and stops at human review.`, evidenceRefs: [], appRunRefs: [] });
     return { ...nextState, messages: [...state.messages, userMessage, agentMessage] };
+  }
+  if (action.type === "start-agent-trace") {
+    const session = state.sessions.find((item) => item.id === action.sessionId && item.projectId === action.projectId);
+    if (!session || session.origin !== "Browser session" || session.status !== "Active") return state;
+    return { ...state, sessions: state.sessions.map((item) => item.id === session.id ? { ...item, agentTrace: { stepIndex: 0, prompt: action.prompt, steeringInstructions: item.agentTrace?.steeringInstructions ?? [] }, updatedAt: "Now - browser session" } : item) };
+  }
+  if (action.type === "advance-agent-trace") {
+    const session = state.sessions.find((item) => item.id === action.sessionId && item.projectId === action.projectId);
+    if (!session || session.origin !== "Browser session" || session.status !== "Active" || !session.agentTrace) return state;
+    const stepIndex = Math.min(Math.max(0, action.maxStepIndex), session.agentTrace.stepIndex + 1);
+    return { ...state, sessions: state.sessions.map((item) => item.id === session.id ? { ...item, agentTrace: { ...session.agentTrace!, stepIndex }, updatedAt: "Now - browser session" } : item) };
   }
   if (action.type === "fork-session") {
     const source = state.sessions.find((session) => session.id === action.sessionId && session.projectId === action.projectId);
@@ -485,7 +626,7 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
       ...nextState,
       messages: [...nextState.messages, message],
       activities: steeringActivity ? [...nextState.activities, steeringActivity] : nextState.activities,
-      sessions: nextState.sessions.map((item) => item.id === session.id ? { ...item, status: "Active", updatedAt: "Now - browser session" } : item),
+      sessions: nextState.sessions.map((item) => item.id === session.id ? { ...item, status: "Active", updatedAt: "Now - browser session", agentTrace: action.type === "steer-session" ? { stepIndex: 0, prompt: item.agentTrace?.prompt ?? item.objective, steeringInstructions: [...(item.agentTrace?.steeringInstructions ?? []), action.instruction] } : item.agentTrace } : item),
     };
   }
   if (action.type === "complete-session") {
@@ -502,7 +643,7 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
     });
     const reviewActivity = nextActivity(nextState, session, {
       type: "human-gate",
-      actor: session.leadAgentId,
+      actor: expertAgents.find((agent) => agent.id === session.leadAgentId)?.name ?? session.leadAgentId,
       title: "Candidate ready for human review",
       detail: action.result.reviewGate,
       state: "Review",
@@ -528,6 +669,98 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
       sessions: nextState.sessions.map((item) => item.id === session.id ? { ...item, status: "Cancelled", updatedAt: "Now - browser session" } : item),
     };
   }
+  if (action.type === "start-app-run") {
+    const plan = planAppStart(state, action.project, action.appId, action.sessionId);
+    if (!plan) return state;
+    let nextState = state;
+    let session: ProjectWorkSession;
+    if (plan.sourceSessionId) {
+      const writable = mutableSessionState(state, action.project.id, plan.sourceSessionId);
+      if (!writable) return state;
+      nextState = writable.state;
+      session = writable.session;
+    } else {
+      session = {
+        id: plan.sessionId,
+        projectId: action.project.id,
+        entryPoint: "Application",
+        title: `Use ${projectApps.find((app) => app.id === action.appId)?.name ?? action.appId}`,
+        objective: `Create the first traceable ${action.appId} application run for ${action.project.name}.`,
+        status: "Active",
+        startedAt: "Now - browser session",
+        updatedAt: "Now - browser session",
+        leadAgentId: "project-orchestrator",
+        participantAgentIds: ["project-orchestrator"],
+        appIds: [],
+        origin: "Browser session",
+      };
+      const opening = nextMessage(state, session, {
+        role: "system",
+        author: "Maya",
+        kind: "Activity",
+        body: `Application session ${session.id} created inside ${action.project.client} / ${action.project.name}.`,
+        evidenceRefs: [],
+        appRunRefs: [],
+      });
+      nextState = {
+        ...state,
+        sessions: [...state.sessions, session],
+        messages: [...state.messages, opening],
+        selectedSessionByProject: { ...state.selectedSessionByProject, [action.project.id]: session.id },
+      };
+    }
+    const app = projectApps.find((item) => item.id === action.appId)!;
+    const inputs = runInputsFor(action.project, action.appId);
+    const outputs = action.project.metrics.length
+      ? action.project.metrics.slice(0, 3).map((metric) => ({ label: metric.label, value: metric.value, evidenceRef: metric.evidenceRef }))
+      : [{ label: "Setup state", value: "Configuration draft", evidenceRef: `${plan.traceId}-OUT-01` }];
+    const run: ProjectAppRun = {
+      id: plan.runId,
+      projectId: action.project.id,
+      appId: action.appId,
+      sessionId: session.id,
+      title: `${app.name}: ${action.project.name} session run`,
+      status: "Replay complete",
+      executedAt: "Now - browser session",
+      reportId: plan.reportId,
+      traceId: plan.traceId,
+      inputVersion: `${action.project.code}-inputs@session-1`,
+      inputFingerprint: fingerprintFor(action.project.id, action.appId, inputs),
+      inputs,
+      changeSet: [],
+      methods: app.methodCodes,
+      outputs,
+      summary: `${app.artifact} demonstration record created from the current project session and stopped at human review.`,
+      claimBoundary: "Browser-session fixture only; no live application, model, source system, solver, or write-back was called.",
+      origin: "Browser session",
+    };
+    const runMessage = nextMessage(nextState, session, {
+      role: "agent",
+      author: app.name,
+      kind: "Activity",
+      body: `${run.summary} Fingerprint ${run.inputFingerprint}.`,
+      evidenceRefs: outputs.map((output) => output.evidenceRef),
+      appRunRefs: [run.id],
+    });
+    const runActivity = nextActivity(nextState, session, {
+      type: "app-call",
+      actor: app.name,
+      title: `Create ${run.title}`,
+      detail: run.summary,
+      state: "Complete",
+      evidenceRefs: outputs.map((output) => output.evidenceRef),
+      appRunId: run.id,
+    });
+    return {
+      ...nextState,
+      sessions: nextState.sessions.map((item) => item.id === session.id ? { ...item, status: "Active", updatedAt: "Now - browser session", appIds: item.appIds.includes(action.appId) ? item.appIds : [...item.appIds, action.appId] } : item),
+      messages: [...nextState.messages, runMessage],
+      activities: [...nextState.activities, runActivity],
+      appRuns: [...nextState.appRuns, run],
+      selectedSessionByProject: { ...nextState.selectedSessionByProject, [action.project.id]: session.id },
+      selectedRunByProjectApp: { ...nextState.selectedRunByProjectApp, [activityKey(action.project.id, action.appId)]: run.id },
+    };
+  }
   if (action.type === "edit-app-input") {
     const run = state.appRuns.find((item) => item.id === action.runId && item.projectId === action.projectId);
     const input = run?.inputs.find((item) => item.key === action.key && item.editable);
@@ -546,7 +779,9 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
     const inputs = parent.inputs.map((input) => ({ ...input, value: draft[input.key] ?? input.value }));
     const changeSet = parent.inputs.flatMap((input) => draft[input.key] !== undefined && draft[input.key] !== input.value ? [{ key: input.key, before: input.value, after: draft[input.key] }] : []);
     const id = plan.runId;
-    const outputs = recalculateOutputs(parent, changeSet);
+    const outputs = recalculateOutputs(parent, changeSet).map((output, index) => changeSet.length
+      ? { ...output, evidenceRef: `${plan.traceId}-OUT-${String(index + 1).padStart(2, "0")}` }
+      : output);
     const inputFingerprint = fingerprintFor(parent.projectId, parent.appId, inputs);
     const serviceChange = changeSet.find((change) => change.key === "service_floor");
     const serviceOutputIndex = serviceChange ? outputs.findIndex((output, index) => output.value !== parent.outputs[index]?.value) : -1;
