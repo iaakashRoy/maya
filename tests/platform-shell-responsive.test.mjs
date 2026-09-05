@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-test("responsive project chrome keeps navigation, session, and account actions reachable", async () => {
+test("responsive project chrome separates mounted apps, accountable people, and account actions", async () => {
   const [shell, css] = await Promise.all([
     read("../app/PlatformShell.tsx"),
     read("../app/globals.css"),
@@ -12,8 +12,9 @@ test("responsive project chrome keeps navigation, session, and account actions r
 
   assert.match(shell, /const \[compactContext, setCompactContext\] = useState\(false\)/);
   assert.match(shell, /window\.matchMedia\("\(max-width: 1180px\)"\)/);
-  assert.match(shell, /mountedAppPreviewLimit = compactContext \? 2 : 6/);
-  assert.match(shell, /identityPreviewLimit = compactContext \? 1 : 2/);
+  assert.match(shell, /mountedAppPreviewLimit = compactContext \? 4 : effectiveMountedApps\.length/);
+  assert.match(shell, /agentPreviewLimit = compactContext \? 1 : 4/);
+  assert.match(shell, /memberPreviewLimit = compactContext \? 1 : activeProjectMembers\.length/);
   assert.match(shell, /Math\.max\(0, mountedAppPreviewLimit - 1\).*activeMountedAppId/s);
   assert.doesNotMatch(css, /\.context-mounted-apps\s*>\s*button:nth-of-type\([^)]*\)[^{]*\{[^}]*display:\s*none/s);
 
@@ -24,8 +25,13 @@ test("responsive project chrome keeps navigation, session, and account actions r
   assert.match(shell, /setMobileOpen\(false\)[\s\S]*?projectPathKeys\(project, projectPathMode\)/);
   assert.match(shell, /querySelector<HTMLElement>\('\[aria-current="page"\]'\)\?\.scrollIntoView/);
 
-  assert.match(shell, /aria-label=\{activeWorkSessionId \? `Open active Playground session/);
-  assert.match(css, /\.context-session\s*\{[\s\S]*?width:\s*100%;[\s\S]*?grid-row:\s*3;/);
+  assert.match(shell, /className="project-context-stack"/);
+  assert.match(shell, /className="project-people-bar"/);
+  assert.match(shell, /className="context-identity-tools context-agent-tools"/);
+  assert.match(shell, /className="context-identity-tools context-team-tools"/);
+  assert.doesNotMatch(shell, /context\.open-sessions|className="context-session"/);
+  assert.doesNotMatch(css, /\.context-session/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.project-people-bar\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(css, /\.mobile-project-path\s*>\s*span,[\s\S]*?white-space:\s*normal;/);
 
   assert.match(shell, /aria-label=\{`Open account menu for/);
@@ -35,12 +41,13 @@ test("responsive project chrome keeps navigation, session, and account actions r
   assert.match(css, /\.work-identity-inspector\s*\{[\s\S]*?top:\s*var\(--topbar-height\);[\s\S]*?width:\s*min\(430px, calc\(100vw - 12px\)\)/);
 });
 
-test("laptop context strip clips no unbounded child layout and uses high contrast controls", async () => {
+test("laptop context rows clip no unbounded child layout and use high contrast controls", async () => {
   const css = await read("../app/globals.css");
   const responsiveContract = css.slice(css.lastIndexOf("Final responsive shell contract"));
 
   assert.match(responsiveContract, /@media \(max-width: 1180px\) and \(min-width: 761px\)/);
-  assert.match(responsiveContract, /\.context-work-tools\s*\{[\s\S]*?grid-template-columns:[\s\S]*?overflow:\s*hidden;/);
+  assert.match(responsiveContract, /\.project-context-bar\s*\{[^}]*grid-template-columns:\s*minmax\(132px, 148px\) minmax\(0, 1fr\)/);
+  assert.match(responsiveContract, /\.project-people-bar\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(responsiveContract, /\.context-mounted-apps,[\s\S]*?\.context-identity-tools\s*\{[^}]*overflow:\s*hidden;/);
   assert.match(responsiveContract, /\.search-trigger\s*\{\s*color:\s*#3f4d45;/);
   assert.match(responsiveContract, /\.user-button small\s*\{\s*color:\s*#48564e;/);

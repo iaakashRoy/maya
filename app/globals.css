@@ -3306,14 +3306,10 @@ body {
 .project-context-bar { min-width: 0; min-height: 50px; padding: 5px 18px; display: grid; grid-template-columns: minmax(170px, auto) minmax(0, 1fr) minmax(150px, auto); gap: 8px; align-items: stretch; color: #26352c; background: #fff; border-bottom: 1px solid #d5dbd4; }
 .project-context-bar button { min-width: 0; color: inherit; background: transparent; border: 1px solid transparent; cursor: pointer; }
 .project-context-bar button:hover { background: #f1f5ed; border-color: #d0d8cf; }
-.context-current,
-.context-session { padding: 4px 9px; display: grid; grid-template-columns: auto auto; column-gap: 8px; align-content: center; text-align: left; }
-.context-current > span,
-.context-session > span { grid-column: 1 / -1; color: #748178; font-size: 9px; font-weight: 750; letter-spacing: .08em; }
-.context-current > b,
-.context-session > b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.context-current > small,
-.context-session > small { color: #68766d; text-align: right; white-space: nowrap; }
+.context-current { padding: 4px 9px; display: grid; grid-template-columns: auto auto; column-gap: 8px; align-content: center; text-align: left; }
+.context-current > span { grid-column: 1 / -1; color: #748178; font-size: 9px; font-weight: 750; letter-spacing: .08em; }
+.context-current > b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.context-current > small { color: #68766d; text-align: right; white-space: nowrap; }
 .context-current { box-shadow: inset 3px 0 #8fa91b; }
 .context-mounted-apps { min-width: 0; display: flex; align-items: center; gap: 4px; overflow: hidden; }
 .context-mounted-apps > span { margin-right: 2px; color: #748178; font-size: 10px; }
@@ -3642,7 +3638,6 @@ body {
   .mobile-project-path > span { color: #6b786f; font-size: 9px; }
   .mobile-project-path > b { color: #26352c; font-size: 11px; }
   .context-current { grid-column: 1; grid-row: 2; }
-  .context-session { max-width: 148px; grid-column: 2; grid-row: 2; display: grid; }
   .context-mounted-apps { grid-column: 1 / -1; grid-row: 3; }
   .agent-os,
   .agent-os.sessions-collapsed,
@@ -3718,11 +3713,13 @@ body {
 }
 
 /* Stable project workspace frame -------------------------------------------------
-   The project hierarchy, mounted work strip, page commandbar, and right-side
-   accountability sheet share one dense light-mode application contract. */
+   Project ancestry, mounted apps, accountable people, the page commandbar, and
+   the right-side inspector share one compact light-mode application contract. */
 :root {
   --rail-width: 304px;
-  --project-context-height: 58px;
+  --project-app-row-height: 54px;
+  --project-people-row-height: 44px;
+  --project-context-height: calc(var(--project-app-row-height) + var(--project-people-row-height));
   --statusbar-height: 28px;
   --project-chrome-height: calc(var(--topbar-height) + var(--project-context-height) + var(--statusbar-height));
   --strong-muted: #536159;
@@ -3800,38 +3797,67 @@ textarea:focus-visible,
 
 .breadcrumb { color: var(--strong-muted); }
 .breadcrumb i { color: #727d75; }
-.project-context-bar {
+.project-context-stack {
+  min-width: 0;
   height: var(--project-context-height);
-  min-height: var(--project-context-height);
+  color: #26352c;
+  background: #fff;
+  border-bottom: 1px solid #d5dbd4;
+}
+.project-context-bar {
+  height: var(--project-app-row-height);
+  min-height: var(--project-app-row-height);
   padding: 5px 14px;
-  grid-template-columns: minmax(118px, 142px) minmax(0, 1fr) minmax(116px, 138px);
-  gap: 7px;
-  overflow: visible;
-}
-.context-current,
-.context-session { min-width: 0; min-height: 46px; padding: 4px 8px; overflow: hidden; }
-.context-current > span,
-.context-session > span { color: var(--strong-muted); }
-.context-current > small,
-.context-session > small { color: #536159; }
-.context-work-tools {
-  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(270px, 1.2fr) minmax(250px, .8fr);
-  gap: 6px;
-  align-items: center;
+  grid-template-columns: minmax(132px, 158px) minmax(0, 1fr);
+  gap: 7px;
+  align-items: stretch;
+  overflow: visible;
+  border-bottom: 0;
 }
-.context-mounted-apps,
-.context-identity-tools {
+.context-current { min-width: 0; min-height: 44px; padding: 4px 8px; overflow: hidden; }
+.context-current > span { color: var(--strong-muted); }
+.context-current > small { color: #536159; }
+.project-people-bar {
   min-width: 0;
-  height: 46px;
+  height: var(--project-people-row-height);
+  padding: 3px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+  gap: 8px;
+  align-items: center;
+  background: #f7f8f5;
+  border-top: 1px solid #e0e5df;
+}
+.project-people-bar button {
+  min-width: 0;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.project-people-bar button:hover { background: #eef3e9; border-color: #ccd5ca; }
+.project-people-bar button:disabled { cursor: not-allowed; opacity: .58; }
+.context-mounted-apps {
+  min-width: 0;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  overflow: visible;
+  gap: 4px;
+  overflow: hidden;
   white-space: nowrap;
 }
-.context-identity-tools { padding-left: 6px; border-left: 1px solid #dce2dc; }
+.context-identity-tools {
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.context-agent-tools { padding-right: 6px; }
+.context-team-tools { padding-left: 10px; border-left: 1px solid #cfd7cf; }
 .context-group-home,
 .context-identity-home {
   height: 38px;
@@ -3859,7 +3885,7 @@ textarea:focus-visible,
   gap: 4px;
   border-radius: 3px;
 }
-.context-mounted-apps > button:not(.context-group-home):not(.context-more) > b { display: none; max-width: 62px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; }
+.context-mounted-apps > button:not(.context-group-home):not(.context-more) > b { display: none; max-width: 96px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; }
 .context-mounted-apps > button.active:not(.context-group-home) > b { display: block; }
 .context-identity-tools > button > i {
   width: 24px;
@@ -3875,6 +3901,7 @@ textarea:focus-visible,
   font-style: normal;
 }
 .context-identity-tools > button > b { max-width: 48px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; }
+.context-identity-tools > button.active { background: #edf3e5; border-color: #bdcaa9; box-shadow: inset 0 -2px #879f18; }
 .context-more {
   min-width: 32px !important;
   height: 32px !important;
@@ -4170,7 +4197,6 @@ textarea:focus-visible,
 
 @media (max-width: 1120px) {
   .search-trigger { min-width: 160px; }
-  .context-work-tools { grid-template-columns: minmax(240px, 1fr) minmax(210px, .72fr); }
   .context-identity-tools > button:not(.context-identity-home):not(.context-more) > b { display: none; }
   .statusbar > span:nth-child(n+4) { display: none; }
 }
@@ -4208,19 +4234,18 @@ textarea:focus-visible,
 }
 
 @media (max-width: 760px) {
+  .project-context-stack { height: auto; }
   .project-context-bar {
     height: auto;
     min-height: 0;
-    grid-template-columns: minmax(0, 1fr) minmax(112px, 138px);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
   }
   .mobile-project-path { grid-column: 1 / -1; grid-row: 1; }
   .context-current { grid-column: 1; grid-row: 2; }
-  .context-session { grid-column: 2; grid-row: 2; }
-  .context-work-tools { grid-column: 1 / -1; grid-row: 3; grid-template-columns: 1fr; gap: 2px; }
-  .context-mounted-apps,
-  .context-identity-tools { height: auto; min-height: 40px; flex-wrap: wrap; }
-  .context-identity-tools { padding: 3px 0 0; border-left: 0; border-top: 1px solid #dce2dc; }
+  .context-mounted-apps { grid-column: 1; grid-row: 3; height: auto; min-height: 40px; flex-wrap: wrap; }
+  .project-people-bar { height: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .context-identity-tools { height: auto; min-height: 38px; }
   .project-os { min-height: 0; }
   .project-commandbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
   .project-commandbar > aside { width: auto; min-width: 150px; }
@@ -4266,13 +4291,9 @@ textarea:focus-visible,
 
 @media (max-width: 1180px) and (min-width: 761px) {
   .project-context-bar {
-    grid-template-columns: minmax(132px, 145px) minmax(0, 1fr) minmax(126px, 142px);
+    grid-template-columns: minmax(132px, 148px) minmax(0, 1fr);
   }
-  .context-work-tools {
-    min-width: 0;
-    grid-template-columns: minmax(160px, .7fr) minmax(250px, 1.3fr);
-    overflow: hidden;
-  }
+  .project-people-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .context-mounted-apps,
   .context-identity-tools { min-width: 0; overflow: hidden; }
   .context-mounted-apps > button:not(.context-group-home):not(.context-more),
@@ -4294,14 +4315,12 @@ textarea:focus-visible,
     overflow-wrap: anywhere;
     line-height: 1.35;
   }
-  .context-current > b,
-  .context-session > b {
+  .context-current > b {
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .context-work-tools { min-width: 0; overflow: visible; }
   .context-mounted-apps,
   .context-identity-tools {
     min-width: 0;
@@ -4332,17 +4351,14 @@ textarea:focus-visible,
 @media (max-width: 520px) {
   .project-context-bar {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto;
   }
   .mobile-project-path { grid-column: 1; grid-row: 1; }
   .context-current { grid-column: 1; grid-row: 2; }
-  .context-session {
-    width: 100%;
-    max-width: none;
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .context-work-tools { grid-column: 1; grid-row: 4; }
+  .context-mounted-apps { grid-column: 1; grid-row: 3; }
+  .project-people-bar { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .context-agent-tools { padding: 0 0 3px; }
+  .context-team-tools { padding: 3px 0 0; border-left: 0; border-top: 1px solid #d7ded6; }
   .topbar { gap: 5px; }
   .topbar-actions { gap: 4px; }
 }
