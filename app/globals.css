@@ -6004,7 +6004,7 @@ textarea:focus-visible,
 }
 .main-content:has(> .project-os.playground-app-mode) + .app-footer { display: none; }
 .project-os.playground-app-mode {
-  height: calc(100dvh - var(--project-chrome-height));
+  height: calc(100dvh - var(--topbar-height) - var(--project-context-height));
   min-height: 560px;
   overflow: hidden;
   background: #f3f5f2;
@@ -6206,7 +6206,7 @@ textarea:focus-visible,
 .playground-app-header { display: none !important; }
 
 .project-os.playground-app-mode > .project-stage {
-  padding: 6px 8px 8px !important;
+  padding: 6px 8px 0 !important;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
 }
@@ -6227,6 +6227,13 @@ textarea:focus-visible,
 .agent-session-rail > header,
 .agent-inspector-heading { min-height: 54px; padding: 8px; }
 .agent-session-list { height: calc(100% - 102px) !important; }
+.project-os.playground-app-mode .agent-session-rail {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 54px minmax(0, 1fr) auto;
+}
+.project-os.playground-app-mode .agent-session-list { height: auto !important; min-height: 0; }
+.project-os.playground-app-mode .agent-new-session { align-self: end; }
 
 /* Continuous transcript: identity is carried by compact marks and color,
    never by message cards. */

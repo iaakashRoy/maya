@@ -680,6 +680,11 @@ test("Playground behaves as a scrollable live agent console with a persistent co
   assert.match(terminalContract, /\.application-container \.app-canonical-header,[\s\S]*?display:\s*none !important/);
   assert.match(css, /\.agent-messages\s*\{[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?scrollbar-gutter:\s*stable/);
   assert.match(css, /\.main-content:has\(> \.project-os\.playground-app-mode\) \+ \.app-footer \{ display: none; \}/);
+  assert.match(css, /\.project-os\.playground-app-mode\s*\{[\s\S]*?height:\s*calc\(100dvh - var\(--topbar-height\) - var\(--project-context-height\)\)/);
+  assert.match(terminalContract, /\.project-os\.playground-app-mode > \.project-stage\s*\{[\s\S]*?padding:\s*6px 8px 0 !important/);
+  assert.match(terminalContract, /\.project-os\.playground-app-mode \.agent-session-rail\s*\{[\s\S]*?grid-template-rows:\s*54px minmax\(0, 1fr\) auto/);
+  assert.match(terminalContract, /\.project-os\.playground-app-mode \.agent-session-list \{ height:\s*auto !important; min-height:\s*0; \}/);
+  assert.match(terminalContract, /\.project-os\.playground-app-mode \.agent-new-session \{ align-self:\s*end; \}/);
   assert.match(css, /\.project-os\.playground-fullscreen\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?height:\s*100dvh/);
 });
 
