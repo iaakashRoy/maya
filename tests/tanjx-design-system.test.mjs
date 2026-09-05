@@ -17,6 +17,7 @@ test("tanjx branding replaces the former product and provider labels", async () 
   assert.match(shell, /<BrandMark \/>/);
   assert.match(shell, /<b>tanjx<\/b><small>Tangent \+ Exchange<\/small>/);
   assert.doesNotMatch(shell, /environment-badge/);
+  assert.doesNotMatch(shell, /document\.title\s*=/, "route chrome must not race the server-rendered title during hydration");
   assert.doesNotMatch(productSurface, /Maya Workspace|Maya Rao|Kearney/);
 });
 

@@ -1045,10 +1045,6 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   }, [profileOpen]);
 
   useEffect(() => {
-    document.title = `${viewLabels[view]} · tanjx`;
-  }, [view]);
-
-  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 2800);
     return () => window.clearTimeout(timer);
