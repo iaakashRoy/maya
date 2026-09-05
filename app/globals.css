@@ -5700,3 +5700,282 @@ textarea:focus-visible,
 .theme-dark .sidebar-path-branches > .sidebar-path-branch > button > b { color: #f1f4f6; }
 .theme-dark .rail-quick-actions .navigation-icon,
 .theme-dark .scope-nav > .navigation-icon { color: #cbd2d7; }
+
+/* Live Playground console --------------------------------------------------
+   Keep the transcript independently scrollable and the composer permanently
+   available, while allowing the agent trace to progress like a working CLI. */
+@media (min-width: 761px) {
+  .main-content:has(> .project-os[data-project-tab="agents"]) { min-height: 0; padding-bottom: 0 !important; overflow: hidden; }
+  .main-content:has(> .project-os[data-project-tab="agents"]) + .app-footer { display: none; }
+  .project-os[data-project-tab="agents"] { height: calc(100dvh - var(--project-chrome-height)); min-height: 620px; overflow: hidden; }
+  .project-os[data-project-tab="agents"] .project-stage {
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 14px !important;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .project-os[data-project-tab="agents"] .agent-os { height: 100%; min-height: 0; }
+}
+
+.agent-os { min-height: 580px; }
+.agent-session {
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+.agent-session > .playground-runner-bar {
+  position: static;
+  min-height: 78px;
+  padding: 9px 12px;
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+.agent-console-identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(160px, auto) minmax(180px, 1fr);
+  gap: 13px;
+  align-items: center;
+}
+.agent-console-title { min-width: 0; padding-left: 13px; border-left: 1px solid #344039; }
+.agent-console-title :is(p, h2) { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-console-title p { color: #839087; font: 650 9px/1.3 var(--font-code); }
+.agent-console-title h2 { margin-top: 4px; color: #edf3ef; font-size: 14px !important; }
+.agent-console-actions { display: flex; align-items: end; justify-content: flex-end; gap: 7px; }
+.agent-console-actions > label { display: grid; gap: 3px; }
+.agent-console-actions > label > span { color: #8e9a92; font-size: 9px !important; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.agent-console-actions :is(select, button) { height: 36px; border-radius: 4px; }
+.agent-console-actions select { width: 176px; }
+.agent-console-actions > button { min-width: 86px; font-weight: 680; }
+.agent-console-actions > .run-state { height: 36px; padding: 0 9px; display: grid; place-items: center; border-radius: 4px; }
+.agent-console-actions > .agent-stop-run { color: #ffd8d2; border-color: #74463f; background: #2d1d1a; }
+
+.agent-session-rail > header,
+.agent-inspector-heading { min-height: 78px; }
+.agent-session-list { height: calc(100% - 126px); overscroll-behavior: contain; scrollbar-gutter: stable; }
+.agent-messages {
+  min-height: 0 !important;
+  padding: 16px 18px 28px;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+.agent-messages:focus-visible { outline-offset: -3px; }
+
+.agent-runtime-feed { margin: 16px 0; overflow: hidden; border: 1px solid #334039; border-radius: 6px; }
+.agent-runtime-feed > header {
+  min-height: 42px;
+  padding: 7px 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  background: #101613;
+  border-bottom: 1px solid #2b3530;
+}
+.agent-runtime-feed > header > div { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.agent-runtime-feed > header > div > i { width: 8px; height: 8px; flex: 0 0 8px; background: #64d399; border-radius: 50%; box-shadow: 0 0 0 4px rgba(100, 211, 153, .1); }
+.agent-runtime-feed.runtime-running > header > div > i { animation: agent-live-pulse 1.1s ease-in-out infinite; }
+.agent-runtime-feed > header span { min-width: 0; display: grid; gap: 1px; }
+.agent-runtime-feed > header b { color: #e7eee9; font-size: 11px; }
+.agent-runtime-feed > header small { color: #859189; font-size: 9px !important; }
+.agent-runtime-feed > header code { overflow: hidden; color: #87948b; font: 600 9px/1.2 var(--font-code); text-overflow: ellipsis; white-space: nowrap; }
+.agent-runtime-feed > header button { min-height: 28px; padding: 0 8px; color: #b6c1ba; background: #19211d; border: 1px solid #38443e; border-radius: 3px; cursor: pointer; }
+.agent-runtime-steps { display: grid; background: #0d1210; }
+.agent-runtime-steps .runtime-step {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px 9px;
+  display: grid;
+  grid-template-columns: 34px minmax(180px, 1fr) minmax(105px, auto) 52px;
+  gap: 9px;
+  align-items: center;
+  color: #c9d2cd;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #232c28;
+  text-align: left;
+  cursor: pointer;
+}
+.agent-runtime-steps .runtime-step:last-child { border-bottom: 0; }
+.runtime-step > span { display: flex; align-items: center; gap: 7px; color: #758179; font: 700 9px/1 var(--font-code); }
+.runtime-step > span > i { width: 7px; height: 7px; flex: 0 0 7px; background: #536159; border-radius: 50%; }
+.runtime-step > div { min-width: 0; display: grid; gap: 2px; }
+.runtime-step > div :is(small, b, p) { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runtime-step > div small { color: #7f8d84; font-size: 9px !important; text-transform: uppercase; }
+.runtime-step > div b { color: #dce5df; font-size: 11px; }
+.runtime-step > div p { color: #87938b !important; font: 500 10px/1.35 var(--font-code) !important; }
+.runtime-step > code { overflow: hidden; color: #95a198; font: 600 9px/1.25 var(--font-code); text-overflow: ellipsis; white-space: nowrap; }
+.runtime-step > em { color: #849087; font-size: 9px; font-style: normal; text-align: right; }
+.runtime-step.state-done > span > i { background: #62c892; }
+.runtime-step.state-done > em { color: #76d8a3; }
+.runtime-step.state-active { background: #18211d; box-shadow: inset 3px 0 #d7ff38; }
+.runtime-step.state-active > span > i { background: #d7ff38; box-shadow: 0 0 0 4px rgba(215, 255, 56, .12); animation: agent-live-pulse 1.1s ease-in-out infinite; }
+.runtime-step.state-active > em { color: #d7ff38; }
+.runtime-step.state-review { background: #211e14; box-shadow: inset 3px 0 #e8b33c; }
+.runtime-step.state-review > span > i { background: #e8b33c; }
+.runtime-step.state-review > em { color: #f0bf50; }
+.runtime-step.state-stopped > span > i { background: #ef695b; }
+.runtime-step.state-stopped > em { color: #ff8b7d; }
+.runtime-step.state-queued { opacity: .5; }
+.agent-runtime-idle { min-height: 52px; padding: 10px 12px; display: flex; align-items: center; gap: 9px; color: #aab5ae; background: #0d1210; font: 500 10px/1.45 var(--font-code); }
+.agent-runtime-idle > code { color: #d7ff38; }
+.agent-runtime-idle > span { min-width: 0; }
+.agent-runtime-idle > i { width: 7px; height: 15px; flex: 0 0 7px; background: #d7ff38; animation: terminal-cursor .85s steps(1) infinite; }
+@keyframes agent-live-pulse { 50% { opacity: .42; transform: scale(.82); } }
+@keyframes terminal-cursor { 50% { opacity: 0; } }
+
+.agent-steering-bar { flex-wrap: wrap; overflow: hidden; }
+.agent-prompt { flex: 0 0 auto; margin: 0 12px 12px; }
+.agent-composer-toolbar {
+  min-height: 38px;
+  padding: 5px 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid #303a35;
+}
+.agent-composer-toolbar > button { min-height: 28px; padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; color: #bac5be; background: #1c2520; border: 1px solid #3b4740; border-radius: 4px; }
+.agent-composer-toolbar > button.active { color: #eaff9e; border-color: #778d2b; }
+.agent-composer-toolbar > button > span { color: #d7ff38; font-size: 14px; }
+.agent-composer-toolbar > span { margin-left: auto; color: #77837b; font-size: 9px !important; }
+.agent-file-input { display: none; }
+.agent-attachments { padding: 6px 8px 0; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.agent-attachments > span { min-height: 26px; padding-left: 7px; display: inline-flex; align-items: center; gap: 5px; color: #d9e2dc; background: #202923; border: 1px solid #414d46; border-radius: 4px; }
+.agent-attachments > span > b { max-width: 180px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.agent-attachments > span > button { width: 25px; min-height: 24px; padding: 0; color: #9ca8a0; background: transparent; border-left: 1px solid #414d46; }
+.agent-attachments > small { color: #7d8981; font-size: 9px !important; }
+.agent-mention-menu { position: absolute; z-index: 5; left: 7px; top: 42px; width: min(360px, calc(100% - 14px)); max-height: 228px; padding: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; overflow-y: auto; background: #111815; border: 1px solid #46534c; border-radius: 5px; box-shadow: 0 16px 36px rgba(0, 0, 0, .28); }
+.agent-mention-menu > button { min-width: 0; padding: 7px; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 7px; align-items: center; color: #dce5df; background: #18211c; border: 1px solid #303c35; text-align: left; }
+.agent-mention-menu > button > span { width: 26px; height: 26px; display: grid; place-items: center; color: #d7ff38; background: #26301f; border-radius: 50%; font: 700 8px/1 var(--font-code); }
+.agent-mention-menu > button > div { min-width: 0; display: grid; gap: 2px; }
+.agent-mention-menu > button :is(b, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-mention-menu > button small { color: #87938b; font-size: 8px !important; }
+.agent-prompt .agent-quick-prompts { flex-wrap: nowrap; overflow: hidden; }
+.agent-prompt .agent-quick-prompts > button { min-width: 0; flex: 1 1 0; }
+.agent-prompt textarea { min-height: 58px; max-height: 126px; resize: vertical; font-family: var(--font-code); }
+.agent-prompt footer { gap: 10px; }
+.agent-prompt footer > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-prompt footer kbd { padding: 2px 4px; color: inherit; background: rgba(127, 142, 132, .12); border: 1px solid rgba(127, 142, 132, .28); border-radius: 3px; font: 650 8px/1 var(--font-code); }
+
+/* The light theme keeps the entire workbench light, including the terminal-like
+   activity stream and composer controls. Status color supplies the hierarchy. */
+.theme-light .agent-console-title { border-color: #d8ded8; }
+.theme-light .agent-console-title p { color: #65746b; }
+.theme-light .agent-console-title h2 { color: #17231b !important; }
+.theme-light .agent-console-actions > .run-state { color: #45564b; background: #f5f7f4; border-color: #ccd4cc; }
+.theme-light .agent-runtime-feed { border-color: #ced7ce; }
+.theme-light .agent-runtime-feed > header { color: #17231b; background: #f2f5f1; border-color: #d7ded7; }
+.theme-light .agent-runtime-feed > header b { color: #213128; }
+.theme-light .agent-runtime-feed > header small,
+.theme-light .agent-runtime-feed > header code { color: #66756c; }
+.theme-light .agent-runtime-feed > header button { color: #405047; background: #fff; border-color: #cbd4cb; }
+.theme-light .agent-runtime-steps,
+.theme-light .agent-runtime-idle { color: #26362c; background: #fff; }
+.theme-light .agent-runtime-steps .runtime-step { color: #26362c; border-color: #e0e5e0; }
+.theme-light .runtime-step > div small,
+.theme-light .runtime-step > div p,
+.theme-light .runtime-step > code,
+.theme-light .runtime-step > em { color: #66756c !important; }
+.theme-light .runtime-step > div b { color: #213128; }
+.theme-light .runtime-step.state-active { background: #f1f6e9; }
+.theme-light .runtime-step.state-review { background: #fff8e8; }
+.theme-light .agent-composer-toolbar { border-color: #dbe1db; }
+.theme-light .agent-composer-toolbar > button { color: #314139; background: #f4f6f3; border-color: #cbd4cb; }
+.theme-light .agent-composer-toolbar > button > span { color: #59700c; }
+.theme-light .agent-composer-toolbar > span { color: #68766d; }
+.theme-light .agent-attachments > span { color: #26362c; background: #edf2e9; border-color: #c9d4c4; }
+.theme-light .agent-attachments > span > button { color: #536159; border-color: #c9d4c4; }
+.theme-light .agent-attachments > small { color: #647269; }
+.theme-light .agent-mention-menu { background: #fff; border-color: #bdc8bd; box-shadow: 0 16px 36px rgba(28, 42, 33, .18); }
+.theme-light .agent-mention-menu > button { color: #213128; background: #f5f7f4; border-color: #d3dbd3; }
+.theme-light .agent-mention-menu > button > span { color: #4c6207; background: #eaf1dd; }
+.theme-light .agent-mention-menu > button small { color: #67756d; }
+
+/* Dark mode must not leave white controls, path search, or footer surfaces. */
+.theme-dark .app-footer { color: #9ba5ac; background: #111417 !important; border-color: #343a40; }
+.theme-dark .project-path-toggle { background: #1c2125 !important; border-color: #3b4248 !important; }
+.theme-dark .project-path-toggle button { color: #b2bbc1 !important; background: transparent !important; }
+.theme-dark .project-path-toggle button.active { color: #f4f7f5 !important; background: #293a31 !important; }
+.theme-dark .sidebar-path-search { color: #b4bdc2 !important; background: #171b1f !important; border-color: #3b4248 !important; }
+.theme-dark .sidebar-path-search input { color: #eef2f4 !important; }
+.theme-dark .sidebar-path-search input::placeholder { color: #8c979e; }
+.theme-dark .sidebar-path-search button { color: #d5dbe0 !important; background: #252b30 !important; }
+.theme-dark :is(.agent-session-rail > header > button, .agent-inspector-heading > button) { color: #dce3e7 !important; background: #22272c !important; border-color: #424950 !important; }
+.theme-dark .context-more { color: #dce3e7 !important; background: #1c2125 !important; border-color: #3c4349 !important; }
+.theme-dark .sidebar-path-root > button > .path-entity-mark,
+.theme-dark .path-branch-identity > .path-entity-mark {
+  color: color-mix(in srgb, var(--entity-accent) 58%, #fff) !important;
+  background: color-mix(in srgb, var(--entity-accent) 22%, #1e2226) !important;
+  border-color: color-mix(in srgb, var(--entity-accent) 52%, #3b4248) !important;
+}
+.theme-dark .agent-runtime-feed { border-color: #394148; }
+.theme-dark .agent-runtime-feed > header,
+.theme-dark .agent-runtime-steps,
+.theme-dark .agent-runtime-idle { color: var(--dark-text); background: #101315; border-color: var(--dark-line); }
+.theme-dark .agent-runtime-steps .runtime-step { color: var(--dark-text); border-color: #2d3338; }
+.theme-dark .agent-runtime-steps .runtime-step.state-active { background: #1b211d; }
+.theme-dark .agent-runtime-steps .runtime-step.state-review { background: #242116; }
+.theme-dark :is(.agent-composer-toolbar, .agent-prompt footer) { border-color: #363d43; }
+.theme-dark .agent-composer-toolbar > button { color: #d6dde1; background: #20252a; border-color: #424950; }
+.theme-dark .agent-composer-toolbar > span { color: #929da4; }
+.theme-dark .agent-attachments > span { color: #e5eaed; background: #20252a; border-color: #444b52; }
+.theme-dark .agent-mention-menu { background: #121619; border-color: #454d53; }
+.theme-dark .agent-mention-menu > button { color: #edf1f3; background: #1d2226; border-color: #363d43; }
+
+/* The two collapsed workspace destinations are icon-only controls; center the
+   actual navigation glyph inside the rail rather than its former text grid. */
+@media (min-width: 1041px) {
+  .platform-shell.rail-collapsed .workspace-primary-nav {
+    width: 50px;
+    margin-inline: auto;
+    padding: 4px !important;
+    display: grid;
+    justify-items: center;
+  }
+  .platform-shell.rail-collapsed .workspace-primary-nav .scope-nav {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    place-items: center !important;
+    justify-items: center !important;
+  }
+  .platform-shell.rail-collapsed .workspace-primary-nav .scope-nav > .navigation-icon { margin: 0 !important; justify-self: center; }
+}
+
+@container project-stage (max-width: 960px) {
+  .agent-session > .playground-runner-bar { grid-template-columns: 1fr; gap: 8px; }
+  .agent-console-actions { justify-content: flex-start; }
+  .agent-console-actions > label { margin-left: auto; }
+}
+
+@container project-stage (max-width: 720px) {
+  .agent-console-identity { grid-template-columns: 1fr; gap: 6px; }
+  .agent-console-title { padding: 6px 0 0; border-left: 0; border-top: 1px solid #344039; }
+  .agent-console-actions { flex-wrap: wrap; }
+  .agent-console-actions > label { min-width: 150px; flex: 1; margin-left: 0; }
+  .agent-console-actions select { width: 100%; }
+  .agent-runtime-steps .runtime-step { grid-template-columns: 32px minmax(0, 1fr) 48px; }
+  .runtime-step > code { display: none; }
+  .agent-prompt .agent-quick-prompts { flex-wrap: wrap; }
+  .agent-prompt .agent-quick-prompts > button { flex-basis: calc(50% - 3px); }
+}
+
+@media (max-width: 760px) {
+  .agent-session > .playground-runner-bar { position: static; display: grid; grid-template-columns: 1fr; }
+  .agent-os { min-height: 760px; }
+  .agent-session { min-height: 680px; }
+  .agent-messages { max-height: 58dvh; }
+  .agent-mention-menu { grid-template-columns: 1fr; }
+  .agent-composer-toolbar > span { display: none; }
+}

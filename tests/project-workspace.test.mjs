@@ -633,6 +633,29 @@ test("visible project navigation is app-first and keeps data, graph, and identit
   assert.doesNotMatch(inspector, /session\.id === sessions\[0\]\?\.id/);
 });
 
+test("Playground behaves as a scrollable live agent console with a persistent composer", async () => {
+  const [workspace, css] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/globals.css"),
+  ]);
+
+  assert.match(workspace, /className=\{`agent-runtime-feed/);
+  assert.match(workspace, /Agent activity/);
+  assert.match(workspace, /state: "Thinking"/);
+  assert.match(workspace, /state: "Searching"/);
+  assert.match(workspace, /runState !== "Running" \|\| !dataReady/);
+  assert.match(workspace, /window\.setTimeout\(onAdvance, 1250\)/);
+  assert.match(workspace, /data-action-id="agents\.attach-file"/);
+  assert.match(workspace, /data-action-id="agents\.open-mentions"/);
+  assert.match(workspace, /data-action-id="agents\.insert-command"/);
+  assert.match(workspace, /multiple accept="\.csv,\.xlsx,\.json,\.pdf,\.parquet,\.docx,\.md,\.txt"/);
+  assert.match(workspace, /aria-label="Scrollable agent transcript and activity"/);
+  assert.match(workspace, /Ctrl U/);
+  assert.match(css, /\.agent-session\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;[\s\S]*?grid-template-rows:\s*auto minmax\(0, 1fr\) auto auto/);
+  assert.match(css, /\.agent-messages\s*\{[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?scrollbar-gutter:\s*stable/);
+  assert.match(css, /\.main-content:has\(> \.project-os\[data-project-tab="agents"\]\) \+ \.app-footer \{ display: none; \}/);
+});
+
 test("decision lineage, interactive controls, uniform project leaves, and theme controls are explicit", async () => {
   const [workspace, shell, inspector, applications, optimizer, css] = await Promise.all([
     read("../app/ProjectWorkspace.tsx"),
@@ -660,6 +683,9 @@ test("decision lineage, interactive controls, uniform project leaves, and theme 
   assert.match(css, /\.decision-git-lanes/);
   assert.match(css, /\.governance-switch/);
   assert.match(css, /\.platform-shell\.theme-dark/);
+  assert.match(css, /\.theme-dark \.sidebar-path-search \{[\s\S]*?background:\s*#171b1f\s*!important/);
+  assert.match(css, /\.theme-dark :is\(\.agent-session-rail > header > button, \.agent-inspector-heading > button\)/);
+  assert.match(css, /\.platform-shell\.rail-collapsed \.workspace-primary-nav \.scope-nav \{[\s\S]*?place-items:\s*center\s*!important/);
   assert.match(applications, /className="studio-header app-intro app-canonical-header"/);
   assert.match(optimizer, /className="studio-header app-intro app-canonical-header optimizer-hero"/);
   for (const darkFamily of ["Operations World", "Decision operations", "Data operations", "Specialist studios", "Playground side rails", "Controls, policies"]) {
