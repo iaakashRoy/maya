@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "tanjx — Tangent + Exchange connects supply-network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
+  "tanjx is a supply chain workspace connecting network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const socialImage = `${protocol}://${host}/og-workspace.png`;
 
   return {
-    title: "tanjx — Tangent + Exchange",
+    title: "tanjx — Supply Chain Workspace",
     description,
     applicationName: "tanjx",
     category: "Supply-network workspace",
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       type: "website",
-      title: "tanjx — Tangent + Exchange",
+      title: "tanjx — Supply Chain Workspace",
       description,
       images: [
         {
@@ -52,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: "tanjx — Tangent + Exchange",
+      title: "tanjx — Supply Chain Workspace",
       description,
       images: [socialImage],
     },

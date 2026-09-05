@@ -20,7 +20,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>tanjx — Tangent \+ Exchange/);
+  assert.match(html, /<title>tanjx — Supply Chain Workspace/);
   assert.match(html, /data-action-id="nav\.workspace"[^>]*class="scope-nav active"/);
   assert.match(html, /data-action-id="nav\.operations-world"/);
   assert.match(html, /<h1>Workspace<\/h1>/);
@@ -35,7 +35,9 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Cold Chain Promise/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
   assert.match(html, /aria-label="Open tanjx workspace"/);
-  assert.match(html, /Tangent \+ Exchange/);
+  assert.match(html, /Supply chain workspace/);
+  assert.match(html, /Aakash Roy/);
+  assert.match(html, /Super Admin/);
   assert.doesNotMatch(html, /Concept environment/);
   assert.match(html, /og-workspace\.png/);
   assert.match(html, /class="[^"]*__font_geist_/);

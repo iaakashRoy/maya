@@ -13,9 +13,11 @@ test("tanjx branding replaces the former product and provider labels", async () 
   ]);
   const productSurface = `${layout}\n${shell}\n${workspace}\n${activity}`;
 
-  assert.match(layout, /tanjx — Tangent \+ Exchange/);
+  assert.match(layout, /tanjx — Supply Chain Workspace/);
   assert.match(shell, /<BrandMark \/>/);
-  assert.match(shell, /<b>tanjx<\/b><small>Tangent \+ Exchange<\/small>/);
+  assert.match(shell, /<b>tanjx<\/b><small>Supply chain workspace<\/small>/);
+  assert.match(shell, /Aakash Roy/);
+  assert.match(workspace, /role: "Super Admin"/);
   assert.doesNotMatch(shell, /environment-badge/);
   assert.doesNotMatch(shell, /document\.title\s*=/, "route chrome must not race the server-rendered title during hydration");
   assert.doesNotMatch(productSurface, /Maya Workspace|Maya Rao|Kearney/);
@@ -44,6 +46,13 @@ test("every project app has a semantic icon and agents have stable differentiate
   assert.match(optimizer, /<AppGlyph appId="optimizer" className="app-code optimizer-hero-code"/);
   assert.match(identity, /identityPalette = \[/);
   assert.match(identity, /data-identity-color=\{identityColorFor\(id\)\}/);
+  assert.match(identity, /const sectorVisuals:/);
+  assert.match(identity, /const clientVisuals:/);
+  assert.match(shell, /<SectorMark sectorId=\{group\.id\}/);
+  assert.match(shell, /<ClientMark clientId=\{group\.id\}/);
+  for (const icon of ["client-add", "project-add", "workspace", "world"]) {
+    assert.match(shell, new RegExp(`NavigationIcon name="${icon}"`));
+  }
 });
 
 test("the workspace uses one type scale, one gutter contract, and neutral dark surfaces", async () => {
@@ -59,4 +68,6 @@ test("the workspace uses one type scale, one gutter contract, and neutral dark s
   assert.match(contract, /--dark-surface:\s*#171a1d/);
   assert.match(contract, /\.theme-dark :is\(\.workspace-primary-nav, \.sidebar-projects, \.sidebar-path-tree, \.sidebar-path-branches\)/);
   assert.match(contract, /Lime is a focus\/action accent, not a surface color/);
+  assert.match(contract, /\.agent-os\s*\{[\s\S]*?background:\s*#f4f6f3\s*!important/);
+  assert.match(contract, /\.theme-dark \.agent-os\s*\{[\s\S]*?background:\s*#101214\s*!important/);
 });

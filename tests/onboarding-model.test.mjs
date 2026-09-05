@@ -101,7 +101,7 @@ test("client and tanjx collaborators receive explicit project memberships that f
   const projectCollaborators = memberships.map((membership) => model.workspaceCollaborators.find((collaborator) => collaborator.id === membership.collaboratorId));
 
   assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "Client" && collaborator.organization === project.client));
-  assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "tanjx" && collaborator.organization === "Tangent + Exchange"));
+  assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "tanjx" && collaborator.organization === "Supply Chain Workspace"));
 
   const clientOwner = memberships.find((membership) => membership.projectRole === "Client owner");
   const orScientist = memberships.find((membership) => membership.projectRole === "tanjx OR scientist");
@@ -191,7 +191,8 @@ test("the signed-in portfolio identity has explicit grants for every seeded proj
   const model = await loadWorkspaceModel();
   const identity = model.workspaceCollaborators.find((item) => item.id === model.signedInCollaboratorId);
 
-  assert.equal(identity?.name, "Asha Rao");
+  assert.equal(identity?.name, "Aakash Roy");
+  assert.equal(identity?.role, "Super Admin");
   assert.equal(identity?.affiliation, "tanjx");
   assert.equal(identity?.clientId, undefined);
   for (const project of model.workspaceProjects) {

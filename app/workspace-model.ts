@@ -345,12 +345,12 @@ export const workspaceCollaborators: readonly WorkspaceCollaborator[] = [
     organization: project.client,
     profileOrigin: "Seed fixture" as const,
   })),
-  { id: "tanjx-engagement", name: "Asha Rao", initials: "AR", role: "Portfolio engagement lead", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
-  { id: "tanjx-or-scientist", name: "tanjx OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
-  { id: "tanjx-data-steward", name: "tanjx Data Steward", initials: "DS", role: "Data contracts and lineage", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Seed fixture" },
+  { id: "tanjx-engagement", name: "Aakash Roy", initials: "AR", role: "Super Admin", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
+  { id: "tanjx-or-scientist", name: "tanjx OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
+  { id: "tanjx-data-steward", name: "tanjx Data Steward", initials: "DS", role: "Data contracts and lineage", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
 ];
 
-/** Explicit browser-session identity represented by the shell's Asha Rao profile. */
+/** Explicit browser-session identity represented by the shell's Aakash Roy profile. */
 export const signedInCollaboratorId = "tanjx-engagement";
 
 const clientOwnerCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "decisions.approve", "agents.run", "team.manage"];
@@ -565,7 +565,7 @@ export function createSessionCollaborators(client: WorkspaceClient, existingColl
     && collaborator.name.trim().toLowerCase() === client.providerLead.trim().toLowerCase());
   return [
     { id: clientId, clientId: client.id, name: client.clientLead, initials: initialsFor(client.clientLead), role: "Client relationship lead", affiliation: "Client", organization: client.name, profileOrigin: "Browser-session draft" },
-    existingTanjxLead ?? { id: tanjxId, name: client.providerLead, initials: initialsFor(client.providerLead), role: "tanjx engagement lead", affiliation: "tanjx", organization: "Tangent + Exchange", profileOrigin: "Browser-session draft" },
+    existingTanjxLead ?? { id: tanjxId, name: client.providerLead, initials: initialsFor(client.providerLead), role: "tanjx engagement lead", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Browser-session draft" },
   ];
 }
 
