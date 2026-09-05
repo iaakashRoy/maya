@@ -65,6 +65,13 @@ metadata, agent conversations, traces, steering, draft agents, expert
 assignments, and action receipts. This is demonstrative state, not backend
 persistence or security enforcement.
 
+The fixed outer rail is the only project hierarchy. It defaults to
+Client > Tower > Project and can be switched to Tower > Client > Project,
+searched, or collapsed with Command/Control+B. The breadcrumb keeps the full
+project ancestry visible, while the context bar identifies the active surface,
+mounted apps, and work session. Valid agent-session and app-run IDs are also
+addressable in the URL and restore through browser Back and Forward.
+
 New client and new project flows are available from Workspace. A session project
 starts empty, receives one client and one Kearney membership draft, and adds data,
 apps, agents, and decisions only through explicit project actions. Maya Rao is

@@ -291,3 +291,225 @@ test("app reruns append immutable lineage and never rewrite the selected source 
   assert.equal(grandchild.inputs.find((input) => input.key === "planning_horizon").value, "16");
   assert.deepEqual(grandchild.changeSet, [{ key: "planning_horizon", before: "12", after: "16" }]);
 });
+
+test("closed browser sessions fork once and remain immutable across continued work", async () => {
+  const { workspace, activity } = await loadModels();
+  const project = workspace.workspaceProjects[0];
+  const seeded = activity.seedProjectActivity([project]);
+  const created = activity.projectActivityReducer(seeded, {
+    type: "create-session",
+    project,
+    prompt: "Create an editable browser session and retain its lineage.",
+    agentId: "orchestrator",
+    agentName: "Project Orchestrator",
+  });
+  const sourceId = `SES-${project.code.replaceAll("-", "")}-S001`;
+  const closed = activity.projectActivityReducer(created, {
+    type: "complete-session",
+    projectId: project.id,
+    sessionId: sourceId,
+    result: {
+      headline: "Review package ready",
+      recommendation: "Keep the package at human review.",
+      metrics: [{ label: "Candidate", value: "1" }],
+      evidenceRefs: [project.metrics[0].evidenceRef],
+      reviewGate: "Named owner approval",
+      claimBoundary: "Synthetic browser session only.",
+    },
+  });
+  const sourceSnapshot = structuredClone(closed.sessions.find((session) => session.id === sourceId));
+  const planned = activity.planSessionMutation(closed, project.id, sourceId);
+  assert.deepEqual(planned, { sourceSessionId: sourceId, sessionId: `SES-${project.code.replaceAll("-", "")}-S002`, sessionForked: true });
+
+  const firstReply = activity.projectActivityReducer(closed, {
+    type: "append-message",
+    projectId: project.id,
+    sessionId: sourceId,
+    role: "user",
+    author: "Maya Rao",
+    kind: "Prompt",
+    body: "Continue from the reviewed package.",
+  });
+  const childId = planned.sessionId;
+  const secondReply = activity.projectActivityReducer(firstReply, {
+    type: "append-message",
+    projectId: project.id,
+    sessionId: childId,
+    role: "agent",
+    author: "Project Orchestrator",
+    kind: "Response",
+    body: "Continuation recorded in the same editable child.",
+  });
+
+  assert.deepEqual(secondReply.sessions.find((session) => session.id === sourceId), sourceSnapshot);
+  const child = secondReply.sessions.find((session) => session.id === childId);
+  assert.equal(child.parentSessionId, sourceId);
+  assert.equal(child.status, "Active");
+  assert.equal(child.finalResult, undefined);
+  assert.deepEqual(
+    activity.messagesForSession(secondReply, project.id, childId).slice(-2).map((message) => message.body),
+    ["Continue from the reviewed package.", "Continuation recorded in the same editable child."],
+  );
+
+  const parentRun = activity.appRunsFor(secondReply, project.id, "optimizer")[0];
+  const rerunPlan = activity.planAppRerun(secondReply, project.id, parentRun.id, sourceId);
+  assert.equal(rerunPlan.sessionId, `SES-${project.code.replaceAll("-", "")}-S003`);
+  assert.equal(rerunPlan.sessionForked, true);
+  const rerun = activity.projectActivityReducer(secondReply, {
+    type: "rerun-app",
+    projectId: project.id,
+    runId: parentRun.id,
+    sessionId: sourceId,
+  });
+  assert.equal(rerun.appRuns.at(-1).sessionId, rerunPlan.sessionId);
+  assert.deepEqual(rerun.sessions.find((session) => session.id === sourceId), sourceSnapshot);
+});
+
+test("a zero-history project can create its first concrete application run", async () => {
+  const { workspace, activity } = await loadModels();
+  const draft = projectFixture(workspace.workspaceProjects[0], {
+    id: "browser-created-optimizer-project",
+    code: "P-901",
+    origin: "Browser-session draft",
+    name: "Browser-created optimizer project",
+    mountedAppIds: ["optimizer"],
+    counts: { entities: "0", relationships: "0", observations: "0", documents: "0", events: "0", claims: "0", decisions: 0, runs: 0, apps: 1, agents: 0, experts: 2 },
+  });
+  const seeded = activity.seedProjectActivity([draft]);
+  assert.equal(activity.sessionsForProject(seeded, draft.id).length, 0);
+  assert.equal(activity.appRunsFor(seeded, draft.id).length, 0);
+  assert.equal(activity.planAppStart(seeded, draft, "risk"), undefined);
+
+  const plan = activity.planAppStart(seeded, draft, "optimizer");
+  assert.deepEqual(plan, {
+    appId: "optimizer",
+    runId: "APP-P901-NO-S001",
+    sessionId: "SES-P901-S001",
+    reportId: "RPT-P901-NO-S001",
+    traceId: "TRACE-P901-NO-S001",
+    sourceSessionId: undefined,
+    sessionCreated: true,
+    sessionForked: false,
+  });
+
+  const started = activity.projectActivityReducer(seeded, { type: "start-app-run", project: draft, appId: "optimizer" });
+  const session = activity.sessionsForProject(started, draft.id)[0];
+  const run = activity.appRunsFor(started, draft.id, "optimizer")[0];
+  assert.equal(session.id, plan.sessionId);
+  assert.equal(session.entryPoint, "Application");
+  assert.deepEqual(session.appIds, ["optimizer"]);
+  assert.equal(run.id, plan.runId);
+  assert.equal(run.sessionId, session.id);
+  assert.equal(run.reportId, plan.reportId);
+  assert.equal(run.traceId, plan.traceId);
+  assert.equal(started.selectedSessionByProject[draft.id], session.id);
+  assert.equal(started.selectedRunByProjectApp[`${draft.id}:optimizer`], run.id);
+  assert.ok(activity.messagesForSession(started, draft.id, session.id).some((message) => message.appRunRefs.includes(run.id)));
+  assert.ok(activity.activitiesForSession(started, draft.id, session.id).some((item) => item.appRunId === run.id));
+});
+
+test("application inputs enforce their declared domain and changed outputs receive new evidence", async () => {
+  const { workspace, activity } = await loadModels();
+  const project = workspace.workspaceProjects[0];
+  const seeded = activity.seedProjectActivity([project]);
+  const parent = activity.appRunsFor(seeded, project.id, "optimizer")[0];
+
+  const aboveMaximum = activity.projectActivityReducer(seeded, { type: "edit-app-input", projectId: project.id, runId: parent.id, key: "service_floor", value: "150" });
+  const invalidChoice = activity.projectActivityReducer(seeded, { type: "edit-app-input", projectId: project.id, runId: parent.id, key: "scenario", value: "Magic answer" });
+  assert.equal(aboveMaximum.runDrafts[parent.id].service_floor, "150");
+  assert.equal(invalidChoice.runDrafts[parent.id].scenario, "Magic answer");
+  assert.match(activity.validateAppInputValue(parent.inputs.find((input) => input.key === "service_floor"), "150"), /Maximum/);
+  assert.match(activity.validateAppInputValue(parent.inputs.find((input) => input.key === "scenario"), "Magic answer"), /declared options/);
+  assert.equal(activity.planAppRerun(aboveMaximum, project.id, parent.id, parent.sessionId), undefined);
+  assert.equal(activity.planAppRerun(invalidChoice, project.id, parent.id, parent.sessionId), undefined);
+  assert.strictEqual(activity.projectActivityReducer(aboveMaximum, { type: "rerun-app", projectId: project.id, runId: parent.id, sessionId: parent.sessionId }), aboveMaximum);
+
+  const valid = activity.projectActivityReducer(seeded, { type: "edit-app-input", projectId: project.id, runId: parent.id, key: "service_floor", value: "97" });
+  assert.equal(valid.runDrafts[parent.id].service_floor, "97");
+  const rerun = activity.projectActivityReducer(valid, {
+    type: "rerun-app",
+    projectId: project.id,
+    runId: parent.id,
+    sessionId: parent.sessionId,
+  });
+  const child = rerun.appRuns.at(-1);
+  assert.equal(child.inputs.find((input) => input.key === "service_floor").value, "97");
+  assert.ok(child.outputs.every((output, index) => output.evidenceRef !== parent.outputs[index].evidenceRef));
+  assert.ok(child.outputs.every((output) => output.evidenceRef.startsWith(`${child.traceId}-OUT-`)));
+});
+
+test("derived application evidence resolves to one exact project run while baseline metric references stay generic", async () => {
+  const { workspace, activity } = await loadModels();
+  const [project, otherProject] = workspace.workspaceProjects.slice(0, 2);
+  const seeded = activity.seedProjectActivity([project, otherProject]);
+  const parent = activity.appRunsFor(seeded, project.id, "optimizer")[0];
+  const edited = activity.projectActivityReducer(seeded, { type: "edit-app-input", projectId: project.id, runId: parent.id, key: "service_floor", value: "97" });
+  const rerun = activity.projectActivityReducer(edited, { type: "rerun-app", projectId: project.id, runId: parent.id, sessionId: parent.sessionId });
+  const child = activity.appRunsFor(rerun, project.id, "optimizer")[0];
+
+  assert.equal(activity.resolveActivityEvidence(rerun, project.id, child.id)?.run.id, child.id);
+  assert.equal(activity.resolveActivityEvidence(rerun, project.id, child.reportId)?.kind, "report");
+  assert.equal(activity.resolveActivityEvidence(rerun, project.id, child.traceId)?.kind, "trace");
+  for (const output of child.outputs) {
+    const target = activity.resolveActivityEvidence(rerun, project.id, output.evidenceRef);
+    assert.equal(target?.kind, "output");
+    assert.equal(target?.run.id, child.id);
+    assert.equal(target?.output.evidenceRef, output.evidenceRef);
+    assert.equal(activity.resolveActivityEvidence(rerun, otherProject.id, output.evidenceRef), undefined);
+  }
+  assert.equal(activity.resolveActivityEvidence(seeded, project.id, parent.outputs[0].evidenceRef), undefined, "baseline project metrics must not be misattributed to an app run");
+});
+
+test("agent trace state belongs to its session and survives selection without leaking across sessions", async () => {
+  const { workspace, activity } = await loadModels();
+  const project = workspace.workspaceProjects[0];
+  const seeded = activity.seedProjectActivity([project]);
+  const fixture = activity.sessionsForProject(seeded, project.id)[0];
+  assert.equal(activity.agentTraceView(fixture).state, "Completed");
+
+  const created = activity.projectActivityReducer(seeded, {
+    type: "create-session",
+    project,
+    prompt: "Trace qualified sources and stop at human review.",
+    agentId: "orchestrator",
+    agentName: "Project Orchestrator",
+  });
+  const activeId = created.selectedSessionByProject[project.id];
+  const active = created.sessions.find((session) => session.id === activeId);
+  assert.deepEqual(activity.agentTraceView(active), { state: "Running", stepIndex: 0, prompt: "Trace qualified sources and stop at human review.", steeringInstructions: [] });
+
+  const advanced = activity.projectActivityReducer(created, { type: "advance-agent-trace", projectId: project.id, sessionId: activeId, maxStepIndex: 6 });
+  assert.equal(activity.agentTraceView(advanced.sessions.find((session) => session.id === activeId)).stepIndex, 1);
+  const switched = activity.projectActivityReducer(advanced, { type: "select-session", projectId: project.id, sessionId: fixture.id });
+  assert.equal(activity.agentTraceView(switched.sessions.find((session) => session.id === fixture.id)).state, "Completed");
+  assert.equal(activity.agentTraceView(switched.sessions.find((session) => session.id === activeId)).stepIndex, 1);
+
+  const activeSnapshot = structuredClone(switched.sessions.find((session) => session.id === activeId));
+  const forked = activity.projectActivityReducer(switched, { type: "fork-session", projectId: project.id, sessionId: fixture.id });
+  const forkId = forked.selectedSessionByProject[project.id];
+  const readyFork = forked.sessions.find((session) => session.id === forkId);
+  assert.deepEqual(activity.agentTraceView(readyFork), { state: "Ready", stepIndex: -1, prompt: fixture.objective, steeringInstructions: [] });
+  const started = activity.projectActivityReducer(forked, { type: "start-agent-trace", projectId: project.id, sessionId: forkId, prompt: fixture.objective });
+  assert.equal(activity.agentTraceView(started.sessions.find((session) => session.id === forkId)).state, "Running");
+  assert.deepEqual(started.sessions.find((session) => session.id === activeId), activeSnapshot);
+});
+
+test("application starts fail closed until a mounted project has a canonical data contract", async () => {
+  const { workspace, activity } = await loadModels();
+  const base = workspace.workspaceProjects[0];
+  const empty = projectFixture(base, {
+    id: "empty-contract",
+    code: "P-998",
+    origin: "Browser-session draft",
+    mountedAppIds: ["optimizer"],
+    variablePack: { l2: [], l1: [], l0: [] },
+  });
+  const seeded = activity.seedProjectActivity([empty]);
+  assert.equal(activity.projectHasDataContract(empty), false);
+  assert.equal(activity.planAppStart(seeded, empty, "optimizer"), undefined);
+  assert.strictEqual(activity.projectActivityReducer(seeded, { type: "start-app-run", project: empty, appId: "optimizer" }), seeded);
+
+  const mapped = projectFixture(empty, { variablePack: { l2: ["L2-001"], l1: ["L1-001"], l0: ["L0-001"] } });
+  assert.equal(activity.projectHasDataContract(mapped), true);
+  assert.ok(activity.planAppStart(seeded, mapped, "optimizer"));
+});

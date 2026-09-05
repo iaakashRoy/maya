@@ -153,6 +153,9 @@ export type WorkspaceProject = {
   operationsWorldIntake?: OperationsWorldIntake;
 };
 
+/** App execution is available only after the project owns a canonical L0 variable contract. */
+export const projectHasDataContract = (project: WorkspaceProject) => project.variablePack.l0.length > 0;
+
 export type EvidenceReceipt = {
   id: string;
   projectId: string;
@@ -234,8 +237,15 @@ export type HumanExpert = {
 };
 
 export const workspaceTabs: readonly { id: WorkspaceTabId; label: string; count?: string }[] = [
-  { id: "overview", label: "Overview" }, { id: "decisions", label: "Decisions" }, { id: "apps", label: "Apps" }, { id: "data", label: "Data" }, { id: "graph", label: "Graph" }, { id: "agents", label: "Agents" }, { id: "team", label: "Team" }, { id: "governance", label: "Controls" },
+  { id: "overview", label: "Overview" },
+  { id: "decisions", label: "Decisions" },
+  { id: "data", label: "Data & graph" },
+  { id: "agents", label: "Playground" },
+  { id: "governance", label: "Controls" },
 ];
+
+/** Routeable project surfaces. Apps remains routeable from the mounted-work strip. */
+export const workspaceSurfaceIds: readonly WorkspaceTabId[] = ["overview", "decisions", "apps", "data", "graph", "agents", "governance"];
 
 const metricSet = (code: string, values: readonly [string, string, string, WorkspaceMetric["tone"]][]): readonly WorkspaceMetric[] =>
   values.map(([label, value, detail, tone], index) => ({ label, value, detail, tone, evidenceRef: `EV-${code.slice(2)}-${String(index + 1).padStart(2, "0")}` }));
@@ -658,7 +668,7 @@ export function caseIdForProject(project: WorkspaceProject) {
 }
 
 export function decisionsFor(project: WorkspaceProject) {
-  if (project.origin === "Browser-session draft") return [];
+  if (project.origin === "Browser-session draft" && project.counts.decisions === 0) return [];
   if (project.id === "anode-shield") return decisionTree.map((item) => ({ ...item }));
   const values = project.metrics.map((item) => item.value);
   const refs = project.metrics.map((item) => item.evidenceRef);
@@ -672,7 +682,7 @@ export function decisionsFor(project: WorkspaceProject) {
 }
 
 export function graphNodesFor(project: WorkspaceProject) {
-  if (project.origin === "Browser-session draft") return [];
+  if (project.origin === "Browser-session draft" && project.counts.observations === "0") return [];
   if (project.id === "anode-shield") return projectGraphNodes.map((item) => ({ ...item }));
   const region = project.regions.split("·")[0]?.trim() ?? "Project region";
   return [

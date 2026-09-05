@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { useDialogLifecycle } from "./useDialogLifecycle";
 import type { SessionClientDraft, SessionProjectDraft, WorkspaceClient } from "./workspace-model";
 
 export type WorkspaceOnboardingMode = "client" | "project";
@@ -40,6 +41,7 @@ export default function WorkspaceOnboarding({
   onSubmitClient,
   onSubmitProject,
 }: WorkspaceOnboardingProps) {
+  const dialogRef = useDialogLifecycle<HTMLFormElement>(open, onClose);
   if (!open) return null;
 
   const steps = mode === "client" ? clientSteps : projectSteps;
@@ -69,9 +71,9 @@ export default function WorkspaceOnboarding({
   };
 
   return (
-    <div className="builder-overlay workspace-onboarding">
+    <div className="builder-overlay workspace-onboarding" data-modal-root>
       <button data-action-id="workspace-onboarding.dismiss" className="evidence-scrim" type="button" aria-label="Close workspace onboarding" onClick={onClose} />
-      <form className="agent-builder" role="dialog" aria-modal="true" aria-label={mode === "client" ? "Onboard a client draft" : "Create a project draft"} onSubmit={submit}>
+      <form ref={dialogRef} className="agent-builder" role="dialog" aria-modal="true" aria-label={mode === "client" ? "Onboard a client draft" : "Create a project draft"} tabIndex={-1} onSubmit={submit}>
         <header>
           <div><p>WORKSPACE / SETUP</p><h2>{mode === "client" ? "New client" : "New project"}</h2></div>
           <span className="truth-chip">SESSION DRAFT</span>

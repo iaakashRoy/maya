@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type Dispatch, type FormEvent } from "react";
 import ProjectAppStudio from "./ProjectAppStudios";
+import { useDialogLifecycle } from "./useDialogLifecycle";
 import {
   appDependencyEdges,
   agentsFor,
@@ -39,10 +40,19 @@ import {
 } from "./workspace-model";
 import {
   activitiesForSession,
+  agentTraceView,
   appRunsFor,
   messagesForSession,
+  planAppStart,
   planAppRerun,
+  planNewSession,
+  planSessionFork,
+  planSessionMutation,
+  projectHasDataContract,
+  resolveActivityEvidence,
   sessionsForProject,
+  validateAppInputValue,
+  type ActivityEvidenceTarget,
   type ProjectActivityAction,
   type ProjectActivityState,
   type ProjectAppRun,
@@ -50,34 +60,53 @@ import {
   type SessionActivity,
   type SessionMessage,
 } from "./project-activity-model";
-import { groupProjectsByPath, projectPathKeys, type ProjectPathMode } from "./project-path-model";
 
 type ExistingAppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers";
 type OutcomeHandler = (title: string, detail: string, artifact?: string, status?: "Completed" | "Saved" | "Blocked") => void;
 type AgentDraft = { specialty: string; skills: readonly string[]; connections: readonly string[]; skillFile: string };
-type ChatMessage = { role: "user" | "agent" | "system"; text: string };
 type ProjectMemberView = { membership: ProjectMembership; collaborator: WorkspaceCollaborator };
 type UploadStage = "Select" | "Staged" | "Schema preview" | "Mapping draft" | "Review demo" | "Session receipt";
+type ProjectDocumentFixture = { id: string; name: string; kind: "Excel workbook" | "PDF" | "CSV" | "SQL table" | "JSON"; locator: string; detail: string; records: string; state: string; variableId: string };
+
+const projectDocumentsFor = (project: WorkspaceProject): readonly ProjectDocumentFixture[] => {
+  if (project.origin === "Browser-session draft") return [];
+  const token = project.code.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const variable = (index: number) => project.variablePack.l0[index] ?? project.variablePack.l0[0] ?? "L0 mapping pending";
+  return [
+    { id: `${project.code}-DOC-01`, name: `${token}_supply_plan.xlsx`, kind: "Excel workbook", locator: `fixture://project-vault/${project.id}/supply-plan.xlsx`, detail: "Monthly supply, demand, inventory, and constrained-capacity planning workbook", records: "24 sheets · 18.4K cells", state: "Fixture snapshot", variableId: variable(0) },
+    { id: `${project.code}-DOC-02`, name: `${token}_supplier_certificates.pdf`, kind: "PDF", locator: `fixture://project-vault/${project.id}/supplier-certificates.pdf`, detail: "Qualification, origin, quality, and compliance evidence package", records: "186 pages · OCR fixture", state: "Review fixture", variableId: variable(1) },
+    { id: `${project.code}-DOC-03`, name: `${token}_movement_events.csv`, kind: "CSV", locator: `fixture://project-vault/${project.id}/movement-events.csv`, detail: "Timestamped cargo, custody, location, and transfer event extract", records: project.counts.events, state: "Fixture snapshot", variableId: variable(2) },
+    { id: `${project.code}-DOC-04`, name: `project_${token}.supply_snapshot`, kind: "SQL table", locator: `fixture://warehouse/${project.id}/supply_snapshot`, detail: "Read-only project snapshot with entity, variable, valid-time, and evidence keys", records: project.counts.observations, state: "Read-only fixture", variableId: variable(3) },
+    { id: `${project.code}-DOC-05`, name: `${token}_decision_assumptions.json`, kind: "JSON", locator: `fixture://project-vault/${project.id}/decision-assumptions.json`, detail: "Versioned scenario assumptions, hard constraints, owners, and review gates", records: `${project.methodCodes.length} method bindings`, state: "Fixture snapshot", variableId: variable(4) },
+  ];
+};
+
+const projectDocumentReceipt = (project: WorkspaceProject, document: ProjectDocumentFixture) => fixtureEvidenceFor(project, {
+  id: `EV-${document.id}`,
+  claim: `${document.name} catalog record`,
+  displayedValue: `${document.kind} · ${document.records}`,
+  source: `${document.kind} deterministic project-vault fixture`,
+  formula: `Catalog metadata only; locator ${document.locator}; no source file or SQL system was opened`,
+  inputs: [document.id, document.locator, document.state],
+  variableId: document.variableId,
+  grain: "Project × source artifact",
+});
 type ProjectSessionState = {
   selectedDecision: string;
   selectedGraphNode: string;
-  traceIndex: number;
-  runState: "Ready" | "Running" | "Completed" | "Cancelled";
   selectedAgentId: string;
   chatText: string;
-  activePrompt: string;
-  steeringInstructions: readonly string[];
-  chatMessages: readonly ChatMessage[];
   uploadStage: UploadStage;
   uploadName: string;
   sessionDatasets: readonly { id: string; name: string; rows: string; state: string }[];
+  decisionDraftReady: boolean;
   mountedApps: readonly ProjectAppId[];
   draftAgentName: string;
   createdAgents: readonly ExpertAgent[];
   selectedExpertId: string;
   assignedExperts: readonly string[];
   connectorDrafts: readonly ProjectConnectorDraft[];
-  projectTreeOpen: boolean;
+  dataQuery: string;
   agentSessionsOpen: boolean;
   agentInspectorOpen: boolean;
 };
@@ -89,18 +118,22 @@ type ProjectWorkspaceProps = {
   initialProjectId?: string;
   initialTab?: WorkspaceTabId;
   initialApp?: ProjectAppId | null;
-  onProjectChange?: (project: WorkspaceProject) => void;
+  initialSessionId?: string | null;
+  initialRunId?: string | null;
   onTabChange?: (tab: WorkspaceTabId) => void;
-  onStudioChange?: (app: ProjectAppId | null) => void;
+  onStudioChange?: (app: ProjectAppId) => void;
+  onCloseStudio?: () => void;
+  onSessionChange?: (sessionId: string) => void;
+  onRunChange?: (sessionId: string, runId: string) => void;
   projects?: readonly WorkspaceProject[];
   collaborators?: readonly WorkspaceCollaborator[];
   memberships?: readonly ProjectMembership[];
   activeCollaboratorId?: string;
-  pathMode: ProjectPathMode;
-  onPathModeChange: (mode: ProjectPathMode) => void;
   activityState: ProjectActivityState;
   dispatchActivity: Dispatch<ProjectActivityAction>;
   onMountedAppsChange?: (projectId: string, appIds: readonly ProjectAppId[]) => void;
+  onAgentRosterChange?: (projectId: string, agents: readonly ExpertAgent[]) => void;
+  onProjectSetupChange?: (projectId: string, patch: Partial<WorkspaceProject>) => void;
 };
 
 const isExistingApp = (id: ProjectAppId): id is ExistingAppId => ["risk", "optimizer", "flow", "demand", "suppliers"].includes(id);
@@ -113,29 +146,22 @@ const capabilityForTab = (tab: WorkspaceTabId): ProjectCapability => {
 };
 type TraceStep = { state: string; agent: string; title: string; detail: string; nodes: readonly string[] };
 const promptFor = (project: WorkspaceProject) => `Analyze ${project.problem.toLowerCase()} using only this project snapshot, then stop at the human approval gate.`;
-const initialChatMessagesFor = (project: WorkspaceProject): readonly ChatMessage[] => [
-  { role: "agent", text: `I am scoped to ${project.client} / ${project.name}. I can frame a decision, expose every evidence read, and stop before any external tool or release action.` },
-];
 const defaultSessionFor = (project: WorkspaceProject): ProjectSessionState => ({
   selectedDecision: "D0",
   selectedGraphNode: "supplier",
-  traceIndex: -1,
-  runState: "Ready",
   selectedAgentId: agentsFor(project)[0]?.id ?? "",
   chatText: promptFor(project),
-  activePrompt: promptFor(project),
-  steeringInstructions: [],
-  chatMessages: initialChatMessagesFor(project),
   uploadStage: "Select",
   uploadName: "",
   sessionDatasets: [],
+  decisionDraftReady: project.counts.decisions > 0,
   mountedApps: project.mountedAppIds,
   draftAgentName: "Resilience Portfolio Challenger",
   createdAgents: [],
   selectedExpertId: humanExperts[0].id,
   assignedExperts: project.origin === "Seed fixture" ? humanExperts.map((item) => item.id) : [],
   connectorDrafts: [],
-  projectTreeOpen: true,
+  dataQuery: "",
   agentSessionsOpen: true,
   agentInspectorOpen: false,
 });
@@ -155,30 +181,48 @@ const traceStepsFor = (project: WorkspaceProject, prompt: string, steering: read
   { state: "Awaiting approval", agent: "Project Orchestrator", title: "Route to human experts", detail: `${project.counts.experts} project experts · named human owner ${project.owner}`, nodes: ["decision"] },
 ];
 
-export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = () => undefined, initialProjectId, initialTab = "overview", initialApp = null, onProjectChange, onTabChange, onStudioChange, projects = workspaceProjects, collaborators = workspaceCollaborators, memberships = projectMemberships, activeCollaboratorId = signedInCollaboratorId, pathMode, onPathModeChange, activityState, dispatchActivity, onMountedAppsChange }: ProjectWorkspaceProps) {
-  const firstProject = requireWorkspaceProject(initialProjectId, projects);
-  const initialSession = projectSessionCache[firstProject.id] ?? defaultSessionFor(firstProject);
-  const [projectId, setProjectId] = useState(firstProject.id);
-  const projectIdRef = useRef(firstProject.id);
-  const selectProjectRef = useRef<(project: WorkspaceProject, push?: boolean) => void>(() => undefined);
-  const tabChangeRef = useRef(onTabChange);
-  const [tab, setTab] = useState<WorkspaceTabId>(initialTab);
-  const [portfolioQuery, setPortfolioQuery] = useState("");
+const activityEvidenceReceiptFor = (project: WorkspaceProject, target: ActivityEvidenceTarget): EvidenceReceipt => {
+  const { run } = target;
+  const app = projectApps.find((item) => item.id === run.appId)!;
+  const inputs = run.inputs.map((input) => `${input.key}=${input.value}${input.unit}`);
+  const changes = run.changeSet.length ? run.changeSet.map((change) => `${change.key}:${change.before}->${change.after}`) : ["No changed assumptions"];
+  const outputs = run.outputs.map((output) => `${output.label}=${output.value} [${output.evidenceRef}]`);
+  if (target.kind === "output" && target.output) {
+    return {
+      ...fixtureEvidenceFor(project, { id: target.output.evidenceRef, claim: `${app.name} output: ${target.output.label}`, displayedValue: target.output.value, source: `Deterministic output in application run ${run.id}`, formula: `${run.summary} ${run.claimBoundary}`, inputs: [`run=${run.id}`, `session=${run.sessionId}`, `trace=${run.traceId}`, `fingerprint=${run.inputFingerprint}`, ...inputs, ...changes], variableId: app.variableIds[target.outputIndex ?? 0] ?? app.variableIds[0], grain: "Project × session × application output" }),
+      id: target.output.evidenceRef,
+      locator: `fixture://workspace/${project.id}/runs/${run.id}/outputs/${(target.outputIndex ?? 0) + 1}/${target.output.evidenceRef}`,
+      traceId: run.traceId,
+      version: run.inputVersion,
+      contentHash: run.inputFingerprint,
+    };
+  }
+  const report = target.kind === "report";
+  return {
+    ...fixtureEvidenceFor(project, { id: report ? run.reportId : run.traceId, claim: report ? `${app.name} application report` : `${app.name} run trace`, displayedValue: report ? run.summary : `${run.status} · ${run.inputFingerprint}`, source: report ? `Immutable ${run.origin.toLowerCase()} application-run record ${run.id}` : `Project activity ledger for ${run.id}`, formula: report ? `${run.methods.join(" + ")} · ${run.claimBoundary}` : `Parent ${run.parentRunId ?? "fixture root"} -> run ${run.id} -> report ${run.reportId}; ${run.claimBoundary}`, inputs: [`run=${run.id}`, `session=${run.sessionId}`, `trace=${run.traceId}`, `fingerprint=${run.inputFingerprint}`, ...inputs, ...changes, ...outputs], variableId: app.variableIds[0], grain: report ? "Project × session × application report" : "Project × session × application trace step" }),
+    id: report ? run.reportId : run.traceId,
+    locator: report ? `fixture://workspace/${project.id}/runs/${run.id}/report/${run.reportId}` : `fixture://workspace/${project.id}/runs/${run.id}/trace/${run.traceId}`,
+    version: run.inputVersion,
+    contentHash: run.inputFingerprint,
+    traceId: run.traceId,
+  };
+};
+
+export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = () => undefined, initialProjectId, initialTab = "overview", initialApp = null, initialSessionId = null, initialRunId = null, onTabChange, onStudioChange, onCloseStudio, onSessionChange, onRunChange, projects = workspaceProjects, collaborators = workspaceCollaborators, memberships = projectMemberships, activeCollaboratorId = signedInCollaboratorId, activityState, dispatchActivity, onMountedAppsChange, onAgentRosterChange, onProjectSetupChange }: ProjectWorkspaceProps) {
+  const project = requireWorkspaceProject(initialProjectId, projects);
+  const initialSession = projectSessionCache[project.id] ?? defaultSessionFor(project);
+  const tab = initialTab;
   const [evidence, setEvidence] = useState<EvidenceReceipt | null>(null);
-  const [focusedAppRunId, setFocusedAppRunId] = useState<string | null>(null);
-  const [studioApp, setStudioApp] = useState<ProjectAppId | null>(initialApp && !isExistingApp(initialApp) && initialSession.mountedApps.includes(initialApp) ? initialApp : null);
+  const focusedAppRunId = initialRunId;
+  const studioApp = initialApp && !isExistingApp(initialApp) && initialSession.mountedApps.includes(initialApp) ? initialApp : null;
   const [selectedDecision, setSelectedDecision] = useState<string>(initialSession.selectedDecision);
   const [selectedGraphNode, setSelectedGraphNode] = useState<string>(initialSession.selectedGraphNode);
-  const [traceIndex, setTraceIndex] = useState(initialSession.traceIndex);
-  const [runState, setRunState] = useState<"Ready" | "Running" | "Completed" | "Cancelled">(initialSession.runState);
   const [selectedAgentId, setSelectedAgentId] = useState(initialSession.selectedAgentId);
   const [chatText, setChatText] = useState(initialSession.chatText);
-  const [activePrompt, setActivePrompt] = useState(initialSession.activePrompt);
-  const [steeringInstructions, setSteeringInstructions] = useState<readonly string[]>(initialSession.steeringInstructions);
-  const [chatMessages, setChatMessages] = useState<readonly ChatMessage[]>(initialSession.chatMessages);
   const [uploadStage, setUploadStage] = useState<UploadStage>(initialSession.uploadStage);
   const [uploadName, setUploadName] = useState(initialSession.uploadName);
   const [sessionDatasets, setSessionDatasets] = useState<readonly { id: string; name: string; rows: string; state: string }[]>(initialSession.sessionDatasets);
+  const [decisionDraftReady, setDecisionDraftReady] = useState(initialSession.decisionDraftReady);
   const [mountedApps, setMountedApps] = useState<readonly ProjectAppId[]>(initialSession.mountedApps);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [builderStep, setBuilderStep] = useState(0);
@@ -187,14 +231,20 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const [selectedExpertId, setSelectedExpertId] = useState(initialSession.selectedExpertId);
   const [assignedExperts, setAssignedExperts] = useState<readonly string[]>(initialSession.assignedExperts);
   const [connectorDrafts, setConnectorDrafts] = useState<readonly ProjectConnectorDraft[]>(initialSession.connectorDrafts);
-  const [projectTreeOpen, setProjectTreeOpen] = useState(initialSession.projectTreeOpen);
+  const [dataQuery, setDataQuery] = useState(initialSession.dataQuery ?? "");
   const [agentSessionsOpen, setAgentSessionsOpen] = useState(initialSession.agentSessionsOpen);
   const [agentInspectorOpen, setAgentInspectorOpen] = useState(initialSession.agentInspectorOpen);
-  const projectSessionsRef = useRef<Record<string, ProjectSessionState>>(projectSessionCache);
-  const project = requireWorkspaceProject(projectId, projects);
   const workSessions = sessionsForProject(activityState, project.id);
-  const selectedWorkSessionId = activityState.selectedSessionByProject[project.id] ?? workSessions[0]?.id ?? "";
+  const selectedWorkSessionId = initialSessionId && workSessions.some((session) => session.id === initialSessionId)
+    ? initialSessionId
+    : activityState.selectedSessionByProject[project.id] ?? workSessions[0]?.id ?? "";
   const selectedWorkSession = workSessions.find((session) => session.id === selectedWorkSessionId) ?? workSessions[0] ?? null;
+  const traceView = agentTraceView(selectedWorkSession);
+  const traceIndex = traceView.stepIndex;
+  const runState = traceView.state;
+  const activePrompt = traceView.prompt || promptFor(project);
+  const steeringInstructions = traceView.steeringInstructions;
+  const dataContractReady = projectHasDataContract(project);
   const sessionMessages = selectedWorkSession ? messagesForSession(activityState, project.id, selectedWorkSession.id) : [];
   const sessionActivities = selectedWorkSession ? activitiesForSession(activityState, project.id, selectedWorkSession.id) : [];
   const projectAppRuns = appRunsFor(activityState, project.id);
@@ -217,142 +267,48 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const selectedAgent = availableAgents.find((item) => item.id === selectedAgentId) ?? availableAgents[0] ?? null;
   const selectedExpert = humanExperts.find((item) => item.id === selectedExpertId) ?? humanExperts[0];
   const selectedNode = graphNodes.find((item) => item.id === selectedGraphNode) ?? graphNodes[0];
-  const visibleProjects = useMemo(() => projects.filter((candidate) => evaluateProjectAccess(candidate.id, activeCollaboratorId, "project.view", memberships).allowed), [activeCollaboratorId, memberships, projects]);
-  const filteredProjects = useMemo(() => {
-    const q = portfolioQuery.trim().toLowerCase();
-    return q ? visibleProjects.filter((item) => `${item.sector} ${item.client} ${item.name} ${item.problem}`.toLowerCase().includes(q)) : visibleProjects;
-  }, [portfolioQuery, visibleProjects]);
-
-  const updateUrl = useCallback((nextProject: WorkspaceProject, nextTab: WorkspaceTabId) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", "company");
-    url.searchParams.set("scope", "company");
-    url.searchParams.set("sector", nextProject.sectorId);
-    url.searchParams.set("client", nextProject.clientId);
-    url.searchParams.set("project", nextProject.id);
-    url.searchParams.set("projectTab", nextTab);
-    url.searchParams.delete("projectApp");
-    window.history.pushState({}, "", url);
-  }, []);
-
-  const selectProject = useCallback((next: WorkspaceProject, push = true) => {
-    const access = evaluateProjectAccess(next.id, activeCollaboratorId, "project.view", memberships);
-    if (!access.allowed) {
-      onOutcome("Project access blocked", access.reason, access.policyRef, "Blocked");
-      return;
-    }
-    projectSessionsRef.current[projectIdRef.current] = {
-      selectedDecision, selectedGraphNode, traceIndex, runState, selectedAgentId, chatText, activePrompt,
-      steeringInstructions, chatMessages, uploadStage, uploadName, sessionDatasets, mountedApps,
-      draftAgentName, createdAgents, selectedExpertId, assignedExperts, connectorDrafts,
-      projectTreeOpen, agentSessionsOpen, agentInspectorOpen,
-    };
-    const restored = projectSessionsRef.current[next.id];
-    projectIdRef.current = next.id;
-    setProjectId(next.id);
-    setTab("overview");
-    setStudioApp(null);
-    setFocusedAppRunId(null);
-    onStudioChange?.(null);
-    setEvidence(null);
-    setMountedApps(restored?.mountedApps ?? next.mountedAppIds);
-    setSelectedDecision(restored?.selectedDecision ?? "D0");
-    setSelectedGraphNode(restored?.selectedGraphNode ?? "supplier");
-    setTraceIndex(restored?.traceIndex ?? -1);
-    setRunState(restored?.runState ?? "Ready");
-    setSelectedAgentId(restored?.selectedAgentId ?? agentsFor(next)[0]?.id ?? "");
-    setSelectedExpertId(restored?.selectedExpertId ?? humanExperts[0].id);
-    const nextPrompt = promptFor(next);
-    setChatText(restored?.chatText ?? nextPrompt);
-    setActivePrompt(restored?.activePrompt ?? nextPrompt);
-    setSteeringInstructions(restored?.steeringInstructions ?? []);
-    setChatMessages(restored?.chatMessages ?? initialChatMessagesFor(next));
-    setUploadStage(restored?.uploadStage ?? "Select");
-    setUploadName(restored?.uploadName ?? "");
-    setSessionDatasets(restored?.sessionDatasets ?? []);
-    setBuilderOpen(false);
-    setBuilderStep(0);
-    setDraftAgentName(restored?.draftAgentName ?? "Resilience Portfolio Challenger");
-    setCreatedAgents(restored?.createdAgents ?? []);
-    setAssignedExperts(restored?.assignedExperts ?? (next.origin === "Seed fixture" ? humanExperts.map((item) => item.id) : []));
-    setConnectorDrafts(restored?.connectorDrafts ?? []);
-    setProjectTreeOpen(restored?.projectTreeOpen ?? true);
-    setAgentSessionsOpen(restored?.agentSessionsOpen ?? true);
-    setAgentInspectorOpen(restored?.agentInspectorOpen ?? false);
-    onProjectChange?.(next);
-    onTabChange?.("overview");
-    if (push) updateUrl(next, "overview");
-  }, [activeCollaboratorId, activePrompt, agentInspectorOpen, agentSessionsOpen, assignedExperts, chatMessages, chatText, connectorDrafts, createdAgents, draftAgentName, memberships, mountedApps, onOutcome, onProjectChange, onStudioChange, onTabChange, projectTreeOpen, runState, selectedAgentId, selectedDecision, selectedExpertId, selectedGraphNode, sessionDatasets, steeringInstructions, traceIndex, updateUrl, uploadName, uploadStage]);
-
   const changeTab = (next: WorkspaceTabId) => {
     if (!authorize(capabilityForTab(next))) return;
-    setTab(next);
-    if (next !== "apps") setFocusedAppRunId(null);
-    setStudioApp(null);
-    onStudioChange?.(null);
+    if (next === tab && !studioApp) return;
     onTabChange?.(next);
-    updateUrl(project, next);
   };
-  useEffect(() => {
-    selectProjectRef.current = selectProject;
-    tabChangeRef.current = onTabChange;
-  }, [selectProject, onTabChange]);
 
   useEffect(() => {
-    projectSessionCache[projectId] = {
-      selectedDecision, selectedGraphNode, traceIndex, runState, selectedAgentId, chatText, activePrompt,
-      steeringInstructions, chatMessages, uploadStage, uploadName, sessionDatasets, mountedApps,
+    projectSessionCache[project.id] = {
+      selectedDecision, selectedGraphNode, selectedAgentId, chatText,
+      uploadStage, uploadName, sessionDatasets, decisionDraftReady, mountedApps,
       draftAgentName, createdAgents, selectedExpertId, assignedExperts, connectorDrafts,
-      projectTreeOpen, agentSessionsOpen, agentInspectorOpen,
+      dataQuery, agentSessionsOpen, agentInspectorOpen,
     };
-  }, [activePrompt, agentInspectorOpen, agentSessionsOpen, assignedExperts, chatMessages, chatText, connectorDrafts, createdAgents, draftAgentName, mountedApps, projectId, projectTreeOpen, runState, selectedAgentId, selectedDecision, selectedExpertId, selectedGraphNode, sessionDatasets, steeringInstructions, traceIndex, uploadName, uploadStage]);
+  }, [agentInspectorOpen, agentSessionsOpen, assignedExperts, chatText, connectorDrafts, createdAgents, dataQuery, decisionDraftReady, draftAgentName, mountedApps, project.id, selectedAgentId, selectedDecision, selectedExpertId, selectedGraphNode, sessionDatasets, uploadName, uploadStage]);
 
   useEffect(() => {
     onMountedAppsChange?.(project.id, mountedApps);
   }, [mountedApps, onMountedAppsChange, project.id]);
 
   useEffect(() => {
-    const restore = () => {
-      const url = new URL(window.location.href);
-      const restoredProject = projects.find((item) => item.id === url.searchParams.get("project"));
-      const restoredTab = workspaceTabs.find((item) => item.id === url.searchParams.get("projectTab"))?.id;
-       const targetProject = restoredProject ?? requireWorkspaceProject(projectIdRef.current, projects);
-       const mountedForTarget = projectSessionsRef.current[targetProject.id]?.mountedApps ?? targetProject.mountedAppIds;
-       const requestedApp = projectApps.find((item) => item.id === url.searchParams.get("projectApp"))?.id ?? null;
-       const restoredApp = restoredTab === "apps" && requestedApp && !isExistingApp(requestedApp) && mountedForTarget.includes(requestedApp) ? requestedApp : null;
-      if (restoredProject && restoredProject.id !== projectIdRef.current) selectProjectRef.current(restoredProject, false);
-      if (restoredTab) {
-        setTab(restoredTab);
-        tabChangeRef.current?.(restoredTab);
-      }
-       setStudioApp(restoredApp);
-       if (url.searchParams.has("projectApp") && !restoredApp) {
-         url.searchParams.delete("projectApp");
-         window.history.replaceState({}, "", url);
-       }
-    };
-    restore();
-    window.addEventListener("popstate", restore);
-    return () => window.removeEventListener("popstate", restore);
-  }, [projects]);
+    onAgentRosterChange?.(project.id, [...agentsFor(project), ...createdAgents]);
+  }, [createdAgents, onAgentRosterChange, project]);
 
   const openAppRun = (runId: string) => {
     const linkedRun = projectAppRuns.find((run) => run.id === runId);
     if (!linkedRun || !authorize("apps.view")) return;
     dispatchActivity({ type: "select-app-run", projectId: project.id, appId: linkedRun.appId, runId: linkedRun.id });
-    setFocusedAppRunId(linkedRun.id);
-    setStudioApp(null);
-    setTab("apps");
-    onStudioChange?.(null);
-    onTabChange?.("apps");
-    updateUrl(project, "apps");
+    if (onRunChange) onRunChange(linkedRun.sessionId, linkedRun.id);
+    else onTabChange?.("apps");
   };
 
   const openEvidence = (target: string | EvidenceReceipt) => {
-    const linkedRun = projectAppRuns.find((run) => typeof target === "string" ? target === run.id : target.id.endsWith(`EV-${run.id}`));
-    if (linkedRun) {
-      openAppRun(linkedRun.id);
-      return;
+    if (typeof target === "string") {
+      const activityTarget = resolveActivityEvidence(activityState, project.id, target);
+      if (activityTarget?.kind === "run") {
+        openAppRun(activityTarget.run.id);
+        return;
+      }
+      if (activityTarget) {
+        setEvidence(activityEvidenceReceiptFor(project, activityTarget));
+        return;
+      }
     }
     setEvidence(typeof target === "string" ? evidenceFor(project, target) : target.projectId === project.id ? target : evidenceFor(project, target.id));
   };
@@ -363,69 +319,80 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
       onOutcome("App mounted", `${projectApps.find((item) => item.id === id)?.name} is now mounted to ${project.name} with project-scoped bindings.`, `MOUNT-${project.code}-${id.toUpperCase()}`);
       return;
     }
-    if (project.origin === "Browser-session draft" && project.variablePack.l0.length === 0) {
+    if (!dataContractReady) {
       onOutcome("App open blocked", `${projectApps.find((item) => item.id === id)?.name} is mounted, but this new project has no governed variable mapping or data contract yet. Configure Data before opening the app.`, `APP-${project.code}-${id.toUpperCase()}-BOUNDARY`, "Blocked");
       return;
     }
     if (isExistingApp(id)) {
-      onStudioChange?.(null);
       onOpenApp(id);
     } else {
-      const url = new URL(window.location.href);
-      url.searchParams.set("view", "company");
-      url.searchParams.set("scope", "company");
-      url.searchParams.set("projectTab", "apps");
-      url.searchParams.set("projectApp", id);
-      window.history.pushState({}, "", url);
-      setStudioApp(id);
       onStudioChange?.(id);
     }
   };
 
   const closeStudio = () => {
-    setStudioApp(null);
-    onStudioChange?.(null);
-    updateUrl(project, "apps");
+    if (onCloseStudio) onCloseStudio();
+    else onTabChange?.("apps");
   };
 
   const submitChat = (event: FormEvent) => {
     event.preventDefault();
     if (!authorize("agents.run")) return;
+    if (!dataContractReady) {
+      onOutcome("Playground run blocked", "Complete Data & graph mapping before starting an agent session. No trace or candidate result was created.", `RUN-${project.code}-DATA-REQUIRED`, "Blocked");
+      return;
+    }
     const prompt = chatText.trim();
     if (!prompt) return;
-    setActivePrompt(prompt);
-    if (selectedWorkSession?.origin === "Browser session") {
+    let targetSessionId = "";
+    if (selectedWorkSession) {
+      const plan = planSessionMutation(activityState, project.id, selectedWorkSession.id);
+      if (!plan) return;
+      targetSessionId = plan.sessionId;
       dispatchActivity({ type: "append-message", projectId: project.id, sessionId: selectedWorkSession.id, role: "user", author: activeCollaborator?.name ?? project.owner, kind: "Prompt", body: prompt });
-      dispatchActivity({ type: "append-message", projectId: project.id, sessionId: selectedWorkSession.id, role: "agent", author: selectedAgent?.name ?? "Project Orchestrator", kind: "Response", body: `Prompt appended to ${selectedWorkSession.id}. The visible deterministic trace will restart and stop at human review.` });
+      dispatchActivity({ type: "append-message", projectId: project.id, sessionId: plan.sessionId, role: "agent", author: selectedAgent?.name ?? "Project Orchestrator", kind: "Response", body: `Prompt appended to ${plan.sessionId}. The visible deterministic trace will restart and stop at human review.` });
+      dispatchActivity({ type: "start-agent-trace", projectId: project.id, sessionId: plan.sessionId, prompt });
     } else {
+      targetSessionId = planNewSession(activityState, project);
       dispatchActivity({ type: "create-session", project, prompt, agentId: selectedAgent?.id ?? "orchestrator", agentName: selectedAgent?.name ?? "Project Orchestrator" });
     }
-    setSteeringInstructions([]);
-    setChatMessages((current) => [...current, { role: "user", text: prompt }, { role: "agent", text: "Your exact prompt is now bound to the visible deterministic trace fixture. I will expose each step and stop at the human approval gate; no language model or external tool is running." }]);
-    setTraceIndex(0);
-    setRunState("Running");
+    if (targetSessionId) onSessionChange?.(targetSessionId);
     setChatText("");
   };
 
   const advanceRun = () => {
     if (!authorize("agents.run")) return;
-    if (runState === "Completed" || runState === "Cancelled") {
-      setTraceIndex(0);
-      setRunState("Running");
+    if (!dataContractReady) {
+      onOutcome("Agent trace blocked", "Complete Data & graph mapping before advancing a trace. No candidate result was created.", `RUN-${project.code}-DATA-REQUIRED`, "Blocked");
       return;
     }
-    if (traceIndex < 0) {
-      setTraceIndex(0);
-      setRunState("Running");
+    if (!selectedWorkSession) {
+      onOutcome("Agent trace blocked", "Send a project brief to create a traceable work session before starting execution.", `RUN-${project.code}-SESSION-REQUIRED`, "Blocked");
+      return;
+    }
+    if (runState === "Completed" || runState === "Cancelled") {
+      const plan = planSessionFork(activityState, project.id, selectedWorkSession.id);
+      if (!plan) return;
+      const replayPrompt = selectedWorkSession.agentTrace?.prompt ?? selectedWorkSession.objective;
+      dispatchActivity({ type: "fork-session", projectId: project.id, sessionId: selectedWorkSession.id });
+      dispatchActivity({ type: "start-agent-trace", projectId: project.id, sessionId: plan.sessionId, prompt: replayPrompt });
+      onSessionChange?.(plan.sessionId);
+      return;
+    }
+    if (runState === "Ready") {
+      const plan = planSessionMutation(activityState, project.id, selectedWorkSession.id);
+      if (!plan) return;
+      const replayPrompt = selectedWorkSession.agentTrace?.prompt ?? selectedWorkSession.objective;
+      if (plan.sessionForked) dispatchActivity({ type: "fork-session", projectId: project.id, sessionId: selectedWorkSession.id });
+      dispatchActivity({ type: "start-agent-trace", projectId: project.id, sessionId: plan.sessionId, prompt: replayPrompt });
+      onSessionChange?.(plan.sessionId);
       return;
     }
     if (traceIndex < traceSteps.length - 1) {
-      setTraceIndex((current) => current + 1);
+      dispatchActivity({ type: "advance-agent-trace", projectId: project.id, sessionId: selectedWorkSession.id, maxStepIndex: traceSteps.length - 1 });
       return;
     }
-    setRunState("Completed");
-    setChatMessages((current) => [...current, { role: "agent", text: "Synthetic run complete. A feasible-looking candidate fixture is ready for expert review; no live solver ran and no action was released." }]);
-    if (selectedWorkSession) dispatchActivity({
+    dispatchActivity({
       type: "complete-session",
       projectId: project.id,
       sessionId: selectedWorkSession.id,
@@ -443,11 +410,18 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
 
   const steerRun = (label: string) => {
     if (!authorize("agents.run")) return;
-    setSteeringInstructions((current) => [...current, label]);
-    if (selectedWorkSession) dispatchActivity({ type: "steer-session", projectId: project.id, sessionId: selectedWorkSession.id, instruction: label });
-    setChatMessages((current) => [...current, { role: "system", text: `${label} was added to the deterministic trace context. The visible replay restarted at Planning; no model, calculation, or source record changed.` }]);
-    setTraceIndex(0);
-    setRunState("Running");
+    if (!dataContractReady) {
+      onOutcome("Steering blocked", "Complete Data & graph mapping before steering a trace. No session or data record changed.", `STEER-${project.code}-DATA-REQUIRED`, "Blocked");
+      return;
+    }
+    if (!selectedWorkSession) {
+      onOutcome("Steering blocked", "Create or select a work session before adding a steering instruction.", `STEER-${project.code}-SESSION-REQUIRED`, "Blocked");
+      return;
+    }
+    const plan = planSessionMutation(activityState, project.id, selectedWorkSession.id);
+    if (!plan) return;
+    dispatchActivity({ type: "steer-session", projectId: project.id, sessionId: selectedWorkSession.id, instruction: label });
+    onSessionChange?.(plan.sessionId);
     onOutcome("Steering instruction applied", `${label} restarted the ${project.code} synthetic trace at Planning. No source record or production policy changed.`, `STEER-${project.code}-${label.toUpperCase().replaceAll(" ", "-")}`);
   };
 
@@ -455,24 +429,31 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
     const session = workSessions.find((item) => item.id === sessionId);
     if (!session) return;
     dispatchActivity({ type: "select-session", projectId: project.id, sessionId });
-    setActivePrompt(session.objective);
-    setSteeringInstructions([]);
-    setTraceIndex(-1);
-    setRunState(session.status === "Cancelled" ? "Cancelled" : session.status === "Active" ? "Running" : "Completed");
+    if (onSessionChange) onSessionChange(sessionId);
+    else onTabChange?.("agents");
   };
 
   const continueWorkSession = (sessionId: string) => {
     if (!authorize("agents.run")) return;
+    const plan = planSessionFork(activityState, project.id, sessionId);
+    if (!plan) return;
     dispatchActivity({ type: "fork-session", projectId: project.id, sessionId });
-    setSteeringInstructions([]);
-    setTraceIndex(-1);
-    setRunState("Ready");
+    onSessionChange?.(plan.sessionId);
   };
 
   const openWorkSession = (sessionId: string) => {
     if (!authorize("agents.run")) return;
     selectWorkSession(sessionId);
-    changeTab("agents");
+  };
+
+  const cancelRun = () => {
+    if (!authorize("agents.run")) return;
+    if (!selectedWorkSession || runState !== "Running") {
+      onOutcome("Agent cancellation blocked", "Only a running, traceable work session can be cancelled.", `RUN-${project.code}-CANCEL-BOUNDARY`, "Blocked");
+      return;
+    }
+    dispatchActivity({ type: "cancel-session", projectId: project.id, sessionId: selectedWorkSession.id });
+    onOutcome("Agent run cancelled", `${project.code} agent run stopped safely; no external tools or records were changed.`, `RUN-${project.code}-${selectedWorkSession.id}`);
   };
 
   const setUploadFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -490,9 +471,23 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
     const next = order[Math.min(index + 1, order.length - 1)];
     setUploadStage(next);
     if (next === "Session receipt") {
-      const datasetId = `${project.code}-DS-SESSION-01`;
+      const datasetId = `${project.code}-DS-SESSION-${String(sessionDatasets.length + 1).padStart(2, "0")}`;
       const sampleName = uploadName || `${project.code}_Project_Sample.csv`;
       setSessionDatasets((current) => current.some((item) => item.id === datasetId) ? current : [...current, { id: datasetId, name: sampleName, rows: "240 fixture rows", state: "Session-only preview" }]);
+      if (!dataContractReady) {
+        const setupMetrics: WorkspaceProject["metrics"] = [
+          { label: "Mapped records", value: "240", detail: "Synthetic preview rows in this browser session", tone: "opportunity", evidenceRef: `EV-${project.code}-DATA-01` },
+          { label: "Mapping coverage", value: "85.7%", detail: "12 of 14 illustrative fields mapped", tone: "healthy", evidenceRef: `EV-${project.code}-MAP-01` },
+          { label: "Review exceptions", value: "2", detail: "Illustrative fields awaiting a steward", tone: "watch", evidenceRef: `EV-${project.code}-MAP-02` },
+          { label: "External writes", value: "0", detail: "No file content, source system, or cloud record changed", tone: "healthy", evidenceRef: `EV-${project.code}-BOUNDARY-01` },
+        ];
+        onProjectSetupChange?.(project.id, {
+          counts: { ...project.counts, entities: "48", relationships: "72", observations: "240", documents: "1", claims: "6" },
+          metrics: setupMetrics,
+          variablePack: { l2: ["L2-001", "L2-002", "L2-003", "L2-006", "L2-008"], l1: ["L1-001", "L1-002", "L1-006", "L1-008", "L1-010", "L1-019", "L1-032", "L1-041"], l0: ["L0-001", "L0-008", "L0-029", "L0-030", "L0-044", "L0-046", "L0-061", "L0-071", "L0-155", "L0-218", "L0-227", "L0-299"] },
+          methodCodes: ["M-01", "M-06", "M-20", "M-23"],
+        });
+      }
       onOutcome("Ingestion concept completed", `${sampleName} completed a metadata-only contract walkthrough inside ${project.client} / ${project.name}; file contents were not read and nothing was merged or stored.`, `INGESTION-${project.code}-UB-01`);
     }
   };
@@ -511,7 +506,6 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
     const tested = replayConnectorFixture(current);
     setConnectorDrafts((items) => items.map((item) => item.id === connectorId ? tested : item));
     openEvidence(connectorReceiptFor(project, tested));
-    onOutcome("Sample payload tested", "Fixed sample payload replayed locally; no device discovery or network request occurred.", tested.evidenceRef);
   };
 
   const reviewConnector = (connectorId: string) => {
@@ -534,22 +528,18 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const deniedAccess = !projectViewAccess.allowed ? projectViewAccess : !activeTabAccess.allowed ? activeTabAccess : null;
   if (deniedAccess) return <section className="project-access-boundary" data-page-heading tabIndex={-1}><span>PROJECT ACCESS</span><h1>Project access required</h1><p>The signed-in collaborator has no project-scoped grant for this workspace section. No project data, app, decision, agent, or team surface was opened.</p><small>{deniedAccess.policyRef}</small><button data-action-id="project.access.view-receipt" type="button" onClick={() => onOutcome("Project access blocked", deniedAccess.reason, deniedAccess.policyRef, "Blocked")}>View access receipt</button></section>;
 
-  if (studioApp) return <div className={`project-os studio-mode${projectTreeOpen ? "" : " tree-collapsed"}`} data-page-heading tabIndex={-1}><ProjectTree selected={project} projects={filteredProjects} query={portfolioQuery} onQuery={setPortfolioQuery} onSelect={selectProject} pathMode={pathMode} onPathModeChange={onPathModeChange} /><section className="project-stage"><div className="project-panel-controls"><button data-action-id="workspace.toggle-project-tree" type="button" aria-expanded={projectTreeOpen} onClick={() => setProjectTreeOpen((current) => !current)}>{projectTreeOpen ? "Hide project switcher" : "Show project switcher"}</button></div><MobileProjectSwitcher project={project} projects={visibleProjects} onSelect={selectProject} pathMode={pathMode} /><ProjectAppStudio appId={studioApp} project={project} onBack={closeStudio} onEvidence={openEvidence} onOutcome={onOutcome} /><AppRunHistory project={project} runs={projectAppRuns.filter((run) => run.appId === studioApp)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed} activeSessionId={selectedWorkSession?.id} focusedRunId={focusedAppRunId} /></section>{evidence && <EvidenceDrawer receipt={evidence} onClose={() => setEvidence(null)} onOutcome={onOutcome} />}</div>;
+  if (studioApp) return <div className="project-os studio-mode" data-page-heading tabIndex={-1}><section className="project-stage"><ProjectAppStudio appId={studioApp} project={project} onBack={closeStudio} onEvidence={openEvidence} onOutcome={onOutcome} /><AppRunHistory key={focusedAppRunId ?? `studio-${studioApp}`} project={project} runs={projectAppRuns.filter((run) => run.appId === studioApp)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete Data & graph setup before starting an application run." : undefined} focusedRunId={focusedAppRunId} initialAppId={studioApp} onRunChange={onRunChange} /></section>{evidence && <EvidenceDrawer receipt={evidence} onClose={() => setEvidence(null)} onOutcome={onOutcome} />}</div>;
 
   return (
-    <div className={`project-os${projectTreeOpen ? "" : " tree-collapsed"}`} data-page-heading tabIndex={-1}>
-      <ProjectTree selected={project} projects={filteredProjects} query={portfolioQuery} onQuery={setPortfolioQuery} onSelect={selectProject} pathMode={pathMode} onPathModeChange={onPathModeChange} />
+    <div className="project-os" data-project-tab={tab} data-page-heading tabIndex={-1}>
       <section className="project-stage">
-        <div className="project-panel-controls"><button data-action-id="workspace.toggle-project-tree" type="button" aria-expanded={projectTreeOpen} onClick={() => setProjectTreeOpen((current) => !current)}>{projectTreeOpen ? "Hide project switcher" : "Show project switcher"}</button></div>
-        <MobileProjectSwitcher project={project} projects={visibleProjects} onSelect={selectProject} pathMode={pathMode} />
-        <header className="project-commandbar"><div><p>{project.sector} / {project.client} / {project.code}</p><h1>{project.name}</h1><span>{project.problem}</span></div><aside><small>PROJECT STATE</small><b><i className={`project-tone-${project.health}`} />{project.stage}</b><span>{project.classification} · {project.dataResidency}</span></aside></header>
-        <nav className="project-tabs" aria-label="Project workspace sections">{workspaceTabs.map((item) => <button data-action-id={`workspace.tab.${item.id}`} type="button" className={tab === item.id ? "active" : ""} key={item.id} onClick={() => changeTab(item.id)}><span>{item.label}</span>{tabCounts[item.id] !== undefined && <em>{tabCounts[item.id]}</em>}</button>)}</nav>
-         {tab === "overview" && <><OverviewPanel project={project} mounted={mountedApps} onTab={changeTab} onOpenCase={onOpenCase} onEvidence={openEvidence} onOpenApp={openApp} /><RecentWorkPanel sessions={workSessions} onOpen={openWorkSession} onContinue={(sessionId) => { continueWorkSession(sessionId); changeTab("agents"); }} />{project.operationsWorldIntake && <ProjectIntakeSummary project={project} onEvidence={openEvidence} />}</>}
-        {tab === "decisions" && <DecisionPanel project={project} selected={selectedDecision} onSelect={setSelectedDecision} onEvidence={openEvidence} onOpenCase={onOpenCase} onOutcome={onOutcome} />}
-         {tab === "apps" && <AppsPanel project={project} mounted={mountedApps} runs={projectAppRuns} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed} activeSessionId={selectedWorkSession?.id} focusedRunId={focusedAppRunId} />}
-        {tab === "data" && <DataPanel project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={requestConnector} onReviewConnector={reviewConnector} onTestConnector={testConnectorFixture} onFile={setUploadFile} onUseSample={() => { if (!authorize("data.stage")) return; setUploadName(`${project.code}_Project_Sample.csv`); setUploadStage("Staged"); }} onAdvance={nextUploadStage} onEvidence={openEvidence} onOutcome={onOutcome} />}
-        {tab === "graph" && <GraphPanel project={project} nodes={graphNodes} traceSteps={traceSteps} selectedNode={selectedGraphNode} onSelect={setSelectedGraphNode} selected={selectedNode} traceIndex={traceIndex} onEvidence={openEvidence} onSteer={steerRun} />}
-         {tab === "agents" && <AgentPanel project={project} traceSteps={traceSteps} selectedAgent={selectedAgent} selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} sessions={workSessions} selectedSession={selectedWorkSession} messages={sessionMessages} activities={sessionActivities} appRuns={projectAppRuns} sessionsOpen={agentSessionsOpen} inspectorOpen={agentInspectorOpen} onToggleSessions={() => setAgentSessionsOpen((current) => !current)} onToggleInspector={() => setAgentInspectorOpen((current) => !current)} onSelectSession={selectWorkSession} onContinueSession={continueWorkSession} onOpenRun={openAppRun} chatText={chatText} onChatText={setChatText} onSubmit={submitChat} traceIndex={traceIndex} runState={runState} onAdvance={advanceRun} onCancel={() => { if (!authorize("agents.run")) return; setRunState("Cancelled"); if (selectedWorkSession) dispatchActivity({ type: "cancel-session", projectId: project.id, sessionId: selectedWorkSession.id }); onOutcome("Agent run cancelled", `${project.code} agent run stopped safely; no external tools or records were changed.`, `RUN-${project.code}-018`); }} onSteer={steerRun} onEvidence={openEvidence} onOpenBuilder={() => { if (!authorize("agents.create")) return; setBuilderOpen(true); setBuilderStep(0); }} agents={availableAgents} />}
+        <header className="project-commandbar"><div><p>{project.code} · Project workspace</p><h1>{project.name}</h1><span>{project.problem}</span></div><aside><small>PROJECT STATE</small><b><i className={`project-tone-${project.health}`} />{project.stage}</b><span>{project.classification} · {project.dataResidency}</span></aside></header>
+        <nav className="project-tabs" aria-label="Project workspace sections">{workspaceTabs.map((item) => { const active = tab === item.id || (item.id === "data" && tab === "graph"); return <button data-action-id={`workspace.tab.${item.id}`} type="button" aria-current={active ? "page" : undefined} className={active ? "active" : ""} key={item.id} onClick={() => changeTab(item.id)}><span>{item.label}</span>{tabCounts[item.id] !== undefined && <em>{tabCounts[item.id]}</em>}</button>; })}</nav>
+         {tab === "overview" && <><OverviewPanel project={project} mounted={mountedApps} onTab={changeTab} onOpenCase={onOpenCase} onEvidence={openEvidence} onOpenApp={openApp} /><RecentWorkPanel sessions={workSessions} onOpen={openWorkSession} onContinue={continueWorkSession} />{project.operationsWorldIntake && <ProjectIntakeSummary project={project} onEvidence={openEvidence} />}</>}
+        {tab === "decisions" && <DecisionPanel project={project} selected={selectedDecision} onSelect={setSelectedDecision} onEvidence={openEvidence} onOpenCase={onOpenCase} onOutcome={onOutcome} onCreateDraft={() => { if (!dataContractReady) { onOutcome("Decision draft blocked", "Complete the Data mapping review before creating a decision brief. No empty decision or case was created.", `DECISION-${project.code}-DATA-REQUIRED`, "Blocked"); return; } setDecisionDraftReady(true); setSelectedDecision("D0"); onProjectSetupChange?.(project.id, { counts: { ...project.counts, decisions: 1 } }); onOutcome("Decision brief draft created", `A browser-session decision brief was created for ${project.name} with a human review boundary; no approval or operational release occurred.`, `DECISION-${project.code}-DRAFT-01`, "Saved"); }} draftReady={decisionDraftReady} />}
+         {tab === "apps" && <AppsPanel project={project} mounted={mountedApps} runs={projectAppRuns} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete the Data mapping review before starting an application run." : undefined} focusedRunId={focusedAppRunId} onRunChange={onRunChange} />}
+        {(tab === "data" || tab === "graph") && <ProjectDataWorkspace mode={tab === "graph" ? "graph" : "sources"} onMode={(mode) => changeTab(mode === "graph" ? "graph" : "data")} query={dataQuery} onQuery={setDataQuery} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={requestConnector} onReviewConnector={reviewConnector} onTestConnector={testConnectorFixture} onFile={setUploadFile} onUseSample={() => { if (!authorize("data.stage")) return; setUploadName(`${project.code}_Project_Sample.csv`); setUploadStage("Staged"); }} onAdvance={nextUploadStage} onEvidence={openEvidence} onOutcome={onOutcome} nodes={graphNodes} traceSteps={traceSteps} selectedNode={selectedGraphNode} onSelectNode={setSelectedGraphNode} selected={selectedNode} traceIndex={traceIndex} onSteer={steerRun} canSteer={Boolean(selectedWorkSession) && dataContractReady} />}
+         {tab === "agents" && <AgentPanel project={project} traceSteps={traceSteps} selectedAgent={selectedAgent} selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} sessions={workSessions} selectedSession={selectedWorkSession} messages={sessionMessages} activities={sessionActivities} appRuns={projectAppRuns} sessionsOpen={agentSessionsOpen} inspectorOpen={agentInspectorOpen} onToggleSessions={() => setAgentSessionsOpen((current) => !current)} onToggleInspector={() => setAgentInspectorOpen((current) => !current)} onSelectSession={selectWorkSession} onContinueSession={continueWorkSession} onOpenRun={openAppRun} chatText={chatText} onChatText={setChatText} onSubmit={submitChat} traceIndex={traceIndex} runState={runState} onAdvance={advanceRun} onCancel={cancelRun} onSteer={steerRun} onEvidence={openEvidence} onOpenBuilder={() => { if (!authorize("agents.create")) return; setBuilderOpen(true); setBuilderStep(0); }} agents={availableAgents} />}
         {tab === "team" && <><ProjectMembershipsPanel project={project} members={projectMembers} onEvidence={openEvidence} /><TeamPanel project={project} selected={selectedExpert} selectedId={selectedExpertId} assigned={assignedExperts} onSelect={setSelectedExpertId} onEvidence={openEvidence} onAssign={(id) => { if (!authorize("team.manage")) return; setAssignedExperts((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]); onOutcome("Team assignment updated", `${humanExperts.find((item) => item.id === id)?.name} assignment was updated in this synthetic project session.`, `${project.code}-TEAM-${id.toUpperCase()}`); }} /></>}
         {tab === "governance" && <GovernancePanel project={project} onOutcome={onOutcome} onEvidence={openEvidence} />}
       </section>
@@ -557,28 +547,6 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
       {builderOpen && <AgentBuilder project={project} step={builderStep} name={draftAgentName} onName={setDraftAgentName} onStep={setBuilderStep} onClose={() => setBuilderOpen(false)} onPublish={(draft) => { if (!authorize("agents.create")) return; const sequence = createdAgents.length + 1; const id = `draft-${project.code.toLowerCase()}-${String(sequence).padStart(2, "0")}`; setCreatedAgents((current) => [...current, { id, name: draftAgentName, role: draft.specialty, level: "Apprentice", years: 0, evaluatedRuns: 0, approvedRuns: 0, calibration: 0, overrideRate: 0, failureRate: 0, skills: draft.skillFile ? [...draft.skills, `selected-file:${draft.skillFile}`] : draft.skills, mcps: draft.connections.filter((item) => !item.includes("tool")).map((item) => `${item} · requested`), tools: draft.connections.filter((item) => item.includes("tool")).map((item) => `${item} · draft only`), authority: `Draft manifest inside ${project.client} / ${project.name}; no skill parsing, MCP connection, solver execution, or release`, state: "Draft" }]); setSelectedAgentId(id); setBuilderOpen(false); onOutcome("Agent draft saved", `${draftAgentName} was added as browser-session manifest ${sequence} for ${project.client} / ${project.name}; no Skills.md content was read, MCP connected, evaluation executed, tool created, or agent deployed.`, `AGENT-${project.code}-DRAFT-${String(sequence).padStart(2, "0")}`); }} />}
     </div>
   );
-}
-
-function MobileProjectSwitcher({ project, projects, onSelect, pathMode }: { project: WorkspaceProject; projects: readonly WorkspaceProject[]; onSelect: (project: WorkspaceProject) => void; pathMode: ProjectPathMode }) {
-  const groups = groupProjectsByPath(projects, pathMode);
-  const keys = projectPathKeys(project, pathMode);
-  const group = groups.find((item) => item.key === keys.root) ?? groups[0];
-  const branch = group?.branches.find((item) => item.key === keys.branch) ?? group?.branches[0];
-  const rootValue = pathMode === "tower" ? project.sectorId : project.clientId;
-  const branchValue = pathMode === "tower" ? project.clientId : project.sectorId;
-  return <fieldset className="mobile-project-switcher"><legend>PROJECT PATH · {pathMode === "tower" ? "TOWER FIRST" : "CLIENT FIRST"}</legend><label><span>{pathMode === "tower" ? "Tower" : "Client"}</span><select value={rootValue} onChange={(event) => onSelect(groups.find((item) => item.id === event.target.value)?.projects[0] ?? project)}>{groups.map((item) => <option value={item.id} key={item.key}>{item.label}</option>)}</select></label><label><span>{pathMode === "tower" ? "Client" : "Tower"}</span><select value={branchValue} onChange={(event) => onSelect(group?.branches.find((item) => item.id === event.target.value)?.projects[0] ?? project)}>{group?.branches.map((item) => <option value={item.id} key={item.key}>{item.label}</option>)}</select></label><label><span>Project</span><select value={project.id} onChange={(event) => onSelect(projects.find((item) => item.id === event.target.value) ?? project)}>{branch?.projects.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.code}</option>)}</select></label></fieldset>;
-}
-
-function ProjectTree({ selected, projects, query, onQuery, onSelect, pathMode, onPathModeChange }: { selected: WorkspaceProject; projects: readonly WorkspaceProject[]; query: string; onQuery: (value: string) => void; onSelect: (project: WorkspaceProject) => void; pathMode: ProjectPathMode; onPathModeChange: (mode: ProjectPathMode) => void }) {
-  const selectedKeys = projectPathKeys(selected, pathMode);
-  const [expandedRoots, setExpandedRoots] = useState<readonly string[]>([selectedKeys.root]);
-  const [expandedBranches, setExpandedBranches] = useState<readonly string[]>([selectedKeys.branch]);
-  const groups = groupProjectsByPath(projects, pathMode);
-  const toggle = (items: readonly string[], id: string) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id];
-  const queryActive = Boolean(query.trim());
-  const clientCount = new Set(projects.map((item) => item.clientId)).size;
-  const towerCount = new Set(projects.map((item) => item.sectorId)).size;
-  return <aside className="project-tree" aria-label="Tower, client, and project navigation"><header><span>PROJECT PATH</span><b>{pathMode === "tower" ? "Tower first" : "Client first"}</b><small>{towerCount} towers · {clientCount} clients · {projects.length} projects</small><div className="project-path-toggle" role="group" aria-label="Project hierarchy order"><button data-action-id="workspace.path.client" className={pathMode === "client" ? "active" : ""} type="button" aria-pressed={pathMode === "client"} onClick={() => onPathModeChange("client")}>By client</button><button data-action-id="workspace.path.tower" className={pathMode === "tower" ? "active" : ""} type="button" aria-pressed={pathMode === "tower"} onClick={() => onPathModeChange("tower")}>By tower</button></div></header><label className="tree-search"><span>⌕</span><span className="sr-only">Find tower, client, or project</span><input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Find tower, client, project" /></label>{queryActive && <button data-action-id="workspace.path.clear-search" className="tree-clear-search" type="button" onClick={() => onQuery("")}>Clear search</button>}<div className="workspace-tree-list">{groups.map((group, groupIndex) => { const rootOpen = queryActive || expandedRoots.includes(group.key) || group.projects.some((project) => project.id === selected.id); return <section className="sector-tree-node" key={group.key}><button data-action-id={`workspace.path.root.${group.key}`} className={group.projects.some((project) => project.id === selected.id) ? "active-context" : ""} type="button" aria-expanded={rootOpen} disabled={queryActive} onClick={() => setExpandedRoots((current) => toggle(current, group.key))}><i>{String(groupIndex+1).padStart(2,"0")}</i><span><small>{group.kind === "tower" ? "TOWER" : "CLIENT"}</small><b>{group.label}</b></span><strong>{rootOpen ? "−" : "+"}</strong></button>{rootOpen && <div className="client-tree-list">{group.branches.map((branch) => { const branchOpen = queryActive || expandedBranches.includes(branch.key) || branch.projects.some((project) => project.id === selected.id); return <div className="client-tree-node" key={branch.key}><button data-action-id={`workspace.path.branch.${branch.key}`} className={branch.projects.some((project) => project.id === selected.id) ? "active-context" : ""} type="button" aria-expanded={branchOpen} disabled={queryActive} onClick={() => setExpandedBranches((current) => toggle(current, branch.key))}><span>⌞</span><div><small>{branch.kind === "tower" ? "TOWER" : "CLIENT"}</small><b>{branch.label}</b></div><i>{branchOpen ? "−" : "+"}</i></button>{branchOpen && <div className="project-tree-list">{branch.projects.map((project) => <div className={`tree-branch ${selected.id === project.id ? "open" : ""}`} key={project.id}><button data-action-id={`workspace.select.${project.id}`} type="button" className={selected.id === project.id ? "active" : ""} aria-current={selected.id === project.id ? "page" : undefined} onClick={() => onSelect(project)}><i>└</i><span><small>{project.code}</small><b>{project.name}</b><em>{project.problem}</em></span><strong className={`project-health health-${project.health}`} /></button>{selected.id === project.id && <div className="tree-active-children"><span>Decisions · {project.counts.decisions}</span><span>Data · {project.counts.observations}</span><span>Apps · {project.counts.apps}</span><span>Agents · {project.counts.agents}</span></div>}</div>)}</div>}</div>; })}</div>}</section>; })}</div><div className="tree-portfolio-note"><b>PROJECT BOUNDARY</b><span>Grouping changes the path only. Every leaf remains bound to one canonical client, tower, and project.</span></div></aside>;
 }
 
 function ProjectIntakeSummary({ project, onEvidence }: { project: WorkspaceProject; onEvidence: (target: string | EvidenceReceipt) => void }) {
@@ -599,119 +567,247 @@ function ProjectIntakeSummary({ project, onEvidence }: { project: WorkspaceProje
 
 function OverviewPanel({ project, mounted, onTab, onOpenCase, onEvidence, onOpenApp }: { project: WorkspaceProject; mounted: readonly ProjectAppId[]; onTab: (tab: WorkspaceTabId) => void; onOpenCase: () => void; onEvidence: (ref: string | EvidenceReceipt) => void; onOpenApp: (id: ProjectAppId) => void }) {
   const projectDecisions = decisionsFor(project);
-  return <div className="project-overview"><section className="project-thesis"><p>OUTCOME</p><h2>{project.outcome}</h2><div><button data-action-id="workspace.open-governed-decision" type="button" onClick={projectDecisions.length ? onOpenCase : () => onTab("decisions")}>{projectDecisions.length ? "Open current decision" : "Set up first decision"}</button><button data-action-id="workspace.ask-expert-society" type="button" onClick={() => onTab("agents")}>Open agent workspace</button></div></section><div className="project-metric-grid">{project.metrics.map((metric) => <button data-action-id={`evidence.open.${metric.evidenceRef}`} className={`metric-${metric.tone}`} type="button" key={metric.label} onClick={() => onEvidence(metric.evidenceRef)}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small><em>Trace {metric.evidenceRef}</em></button>)}</div><div className="project-home-grid"><section><header><p>DECISIONS</p><button data-action-id="workspace.open-decisions" type="button" onClick={() => onTab("decisions")}>{projectDecisions.length ? "View all" : "Set up"}</button></header><ol>{projectDecisions.slice(0,4).map((item) => <li key={item.id}><span>{item.id}</span><div><b>{item.title}</b><small>{item.level} · {item.owner} · {item.value}</small></div></li>)}</ol>{!projectDecisions.length && <p className="inline-empty">No decision briefs in this session.</p>}</section><section><header><p>APPS</p><button data-action-id="workspace.configure-apps" type="button" onClick={() => onTab("apps")}>Manage</button></header><div className="mini-app-graph">{mounted.slice(0,5).map((id, index) => { const app = projectApps.find((item) => item.id === id)!; return <span className="mini-app-entry" key={id}>{index > 0 && <i>{index % 2 ? "feeds" : "challenges"}</i>}<button data-action-id={`workspace.open-app.${id}`} type="button" onClick={() => onOpenApp(id)} style={{color:app.accent}}>{app.name}</button></span>; })}{!mounted.length && <p className="inline-empty">No apps mounted. Open Apps to add one.</p>}</div></section></div><section className="portfolio-footprint"><header><div><p>PROJECT DATA</p><h2>Knowledge footprint</h2></div><button data-action-id="workspace.open-project-data" type="button" onClick={() => onTab("data")}>Open data</button></header><div>{[[project.counts.entities,"entities"],[project.counts.relationships,"relationships"],[project.counts.observations,"L0 observations"],[project.counts.documents,"documents"],[project.counts.events,"events"],[project.counts.claims,"evidence claims"]].map((item) => { const receipt = fixtureEvidenceFor(project, { id: `EV-FOOTPRINT-${item[1]}`, claim: `Project knowledge footprint: ${item[1]}`, displayedValue: item[0], source: "Project knowledge-footprint deterministic fixture", formula: `Declared fixture count of ${item[1]} inside the selected project boundary`, inputs: [project.code, project.client, item[1]], variableId: "Project registry metadata", grain: `Project × ${item[1]}` }); return <button data-action-id={`workspace.trace-footprint.${item[1]}`} type="button" key={item[1]} onClick={() => onEvidence(receipt)}><b>{item[0]}</b><span>{item[1]}</span><em>◇</em></button>; })}</div><footer><span>Variable taxonomy · 481 L0 · 60 L1 · 35 L2</span><b>Method catalog · M-01 to M-30</b></footer></section></div>;
+  return <div className="project-overview"><section className="project-thesis"><p>OUTCOME</p><h2>{project.outcome}</h2><div><button data-action-id="workspace.open-governed-decision" type="button" onClick={projectDecisions.length ? onOpenCase : () => onTab("decisions")}>{projectDecisions.length ? "Open current decision" : "Set up first decision"}</button><button data-action-id="workspace.ask-expert-society" type="button" onClick={() => onTab("agents")}>Open Playground</button></div></section><div className="project-metric-grid">{project.metrics.map((metric) => <button data-action-id={`evidence.open.${metric.evidenceRef}`} className={`metric-${metric.tone}`} type="button" key={metric.label} onClick={() => onEvidence(metric.evidenceRef)}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metric.detail}</small><em>Trace {metric.evidenceRef}</em></button>)}</div><div className="project-home-grid"><section><header><p>DECISIONS</p><button data-action-id="workspace.open-decisions" type="button" onClick={() => onTab("decisions")}>{projectDecisions.length ? "View all" : "Set up"}</button></header><ol>{projectDecisions.slice(0,4).map((item) => <li key={item.id}><span>{item.id}</span><div><b>{item.title}</b><small>{item.level} · {item.owner} · {item.value}</small></div></li>)}</ol>{!projectDecisions.length && <p className="inline-empty">No decision briefs in this session.</p>}</section><section><header><p>APPS</p><button data-action-id="workspace.configure-apps" type="button" onClick={() => onTab("apps")}>Manage</button></header><div className="mini-app-graph">{mounted.slice(0,5).map((id, index) => { const app = projectApps.find((item) => item.id === id)!; return <span className="mini-app-entry" key={id}>{index > 0 && <i>{index % 2 ? "feeds" : "challenges"}</i>}<button data-action-id={`workspace.open-app.${id}`} type="button" onClick={() => onOpenApp(id)} style={{color:app.accent}}>{app.name}</button></span>; })}{!mounted.length && <p className="inline-empty">No apps mounted. Use Apps in the mounted-work bar to add one.</p>}</div></section></div><section className="portfolio-footprint"><header><div><p>PROJECT DATA</p><h2>Knowledge footprint</h2></div><button data-action-id="workspace.open-project-data" type="button" onClick={() => onTab("data")}>Open Data &amp; graph</button></header><div>{[[project.counts.entities,"entities"],[project.counts.relationships,"relationships"],[project.counts.observations,"L0 observations"],[project.counts.documents,"documents"],[project.counts.events,"events"],[project.counts.claims,"evidence claims"]].map((item) => { const receipt = fixtureEvidenceFor(project, { id: `EV-FOOTPRINT-${item[1]}`, claim: `Project knowledge footprint: ${item[1]}`, displayedValue: item[0], source: "Project knowledge-footprint deterministic fixture", formula: `Declared fixture count of ${item[1]} inside the selected project boundary`, inputs: [project.code, project.client, item[1]], variableId: "Project registry metadata", grain: `Project × ${item[1]}` }); return <button data-action-id={`workspace.trace-footprint.${item[1]}`} type="button" key={item[1]} onClick={() => onEvidence(receipt)}><b>{item[0]}</b><span>{item[1]}</span><em>◇</em></button>; })}</div><footer><span>Variable taxonomy · 481 L0 · 60 L1 · 35 L2</span><b>Method catalog · M-01 to M-30</b></footer></section></div>;
 }
 
 function RecentWorkPanel({ sessions, onOpen, onContinue }: { sessions: readonly ProjectWorkSession[]; onOpen: (sessionId: string) => void; onContinue: (sessionId: string) => void }) {
-  return <section className="recent-work-panel"><header><div><p>RECENT WORK</p><h2>Agent sessions</h2><span>Resume the conversation, inspect exact app runs, or continue from an immutable fixture.</span></div><b>{sessions.length} SESSIONS</b></header>{sessions.length ? <div className="recent-work-list">{sessions.map((session) => <article key={session.id}><button data-action-id={`workspace.session.open.${session.id}`} className="recent-work-main" type="button" onClick={() => onOpen(session.id)}><span className={`session-status status-${session.status.toLowerCase().replaceAll(" ", "-")}`} /> <div><small>{session.id} · {session.updatedAt}</small><h3>{session.title}</h3><p>{session.finalResult?.headline ?? session.objective}</p></div><em>{session.status}</em></button><dl><div><dt>Lead</dt><dd>{session.leadAgentId}</dd></div><div><dt>Apps</dt><dd>{session.appIds.length}</dd></div><div><dt>Entry</dt><dd>{session.entryPoint}</dd></div></dl><button data-action-id={`workspace.session.continue.${session.id}`} className="recent-work-continue" type="button" onClick={() => onContinue(session.id)}>{session.origin === "Synthetic fixture" ? "Continue as new session" : "Continue session"}</button></article>)}</div> : <div className="recent-work-empty"><b>No work sessions yet</b><p>Open Agent workspace and send the first project brief.</p></div>}</section>;
+  return <section className="recent-work-panel">
+    <header><div><p>RECENT WORK</p><h2>Agent sessions</h2><span>Resume the conversation, inspect exact app runs, or continue from an immutable fixture.</span></div><b>{sessions.length} SESSIONS</b></header>
+    {sessions.length ? <div className="recent-work-list">{sessions.map((session) => <article key={session.id}>
+      <button data-action-id={`workspace.session.open.${session.id}`} className="recent-work-main" type="button" onClick={() => onOpen(session.id)}>
+        <span className={`session-status status-${session.status.toLowerCase().replaceAll(" ", "-")}`} />
+        <div><small>{session.id} · {session.updatedAt}</small><h3>{session.title}</h3><p>{session.finalResult?.headline ?? session.objective}</p></div>
+        <em>{session.status}</em>
+      </button>
+      <dl><div><dt>Lead</dt><dd>{session.leadAgentId}</dd></div><div><dt>Apps</dt><dd>{session.appIds.length}</dd></div><div><dt>Entry</dt><dd>{session.entryPoint}</dd></div></dl>
+      <button data-action-id={`workspace.session.continue.${session.id}`} className="recent-work-continue" type="button" onClick={() => onContinue(session.id)}>Continue as new session</button>
+    </article>)}</div> : <div className="recent-work-empty"><b>No work sessions yet</b><p>Open Playground and send the first project brief.</p></div>}
+  </section>;
 }
 
-function DecisionPanel({ project, selected, onSelect, onEvidence, onOpenCase, onOutcome }: { project: WorkspaceProject; selected: string; onSelect: (id: string) => void; onEvidence: (ref: string) => void; onOpenCase: () => void; onOutcome: OutcomeHandler }) {
+function DecisionPanel({ project, selected, onSelect, onEvidence, onOpenCase, onOutcome, draftReady, onCreateDraft }: { project: WorkspaceProject; selected: string; onSelect: (id: string) => void; onEvidence: (ref: string) => void; onOpenCase: () => void; onOutcome: OutcomeHandler; draftReady: boolean; onCreateDraft: () => void }) {
   const projectDecisions = decisionsFor(project);
   const item = projectDecisions.find((candidate) => candidate.id === selected) ?? projectDecisions[0];
-  if (!item) return <section className="project-empty-state"><span>DECISIONS</span><h2>No decision briefs yet</h2><p>Define the first decision, then bind variables, methods, evidence, owners, and approval rights.</p><button data-action-id="decisions.create-first" type="button" onClick={() => onOutcome("Decision brief draft opened", `A zero-state decision brief was staged for ${project.name}; no case, model, approval, or execution artifact was created.`, `DECISION-${project.code}-DRAFT-01`)}>Create decision brief draft</button></section>;
+  if (!item) return <section className="project-empty-state"><span>DECISIONS</span><h2>{draftReady ? "Decision draft is being prepared" : "No decision briefs yet"}</h2><p>{draftReady ? "The session draft is being bound to the current variable contract." : "Define the first decision, then bind variables, methods, evidence, owners, and approval rights."}</p><button data-action-id="decisions.create-first" type="button" disabled={draftReady} onClick={onCreateDraft}>{draftReady ? "Preparing draft…" : "Create decision brief draft"}</button></section>;
   return <div className="decision-os"><section className="decision-tree-panel"><header><div><p>HIGH-LEVEL → LOW-LEVEL DECISIONS</p><h2>Decision decomposition</h2><span>D0–D3 decision levels remain separate from the L2/L1/L0 variable taxonomy.</span></div><button data-action-id="decisions.open-case" type="button" onClick={onOpenCase}>Open decision →</button></header><div className="decision-node-list">{projectDecisions.map((node) => <button data-action-id={`decisions.select.${node.id}`} style={{marginLeft:`${node.id === "D0" ? 0 : node.id === "D1" ? 22 : node.id.startsWith("D2") ? 44 : 66}px`}} className={selected === node.id ? "active" : ""} type="button" key={node.id} onClick={() => onSelect(node.id)}><span>{node.id}</span><div><small>{node.level} · {node.state}</small><b>{node.title}</b><em>{node.owner}</em></div><strong>{node.value}</strong></button>)}</div></section><aside className="decision-inspector"><p>SELECTED DECISION · {item.id}</p><h2>{item.title}</h2><span>{item.level} · {item.state} · owned by {item.owner}</span><button data-action-id={`decisions.evidence.${item.id}`} className="decision-evidence" type="button" onClick={() => onEvidence(item.evidenceRef)}><small>PRIMARY EVIDENCE</small><b>{item.evidenceRef} · {item.value}</b><em>Open receipt →</em></button><section><p>VARIABLE CONTRACT</p><div className="taxonomy-stack"><article><span>L2</span>{project.variablePack.l2.map((value) => <b key={value}>{value}</b>)}</article><article><span>L1</span>{project.variablePack.l1.map((value) => <b key={value}>{value}</b>)}</article><article><span>L0</span>{project.variablePack.l0.slice(0,8).map((value) => <b key={value}>{value}</b>)}</article></div></section><section><p>METHOD REFERENCES</p><div className="method-chips">{project.methodCodes.map((code) => <button data-action-id={`decisions.method.${code}`} type="button" key={code} onClick={() => onOutcome("Method reference opened", `${code} is referenced by ${project.name}; a production formulation, validation result, solver adapter, and fallback are not connected in this concept.`, `METHOD-${code}`)}>{code}</button>)}</div></section><button data-action-id="decisions.create-review" className="primary-dark-action" type="button" onClick={() => onOutcome("Decision review draft created", `${item.id} was packaged in this browser session with variables, method references, evidence, owners, and the project fixture; nothing was released.`, `REVIEW-${project.code}-${item.id}`)}>Create expert review draft</button></aside><section className="method-library"><header><div><p>OR METHODOLOGY CATALOG</p><h2>All 30 handbook techniques are catalogued</h2></div><span>Project references {project.methodCodes.length} methods</span></header><div>{methodFamilies.map((family) => <article key={family.range}><span>{family.range}</span><b>{family.name}</b><p>{family.detail}</p></article>)}</div><footer>Reference catalog only · no live solver execution · exact status, gaps, incumbent, bounds, and optimality must come from a connected solver receipt</footer></section></div>;
 }
 
-function AppsPanel({ project, mounted, runs, activityState, dispatchActivity, onOpen, onOpenSession, onEvidence, onOutcome, canRun, activeSessionId, focusedRunId }: { project: WorkspaceProject; mounted: readonly ProjectAppId[]; runs: readonly ProjectAppRun[]; activityState: ProjectActivityState; dispatchActivity: Dispatch<ProjectActivityAction>; onOpen: (id: ProjectAppId) => void; onOpenSession: (sessionId: string) => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; canRun: boolean; activeSessionId?: string; focusedRunId?: string | null }) {
+function AppsPanel({ project, mounted, runs, activityState, dispatchActivity, onOpen, onOpenSession, onEvidence, onOutcome, canRun, runBlockedReason, focusedRunId, onRunChange }: { project: WorkspaceProject; mounted: readonly ProjectAppId[]; runs: readonly ProjectAppRun[]; activityState: ProjectActivityState; dispatchActivity: Dispatch<ProjectActivityAction>; onOpen: (id: ProjectAppId) => void; onOpenSession: (sessionId: string) => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; canRun: boolean; runBlockedReason?: string; focusedRunId?: string | null; onRunChange?: (sessionId: string, runId: string) => void }) {
   const mountReceipt = fixtureEvidenceFor(project, { id: "EV-APP-MOUNT-MANIFEST", claim: "Project app mount manifest", displayedValue: `${mounted.length} mounted of ${projectApps.length} available`, source: "Browser-session project app manifest", formula: "Count of app contracts mounted to the selected project fixture", inputs: mounted, grain: "Project × app contract" });
   return <div className="apps-os">
     <header className="section-hero"><div><p>APPS</p><h2>Project applications</h2><span>Mount specialist tools against this project&apos;s data, variables, methods, agents, and evidence.</span></div><button data-action-id="apps.trace-mount-manifest" type="button" onClick={() => onEvidence(mountReceipt)}>Trace app manifest</button></header>
     <section className="app-graph-canvas"><div className="app-graph-core"><span>PROJECT GRAPH</span><b>{project.code}</b><small>{project.counts.relationships} synthetic relationships</small></div>{projectApps.map((app,index) => <button data-action-id={`apps.graph.${app.id}`} className={`app-graph-node n${index+1} ${mounted.includes(app.id) ? "mounted" : "available"}`} style={{"--node-accent":app.accent} as React.CSSProperties} type="button" key={app.id} onClick={() => onOpen(app.id)}><span>{app.icon}</span><b>{app.name}</b><small>{mounted.includes(app.id) ? "Mounted" : "Mount"}</small></button>)}<div className="app-edge-ledger">{appDependencyEdges.slice(0,6).map((edge) => <span key={`${edge[0]}-${edge[1]}`}><b>{edge[0]}</b> → {edge[1]} <em>{edge[2]}</em></span>)}</div></section>
     <section className="app-catalog-grid">{projectApps.map((app) => <article data-app-theme={app.id} key={app.id} style={{"--app-accent":app.accent} as React.CSSProperties}><header><span>{app.icon}</span><div><small>{app.archetype}</small><h3>{app.name}</h3></div><em>{mounted.includes(app.id) ? "MOUNTED" : app.status.toUpperCase()}</em></header><p>{app.outcome}</p><dl><div><dt>Terminal artifact</dt><dd>{app.artifact}</dd></div><div><dt>Methods</dt><dd>{app.methodCodes.join(" · ")}</dd></div><div><dt>Variables</dt><dd>{app.variableIds.join(" · ")}</dd></div></dl><button data-action-id={`apps.open.${app.id}`} type="button" onClick={() => onOpen(app.id)}>{mounted.includes(app.id) ? `Open ${app.name}` : `Mount ${app.name}`} →</button></article>)}</section>
-    <AppRunHistory project={project} runs={runs} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={onOpen} onOpenSession={onOpenSession} onEvidence={onEvidence} onOutcome={onOutcome} canRun={canRun} activeSessionId={activeSessionId} focusedRunId={focusedRunId} />
+    <AppRunHistory key={focusedRunId ?? "project-app-runs"} project={project} runs={runs} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={onOpen} onOpenSession={onOpenSession} onEvidence={onEvidence} onOutcome={onOutcome} canRun={canRun} runBlockedReason={runBlockedReason} focusedRunId={focusedRunId} initialAppId={mounted[0]} onRunChange={onRunChange} />
   </div>;
 }
 
-export function AppRunHistory({ project, runs, activityState, dispatchActivity, onOpen, onOpenSession, onOutcome, canRun = true, activeSessionId, focusedRunId }: { project: WorkspaceProject; runs: readonly ProjectAppRun[]; activityState: ProjectActivityState; dispatchActivity: Dispatch<ProjectActivityAction>; onOpen: (id: ProjectAppId) => void; onOpenSession: (sessionId: string) => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; canRun?: boolean; activeSessionId?: string; focusedRunId?: string | null }) {
+export function AppRunHistory({ project, runs, activityState, dispatchActivity, onOpen, onOpenSession, onOutcome, canRun = true, runBlockedReason, focusedRunId, initialAppId, onRunChange }: { project: WorkspaceProject; runs: readonly ProjectAppRun[]; activityState: ProjectActivityState; dispatchActivity: Dispatch<ProjectActivityAction>; onOpen: (id: ProjectAppId) => void; onOpenSession: (sessionId: string) => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; canRun?: boolean; runBlockedReason?: string; focusedRunId?: string | null; initialAppId?: ProjectAppId; onRunChange?: (sessionId: string, runId: string) => void }) {
   const focused = focusedRunId ? runs.find((run) => run.id === focusedRunId) : undefined;
-  const fallback = focused ?? runs[0] ?? null;
+  const preferredAppId = initialAppId ?? runs[0]?.appId;
+  const storedRunId = preferredAppId ? activityState.selectedRunByProjectApp[`${project.id}:${preferredAppId}`] : undefined;
+  const stored = storedRunId ? runs.find((run) => run.id === storedRunId) : undefined;
+  const fallback = focused ?? stored ?? runs[0] ?? null;
   const [selectedRunId, setSelectedRunId] = useState(fallback?.id ?? "");
   const [inputPanelOpen, setInputPanelOpen] = useState(true);
   const [artifactReceipt, setArtifactReceipt] = useState<EvidenceReceipt | null>(null);
   const selected = runs.find((run) => run.id === selectedRunId) ?? fallback;
-  if (!selected) return <section className="app-run-workspace"><header><div><p>RUN HISTORY</p><h2>No application runs yet</h2></div></header><p className="inline-empty">Mount an app and create a project session before replaying a fixture.</p></section>;
+  if (!selected) {
+    const startFirstRun = () => {
+      if (!initialAppId || !canRun) return;
+      const plan = planAppStart(activityState, project, initialAppId);
+      if (!plan) {
+        onOutcome("Application run blocked", "No valid project session or application contract was available; no run was created.", `APP-${project.code}-START`, "Blocked");
+        return;
+      }
+      dispatchActivity({ type: "start-app-run", project, appId: initialAppId });
+      onRunChange?.(plan.sessionId, plan.runId);
+      onOutcome("First application run recorded", `${plan.runId} was created in ${plan.sessionId} as a deterministic browser-session fixture and stopped at human review. No live application, source, solver, or write-back ran.`, plan.runId);
+    };
+    return <section className="app-run-workspace"><header><div><p>RUN HISTORY</p><h2>No application runs yet</h2></div></header><p className="inline-empty">{runBlockedReason ?? (initialAppId ? "Create the first traceable browser-session run for this mounted app." : "Mount an app before creating the first project run.")}</p>{initialAppId && <button data-action-id={`apps.run.start.${initialAppId}`} className="primary-dark-action" type="button" disabled={!canRun} onClick={startFirstRun}>Create first run</button>}</section>;
+  }
   const app = projectApps.find((item) => item.id === selected.appId)!;
   const draft = activityState.runDrafts[selected.id] ?? {};
   const appHistory = runs.filter((run) => run.appId === selected.appId);
   const changedCount = selected.inputs.filter((input) => draft[input.key] !== undefined && draft[input.key] !== input.value).length;
-  const changedInputs = selected.changeSet.length ? selected.changeSet.map((change) => `${change.key}:${change.before}->${change.after}`) : ["No changed assumptions"];
-  const runInputs = selected.inputs.map((input) => `${input.key}=${input.value}${input.unit}`);
-  const reportReceipt: EvidenceReceipt = {
-    ...fixtureEvidenceFor(project, {
-      id: selected.reportId,
-      claim: `${app.name} application report`,
-      displayedValue: selected.summary,
-      source: `Immutable ${selected.origin.toLowerCase()} application-run record ${selected.id}`,
-      formula: `${selected.methods.join(" + ")} · ${selected.claimBoundary}`,
-      inputs: [`run=${selected.id}`, `session=${selected.sessionId}`, `trace=${selected.traceId}`, `fingerprint=${selected.inputFingerprint}`, ...runInputs, ...changedInputs, ...selected.outputs.map((output) => `${output.label}=${output.value} [${output.evidenceRef}]`)],
-      variableId: app.variableIds[0],
-      grain: "Project × session × application report",
-    }),
-    id: selected.reportId,
-    locator: `fixture://workspace/${project.id}/runs/${selected.id}/report/${selected.reportId}`,
-    version: selected.inputVersion,
-    contentHash: selected.inputFingerprint,
-    traceId: selected.traceId,
+  const inputErrors = Object.fromEntries(selected.inputs.flatMap((input) => {
+    const error = validateAppInputValue(input, draft[input.key] ?? input.value);
+    return error ? [[input.key, error]] : [];
+  })) as Record<string, string>;
+  const invalidInputCount = Object.keys(inputErrors).length;
+  const reportReceipt = activityEvidenceReceiptFor(project, { kind: "report", run: selected });
+  const traceReceipt = activityEvidenceReceiptFor(project, { kind: "trace", run: selected });
+  const outputReceipt = (output: ProjectAppRun["outputs"][number], index: number) => activityEvidenceReceiptFor(project, { kind: "output", run: selected, output, outputIndex: index });
+  const referencedInputReceipt = (reference: string) => {
+    const target = resolveActivityEvidence(activityState, project.id, reference);
+    return target ? activityEvidenceReceiptFor(project, target) : evidenceFor(project, reference);
   };
-  const traceReceipt: EvidenceReceipt = {
-    ...fixtureEvidenceFor(project, {
-      id: selected.traceId,
-      claim: `${app.name} run trace`,
-      displayedValue: `${selected.status} · ${selected.inputFingerprint}`,
-      source: `Project activity ledger for ${selected.id}`,
-      formula: `Parent ${selected.parentRunId ?? "fixture root"} -> run ${selected.id} -> report ${selected.reportId}; ${selected.claimBoundary}`,
-      inputs: [`session=${selected.sessionId}`, `origin=${selected.origin}`, `executed=${selected.executedAt}`, ...runInputs, ...changedInputs, ...selected.outputs.map((output) => `output:${output.label}=${output.value}; evidence=${output.evidenceRef}`)],
-      variableId: app.variableIds[0],
-      grain: "Project × session × application trace step",
-    }),
-    id: selected.traceId,
-    locator: `fixture://workspace/${project.id}/runs/${selected.id}/trace/${selected.traceId}`,
-    version: selected.inputVersion,
-    contentHash: selected.inputFingerprint,
-    traceId: selected.traceId,
-  };
-  const outputReceipt = (output: ProjectAppRun["outputs"][number], index: number): EvidenceReceipt => ({
-    ...fixtureEvidenceFor(project, {
-      id: `${selected.id}-OUTPUT-${index + 1}`,
-      claim: `${app.name} output: ${output.label}`,
-      displayedValue: output.value,
-      source: `Deterministic output in application run ${selected.id}; baseline evidence ${output.evidenceRef}`,
-      formula: `${selected.summary} ${selected.claimBoundary}`,
-      inputs: [`run=${selected.id}`, `session=${selected.sessionId}`, `source-evidence=${output.evidenceRef}`, `fingerprint=${selected.inputFingerprint}`, ...runInputs, ...changedInputs],
-      variableId: app.variableIds[index] ?? app.variableIds[0],
-      grain: "Project × session × application output",
-    }),
-    traceId: selected.traceId,
-    version: selected.inputVersion,
-    contentHash: selected.inputFingerprint,
-  });
   const replay = () => {
-    const plan = planAppRerun(activityState, project.id, selected.id, activeSessionId);
+    if (invalidInputCount) {
+      onOutcome("Application replay blocked", `Correct ${invalidInputCount} invalid input${invalidInputCount === 1 ? "" : "s"} before creating a replay. The draft values remain visible and no run was created.`, selected.id, "Blocked");
+      return;
+    }
+    const plan = planAppRerun(activityState, project.id, selected.id, selected.sessionId);
     if (!plan) {
       onOutcome("Application replay blocked", `No valid project session was available for ${selected.id}; no run was created.`, selected.id, "Blocked");
       return;
     }
     setSelectedRunId(plan.runId);
     setArtifactReceipt(null);
-    dispatchActivity({ type: "rerun-app", projectId: project.id, runId: selected.id, sessionId: activeSessionId });
+    dispatchActivity({ type: "rerun-app", projectId: project.id, runId: selected.id, sessionId: selected.sessionId });
+    onRunChange?.(plan.sessionId, plan.runId);
     onOutcome(
       "Application replay recorded",
-      `${plan.runId} was created in ${plan.sessionId}${plan.fixtureSessionForked ? ` by continuing immutable fixture ${plan.sourceSessionId}` : ""} with ${changedCount} changed assumption${changedCount === 1 ? "" : "s"}; parent ${selected.id} remains immutable and no live service or solver ran.`,
+      `${plan.runId} was created in ${plan.sessionId}${plan.sessionForked ? ` by continuing immutable session ${plan.sourceSessionId}` : ""} with ${changedCount} changed assumption${changedCount === 1 ? "" : "s"}; parent ${selected.id} remains immutable and no live service or solver ran.`,
       plan.runId,
     );
   };
   return <>
-    <section className="app-run-workspace"><header><div><p>APPLICATION WORK</p><h2>Runs, reports, and reruns</h2><span>Each app preserves its inputs, trace, report, parent session, and evidence references.</span></div><b>{runs.length} RUNS</b></header><div className="app-run-layout"><aside className="app-run-list"><header><b>{app.name}</b><span>{appHistory.length} runs</span></header>{runs.map((run) => { const runApp = projectApps.find((item) => item.id === run.appId)!; return <button data-action-id={`apps.run.select.${run.id}`} className={selected.id === run.id ? "active" : ""} type="button" key={run.id} onClick={() => { setSelectedRunId(run.id); setArtifactReceipt(null); dispatchActivity({ type: "select-app-run", projectId: project.id, appId: run.appId, runId: run.id }); }}><i style={{background:runApp.accent}}>{runApp.icon}</i><span><small>{run.id}</small><b>{run.title}</b><em>{run.status} · {run.executedAt}</em></span></button>; })}</aside><article className="app-run-detail"><header><div><span>{selected.status} · {selected.origin}</span><h3>{selected.title}</h3><p>{selected.id} · from <button data-action-id={`apps.run.session.${selected.sessionId}`} type="button" onClick={() => onOpenSession(selected.sessionId)}>{selected.sessionId}</button></p></div><button data-action-id={`apps.run.open-app.${selected.id}`} type="button" onClick={() => onOpen(selected.appId)}>Open {app.name}</button></header><div className="app-run-receipts"><button data-action-id={`apps.run.report.${selected.id}`} type="button" onClick={() => setArtifactReceipt(reportReceipt)}><small>REPORT</small><b>{selected.reportId}</b></button><button data-action-id={`apps.run.trace.${selected.id}`} type="button" onClick={() => setArtifactReceipt(traceReceipt)}><small>TRACE</small><b>{selected.traceId}</b></button><button data-action-id={`apps.run.parent.${selected.id}`} type="button" disabled={!selected.parentRunId} onClick={() => { if (!selected.parentRunId) return; setSelectedRunId(selected.parentRunId); setArtifactReceipt(null); dispatchActivity({ type: "select-app-run", projectId: project.id, appId: selected.appId, runId: selected.parentRunId }); }}><small>PARENT RUN</small><b>{selected.parentRunId ?? "Fixture root"}</b></button></div><button data-action-id={`apps.run.toggle-inputs.${selected.id}`} className="app-input-toggle" type="button" aria-expanded={inputPanelOpen} onClick={() => setInputPanelOpen((current) => !current)}>{inputPanelOpen ? "Hide inputs" : "Show inputs"}<span>{changedCount ? `${changedCount} pending changes` : `${selected.inputVersion} · ${selected.inputFingerprint}`}</span></button>{inputPanelOpen && <div className="app-run-inputs">{selected.inputs.map((input) => <label key={input.key}><span>{input.label}<small>{input.evidenceRef ? `Evidence ${input.evidenceRef}` : input.editable ? "Editable assumption" : "Locked input"}</small></span><span><input value={draft[input.key] ?? input.value} disabled={!input.editable || !canRun} onChange={(event) => dispatchActivity({ type: "edit-app-input", projectId: project.id, runId: selected.id, key: input.key, value: event.target.value })} /><em>{input.unit}</em></span></label>)}</div>}<section className="app-run-output"><p>RESULT</p><h3>{selected.summary}</h3><div>{selected.outputs.map((output, index) => <button data-action-id={`apps.run.output.${selected.id}.${output.label}`} type="button" key={output.label} onClick={() => setArtifactReceipt(outputReceipt(output, index))}><span>{output.label}</span><b>{output.value}</b><small>{output.evidenceRef}</small></button>)}</div>{selected.changeSet.length > 0 && <dl>{selected.changeSet.map((change) => <div key={change.key}><dt>{change.key}</dt><dd>{change.before} → {change.after}</dd></div>)}</dl>}<small>{selected.claimBoundary}</small></section><footer><button data-action-id={`apps.run.replay.${selected.id}`} type="button" disabled={!canRun} onClick={replay}>{changedCount ? "Rerun with changes" : "Replay fixture"}</button><span>{canRun ? "No source write-back · no optimality claim" : "Run permission required"}</span></footer></article></div></section>
+    <section className="app-run-workspace">
+      <header><div><p>APPLICATION WORK</p><h2>Runs, reports, and reruns</h2><span>Each app preserves its inputs, trace, report, parent session, and evidence references.</span></div><b>{runs.length} RUNS</b></header>
+      <div className="app-run-layout">
+        <aside className="app-run-list">
+          <header><b>{app.name}</b><span>{appHistory.length} runs</span></header>
+          {runs.map((run) => {
+            const runApp = projectApps.find((item) => item.id === run.appId)!;
+            return <button data-action-id={`apps.run.select.${run.id}`} className={selected.id === run.id ? "active" : ""} type="button" key={run.id} onClick={() => {
+              setSelectedRunId(run.id);
+              setArtifactReceipt(null);
+              dispatchActivity({ type: "select-app-run", projectId: project.id, appId: run.appId, runId: run.id });
+              onRunChange?.(run.sessionId, run.id);
+            }}><i style={{ background: runApp.accent }}>{runApp.icon}</i><span><small>{run.id}</small><b>{run.title}</b><em>{run.status} · {run.executedAt}</em></span></button>;
+          })}
+        </aside>
+        <article className="app-run-detail">
+          <header>
+            <div><span>{selected.status} · {selected.origin}</span><h3>{selected.title}</h3><p>{selected.id} · from <button data-action-id={`apps.run.session.${selected.sessionId}`} type="button" onClick={() => onOpenSession(selected.sessionId)}>{selected.sessionId}</button></p></div>
+            <button data-action-id={`apps.run.open-app.${selected.id}`} type="button" title="Open the application home; this run remains in history" onClick={() => onOpen(selected.appId)}>Open {app.name} home</button>
+          </header>
+          <div className="app-run-receipts">
+            <button data-action-id={`apps.run.report.${selected.id}`} type="button" onClick={() => setArtifactReceipt(reportReceipt)}><small>REPORT</small><b>{selected.reportId}</b></button>
+            <button data-action-id={`apps.run.trace.${selected.id}`} type="button" onClick={() => setArtifactReceipt(traceReceipt)}><small>TRACE</small><b>{selected.traceId}</b></button>
+            <button data-action-id={`apps.run.parent.${selected.id}`} type="button" disabled={!selected.parentRunId} onClick={() => {
+              const parentRun = selected.parentRunId ? runs.find((run) => run.id === selected.parentRunId) : undefined;
+              if (!parentRun) return;
+              setSelectedRunId(parentRun.id);
+              setArtifactReceipt(null);
+              dispatchActivity({ type: "select-app-run", projectId: project.id, appId: parentRun.appId, runId: parentRun.id });
+              onRunChange?.(parentRun.sessionId, parentRun.id);
+            }}><small>PARENT RUN</small><b>{selected.parentRunId ?? "Fixture root"}</b></button>
+          </div>
+          <button data-action-id={`apps.run.toggle-inputs.${selected.id}`} className="app-input-toggle" type="button" aria-expanded={inputPanelOpen} onClick={() => setInputPanelOpen((current) => !current)}>
+            {inputPanelOpen ? "Hide inputs" : "Show inputs"}<span>{changedCount ? `${changedCount} pending changes` : `${selected.inputVersion} · ${selected.inputFingerprint}`}</span>
+          </button>
+          {inputPanelOpen && <div className="app-run-inputs">{selected.inputs.map((input) => <label key={input.key}>
+            <span>{input.label}{input.evidenceRef ? <button data-action-id={`apps.run.input-evidence.${selected.id}.${input.key}`} className="app-input-evidence" type="button" onClick={(event) => { event.preventDefault(); setArtifactReceipt(referencedInputReceipt(input.evidenceRef!)); }}>Evidence {input.evidenceRef}</button> : <small>{input.editable ? "Editable assumption" : "Locked input"}</small>}</span>
+            <span>{input.kind === "choice"
+              ? <select aria-invalid={Boolean(inputErrors[input.key])} value={draft[input.key] ?? input.value} disabled={!input.editable || !canRun} onChange={(event) => dispatchActivity({ type: "edit-app-input", projectId: project.id, runId: selected.id, key: input.key, value: event.target.value })}>{input.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+              : <input aria-invalid={Boolean(inputErrors[input.key])} type={input.kind === "number" ? "number" : "text"} min={input.min} max={input.max} step={input.step} value={draft[input.key] ?? input.value} disabled={!input.editable || !canRun} onChange={(event) => dispatchActivity({ type: "edit-app-input", projectId: project.id, runId: selected.id, key: input.key, value: event.target.value })} />}
+              <em>{input.unit}</em>
+            </span>
+            {inputErrors[input.key] && <small className="app-input-error" role="alert">{inputErrors[input.key]}</small>}
+          </label>)}</div>}
+          <section className="app-run-output">
+            <p>RESULT</p><h3>{selected.summary}</h3>
+            <div>{selected.outputs.map((output, index) => <button data-action-id={`apps.run.output.${selected.id}.${output.label}`} type="button" key={output.label} onClick={() => setArtifactReceipt(outputReceipt(output, index))}><span>{output.label}</span><b>{output.value}</b><small>{output.evidenceRef}</small></button>)}</div>
+            {selected.changeSet.length > 0 && <dl>{selected.changeSet.map((change) => <div key={change.key}><dt>{change.key}</dt><dd>{change.before} → {change.after}</dd></div>)}</dl>}
+            <small>{selected.claimBoundary}</small>
+          </section>
+          <footer><button data-action-id={`apps.run.replay.${selected.id}`} type="button" disabled={!canRun || invalidInputCount > 0} onClick={replay}>{changedCount ? "Rerun with changes" : "Replay fixture"}</button><span>{invalidInputCount ? `${invalidInputCount} input ${invalidInputCount === 1 ? "error" : "errors"} to fix` : canRun ? "No source write-back · no optimality claim" : runBlockedReason ?? "Run permission required"}</span></footer>
+        </article>
+      </div>
+    </section>
     {artifactReceipt && <EvidenceDrawer receipt={artifactReceipt} onClose={() => setArtifactReceipt(null)} onOutcome={onOutcome} />}
   </>;
 }
 
-function DataPanel({ project, uploadStage, uploadName, sessionDatasets, connectorDrafts, onRequestConnector, onReviewConnector, onTestConnector, onFile, onUseSample, onAdvance, onEvidence, onOutcome }: { project: WorkspaceProject; uploadStage: string; uploadName: string; sessionDatasets: readonly { id: string; name: string; rows: string; state: string }[]; connectorDrafts: readonly ProjectConnectorDraft[]; onRequestConnector: (templateId: string) => void; onReviewConnector: (connectorId: string) => void; onTestConnector: (connectorId: string) => void; onFile: (event: ChangeEvent<HTMLInputElement>) => void; onUseSample: () => void; onAdvance: () => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler }) {
+type ProjectDataWorkspaceProps = {
+  mode: "sources" | "graph";
+  onMode: (mode: "sources" | "graph") => void;
+  query: string;
+  onQuery: (query: string) => void;
+  project: WorkspaceProject;
+  uploadStage: string;
+  uploadName: string;
+  sessionDatasets: readonly { id: string; name: string; rows: string; state: string }[];
+  connectorDrafts: readonly ProjectConnectorDraft[];
+  onRequestConnector: (templateId: string) => void;
+  onReviewConnector: (connectorId: string) => void;
+  onTestConnector: (connectorId: string) => void;
+  onFile: (event: ChangeEvent<HTMLInputElement>) => void;
+  onUseSample: () => void;
+  onAdvance: () => void;
+  onEvidence: (target: string | EvidenceReceipt) => void;
+  onOutcome: OutcomeHandler;
+  nodes: ReturnType<typeof graphNodesFor>;
+  traceSteps: readonly TraceStep[];
+  selectedNode: string;
+  onSelectNode: (id: string) => void;
+  selected: ReturnType<typeof graphNodesFor>[number] | undefined;
+  traceIndex: number;
+  onSteer: (label: string) => void;
+  canSteer: boolean;
+};
+
+function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadStage, uploadName, sessionDatasets, connectorDrafts, onRequestConnector, onReviewConnector, onTestConnector, onFile, onUseSample, onAdvance, onEvidence, onOutcome, nodes, traceSteps, selectedNode, onSelectNode, selected, traceIndex, onSteer, canSteer }: ProjectDataWorkspaceProps) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const matches = (...values: readonly (string | number | undefined)[]) => !normalizedQuery || values.some((value) => String(value ?? "").toLowerCase().includes(normalizedQuery));
+  const datasetHits = datasetsFor(project).filter((dataset) => matches(dataset.id, dataset.name, dataset.source, dataset.grain, dataset.variables.join(" ")));
+  const previewHits = sessionDatasets.filter((dataset) => matches(dataset.id, dataset.name, dataset.rows, dataset.state));
+  const documentHits = projectDocumentsFor(project).filter((document) => matches(document.id, document.name, document.kind, document.locator, document.detail, document.state, document.variableId));
+  const connectorTemplateHits = connectorTemplates.filter((template) => matches(template.id, template.name, template.sourceClass, template.protocol, template.targetData.join(" "), template.targetBoundary));
+  const connectorHits = connectorDrafts.filter((connector) => matches(connector.id, connector.name, connector.protocol, connector.state, connector.policyReviewState));
+  const graphHits = nodes.filter((node) => matches(node.id, node.label, node.kind, node.detail, node.evidenceRef));
+  const metricHits = project.metrics.filter((metric) => matches(metric.label, metric.value, metric.detail, metric.evidenceRef));
+  const variableHits = [...project.variablePack.l2, ...project.variablePack.l1, ...project.variablePack.l0].filter((variable) => matches(variable)).slice(0, 12);
+  const hitCount = datasetHits.length + previewHits.length + documentHits.length + connectorTemplateHits.length + connectorHits.length + graphHits.length + metricHits.length + variableHits.length;
+
+  return <div className="project-data-workspace">
+    <header className="data-graph-commandbar">
+      <div><p>PROJECT KNOWLEDGE</p><h2>Data &amp; graph</h2><span>Upload, inspect, query, and trace every governed project source from one workspace.</span></div>
+      <nav aria-label="Data and graph views">
+        <button data-action-id="data-graph.mode.sources" className={mode === "sources" ? "active" : ""} type="button" aria-pressed={mode === "sources"} onClick={() => onMode("sources")}>Sources <span>{datasetsFor(project).length + sessionDatasets.length}</span></button>
+        <button data-action-id="data-graph.mode.graph" className={mode === "graph" ? "active" : ""} type="button" aria-pressed={mode === "graph"} onClick={() => onMode("graph")}>Knowledge graph <span>{nodes.length}</span></button>
+      </nav>
+    </header>
+    <label className="data-graph-search">
+      <span aria-hidden="true">⌕</span>
+      <span className="sr-only">Query project data and knowledge graph</span>
+      <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search files, tables, PDFs, variables, evidence, connectors, and graph entities" />
+      <small aria-live="polite">{normalizedQuery ? `${hitCount} matches` : `${project.counts.documents} documents · ${project.counts.entities} entities · ${project.counts.claims} claims`}</small>
+      {query && <button data-action-id="data-graph.search.clear" type="button" aria-label="Clear data query" onClick={() => onQuery("")}>×</button>}
+    </label>
+    {normalizedQuery && <section className="data-query-results" aria-label="Project data query results">
+      <header><b>Query results</b><span>{hitCount} project-scoped matches</span></header>
+      <div>
+        {datasetHits.map((dataset) => <button data-action-id={`data-query.dataset.${dataset.id}`} type="button" key={`dataset-${dataset.id}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-DATA-${dataset.id}`, claim: `${dataset.name} registry metadata`, displayedValue: `${dataset.rows} rows · ${dataset.quality}% quality`, source: `${dataset.source} deterministic registry fixture`, formula: `Static fixture metadata; freshness ${dataset.freshness}; state ${dataset.state}`, variableId: dataset.variables[0], grain: dataset.grain, inputs: dataset.variables }))}><i>TABLE</i><span><b>{dataset.name}</b><small>{dataset.id} · {dataset.source}</small></span><em>Trace</em></button>)}
+        {previewHits.map((dataset) => <button data-action-id={`data-query.preview.${dataset.id}`} type="button" key={`preview-${dataset.id}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-DATA-${dataset.id}`, claim: `${dataset.name} session-preview metadata`, displayedValue: `${dataset.rows} · no persisted dataset`, source: "Browser-session filename and synthetic ingestion fixture", formula: "No file-content read; demonstration metadata only", variableId: project.variablePack.l0[0], grain: "Browser session" }))}><i>FILE</i><span><b>{dataset.name}</b><small>{dataset.id} · {dataset.state}</small></span><em>Trace</em></button>)}
+        {documentHits.map((document) => <button data-action-id={`data-query.document.${document.id}`} type="button" key={`document-${document.id}`} onClick={() => onEvidence(projectDocumentReceipt(project, document))}><i>{document.kind === "Excel workbook" ? "XLSX" : document.kind === "SQL table" ? "SQL" : document.kind.toUpperCase()}</i><span><b>{document.name}</b><small>{document.kind} · {document.detail}</small></span><em>Trace</em></button>)}
+        {connectorTemplateHits.map((template) => <button data-action-id={`data-query.connector-template.${template.id}`} type="button" key={`connector-template-${template.id}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-CONNECTOR-TEMPLATE-${template.id}`, claim: `${template.name} source contract`, displayedValue: `${template.sourceClass} · ${template.catalogState}`, source: "Project connector-catalog deterministic fixture", formula: template.limitations, inputs: [template.protocol, template.targetBoundary, template.targetDirection, ...template.targetData], variableId: "Project connector metadata", grain: "Project × connector template" }))}><i>SOURCE</i><span><b>{template.name}</b><small>{template.protocol} · {template.targetData.join(" · ")}</small></span><em>Inspect</em></button>)}
+        {connectorHits.map((connector) => <button data-action-id={`data-query.connector.${connector.id}`} type="button" key={`connector-${connector.id}`} onClick={() => onEvidence(connectorReceiptFor(project, connector))}><i>IOT</i><span><b>{connector.name}</b><small>{connector.protocol} · {connector.policyReviewState}</small></span><em>Trace</em></button>)}
+        {graphHits.map((node) => <button data-action-id={`data-query.graph.${node.id}`} type="button" key={`graph-${node.id}`} onClick={() => { onSelectNode(node.id); onMode("graph"); }}><i>NODE</i><span><b>{node.label}</b><small>{node.kind} · {node.detail}</small></span><em>Open</em></button>)}
+        {metricHits.map((metric) => <button data-action-id={`data-query.metric.${metric.evidenceRef}`} type="button" key={`metric-${metric.evidenceRef}`} onClick={() => onEvidence(metric.evidenceRef)}><i>CLAIM</i><span><b>{metric.label}: {metric.value}</b><small>{metric.evidenceRef} · {metric.detail}</small></span><em>Trace</em></button>)}
+        {variableHits.map((variable) => <button data-action-id={`data-query.variable.${variable}`} type="button" key={`variable-${variable}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-VARIABLE-${variable}`, claim: `${variable} project variable binding`, displayedValue: "Bound to selected project fixture", source: "Project variable-contract fixture", formula: "Variable identifier is declared in the selected project's taxonomy pack", variableId: variable, grain: "Project × variable", inputs: [project.code, variable] }))}><i>VAR</i><span><b>{variable}</b><small>Project taxonomy binding</small></span><em>Trace</em></button>)}
+        {!hitCount && <p>No project file, table, source contract, claim, variable, or graph entity matches this query.</p>}
+      </div>
+    </section>}
+    {mode === "sources" ? <DataPanel embedded query={query} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={onRequestConnector} onReviewConnector={onReviewConnector} onTestConnector={onTestConnector} onFile={onFile} onUseSample={onUseSample} onAdvance={onAdvance} onEvidence={onEvidence} onOutcome={onOutcome} /> : <GraphPanel embedded query={query} project={project} nodes={nodes} traceSteps={traceSteps} selectedNode={selectedNode} onSelect={onSelectNode} selected={selected} traceIndex={traceIndex} onEvidence={onEvidence} onSteer={onSteer} canSteer={canSteer} onOpenData={() => onMode("sources")} />}
+  </div>;
+}
+
+function DataPanel({ project, uploadStage, uploadName, sessionDatasets, connectorDrafts, onRequestConnector, onReviewConnector, onTestConnector, onFile, onUseSample, onAdvance, onEvidence, onOutcome, query = "", embedded = false }: { project: WorkspaceProject; uploadStage: string; uploadName: string; sessionDatasets: readonly { id: string; name: string; rows: string; state: string }[]; connectorDrafts: readonly ProjectConnectorDraft[]; onRequestConnector: (templateId: string) => void; onReviewConnector: (connectorId: string) => void; onTestConnector: (connectorId: string) => void; onFile: (event: ChangeEvent<HTMLInputElement>) => void; onUseSample: () => void; onAdvance: () => void; onEvidence: (target: string | EvidenceReceipt) => void; onOutcome: OutcomeHandler; query?: string; embedded?: boolean }) {
   const stages = ["Select", "Staged", "Schema preview", "Mapping draft", "Review demo", "Session receipt"];
   const stageDetails = ["Choose file", "Filename only", "Illustrative schema", "Proposed source → L0", "Demonstration gate", "No durable merge"];
   const current = stages.indexOf(uploadStage);
-  const projectDatasetViews = datasetsFor(project);
+  const normalizedQuery = query.trim().toLowerCase();
+  const matches = (...values: readonly (string | number | undefined)[]) => !normalizedQuery || values.some((value) => String(value ?? "").toLowerCase().includes(normalizedQuery));
+  const allProjectDatasetViews = datasetsFor(project);
+  const projectDatasetViews = allProjectDatasetViews.filter((dataset) => matches(dataset.id, dataset.name, dataset.source, dataset.grain, dataset.variables.join(" ")));
+  const visibleSessionDatasets = sessionDatasets.filter((dataset) => matches(dataset.id, dataset.name, dataset.rows, dataset.state));
+  const allProjectDocuments = projectDocumentsFor(project);
+  const visibleProjectDocuments = allProjectDocuments.filter((document) => matches(document.id, document.name, document.kind, document.locator, document.detail, document.state, document.variableId));
+  const visibleTemplates = connectorTemplates.filter((template) => matches(template.id, template.name, template.sourceClass, template.protocol, template.targetData.join(" ")));
+  const visibleConnectorDrafts = connectorDrafts.filter((connector) => matches(connector.id, connector.name, connector.protocol, connector.state, connector.policyReviewState));
   const batchRows = [
     ["Project boundary", `${project.client} / ${project.name}`],
     ["File handling", "Filename captured; contents not read"],
@@ -722,25 +818,28 @@ function DataPanel({ project, uploadStage, uploadName, sessionDatasets, connecto
   ];
 
   return <div className="data-vault">
-    <header className="section-hero"><div><p>DATA</p><h2>Project data and sources</h2><span>Stage files, define source contracts, and request IoT integrations inside this project boundary.</span></div><span className="truth-chip">SESSION-ONLY</span></header>
+    {!embedded && <header className="section-hero"><div><p>DATA</p><h2>Project data and sources</h2><span>Stage files, define source contracts, and request IoT integrations inside this project boundary.</span></div><span className="truth-chip">SESSION-ONLY</span></header>}
     <section className="ingestion-workbench">
       <div className="ingestion-steps">{stages.map((stage,index) => <article className={index < current ? "done" : index === current ? "active" : ""} key={stage}><span>{index < current ? "✓" : String(index+1).padStart(2,"0")}</span><b>{stage}</b><small>{stageDetails[index]}</small></article>)}</div>
       <div className="upload-drop"><div><span>⇧</span><h3>{uploadName || "Bring project evidence into Maya"}</h3><p>CSV, XLSX, JSON, PDF, Parquet · filename metadata only</p></div><label data-action-id="data.choose-file">Choose local file<input type="file" accept=".csv,.xlsx,.json,.pdf,.parquet" onChange={onFile} /></label><button data-action-id="data.use-sample" type="button" onClick={onUseSample}>Use synthetic sample</button></div>
       {uploadStage !== "Select" && <div className="upload-contract"><header><div><p>CURRENT DEMONSTRATION BATCH</p><h3>{uploadName}</h3></div><span>{uploadStage}</span></header><div>{batchRows.map((row) => <dl key={row[0]}><dt>{row[0]}</dt><dd>{row[1]}</dd></dl>)}</div><button data-action-id={`data.advance.${uploadStage}`} type="button" onClick={uploadStage === "Session receipt" ? () => onOutcome("Session receipt reopened", `${uploadName} has one metadata-only browser-session receipt; no dataset was created or merged.`, `INGESTION-${project.code}-UB-01`) : onAdvance}>{uploadStage === "Review demo" ? "Create session receipt" : uploadStage === "Session receipt" ? "View session receipt" : `Continue to ${stages[current+1]}`} →</button></div>}
     </section>
-    <section className="dataset-register"><header><div><p>DATA PRODUCTS</p><h2>{projectDatasetViews.length + sessionDatasets.length} dataset views</h2></div><button data-action-id="data.connection-request" type="button" onClick={() => onRequestConnector("readonly-cdc-api")}>Request enterprise source</button></header><div className="dataset-card-grid">
+    <section className="dataset-register"><header><div><p>DATA PRODUCTS</p><h2>{normalizedQuery ? `${projectDatasetViews.length + visibleSessionDatasets.length} matching views` : `${allProjectDatasetViews.length + sessionDatasets.length} dataset views`}</h2></div><button data-action-id="data.connection-request" type="button" onClick={() => onRequestConnector("readonly-cdc-api")}>Request enterprise source</button></header><div className="dataset-card-grid">
       {projectDatasetViews.map((dataset) => { const receipt = fixtureEvidenceFor(project, { id: `EV-DATA-${dataset.id}`, claim: `${dataset.name} registry metadata`, displayedValue: `${dataset.rows} rows · ${dataset.quality}% quality`, source: `${dataset.source} deterministic registry fixture`, formula: `Static fixture metadata; freshness ${dataset.freshness}; state ${dataset.state}`, variableId: dataset.variables[0], grain: dataset.grain, inputs: dataset.variables }); return <article className="dataset-card" key={dataset.id}><header><div><small>{dataset.id}</small><h3>{dataset.name}</h3></div><span>{dataset.state}</span></header><p>{dataset.source}</p><small>{dataset.grain}</small><dl><div><dt>Records</dt><dd>{dataset.rows}</dd></div><div><dt>Freshness</dt><dd>{dataset.freshness}</dd></div><div><dt>Quality</dt><dd>{dataset.quality}%</dd></div></dl><div className="dataset-bindings"><span>Taxonomy bindings</span>{dataset.variables.map((variable) => <b key={variable}>{variable}</b>)}</div><button data-action-id={`data.trace.${dataset.id}`} type="button" onClick={() => onEvidence(receipt)}>Trace dataset ◇</button></article>; })}
-      {sessionDatasets.map((dataset) => { const receipt = fixtureEvidenceFor(project, { id: `EV-DATA-${dataset.id}`, claim: `${dataset.name} session-preview metadata`, displayedValue: `${dataset.rows} · no persisted dataset`, source: "Browser-session filename and synthetic ingestion fixture", formula: "No file-content read; demonstration metadata only", variableId: project.variablePack.l0[0], grain: "Browser session" }); return <article className="dataset-card session-dataset" key={dataset.id}><header><div><small>{dataset.id}</small><h3>{dataset.name}</h3></div><span>{dataset.state}</span></header><p>Local session</p><small>Filename + synthetic preview only</small><dl><div><dt>Records</dt><dd>{dataset.rows}</dd></div><div><dt>Freshness</dt><dd>Now</dd></div><div><dt>Quality</dt><dd>Not measured</dd></div></dl><div className="dataset-bindings"><span>Proposed bindings</span>{project.variablePack.l0.slice(0,3).map((variable) => <b key={variable}>{variable}</b>)}</div><button data-action-id={`data.trace.${dataset.id}`} type="button" onClick={() => onEvidence(receipt)}>Trace preview ◇</button></article>; })}
+      {visibleSessionDatasets.map((dataset) => { const receipt = fixtureEvidenceFor(project, { id: `EV-DATA-${dataset.id}`, claim: `${dataset.name} session-preview metadata`, displayedValue: `${dataset.rows} · no persisted dataset`, source: "Browser-session filename and synthetic ingestion fixture", formula: "No file-content read; demonstration metadata only", variableId: project.variablePack.l0[0], grain: "Browser session" }); return <article className="dataset-card session-dataset" key={dataset.id}><header><div><small>{dataset.id}</small><h3>{dataset.name}</h3></div><span>{dataset.state}</span></header><p>Local session</p><small>Filename + synthetic preview only</small><dl><div><dt>Records</dt><dd>{dataset.rows}</dd></div><div><dt>Freshness</dt><dd>Now</dd></div><div><dt>Quality</dt><dd>Not measured</dd></div></dl><div className="dataset-bindings"><span>Proposed bindings</span>{project.variablePack.l0.slice(0,3).map((variable) => <b key={variable}>{variable}</b>)}</div><button data-action-id={`data.trace.${dataset.id}`} type="button" onClick={() => onEvidence(receipt)}>Trace preview ◇</button></article>; })}
+      {normalizedQuery && !projectDatasetViews.length && !visibleSessionDatasets.length && <p className="inline-empty">No dataset view matches this query. Graph, metric, variable, and connector matches remain available above.</p>}
     </div></section>
-    <section className="iot-sources"><header><div><p>IOT AND EDGE SOURCES</p><h2>Source integration requests</h2><span>Choose a project-scoped template. Requests never connect a device, endpoint, credential, broker, or external feed.</span></div><span>{connectorDrafts.length} session drafts</span></header><div className="iot-template-grid">{connectorTemplates.map((template) => <article key={template.id}><div><span>{template.sourceClass}</span><em>{template.catalogState}</em></div><h3>{template.name}</h3><p>{template.protocol}</p><small>{template.targetData.join(" · ")}</small><dl><div><dt>Boundary</dt><dd>{template.targetBoundary}</dd></div><div><dt>Direction</dt><dd>{template.targetDirection}</dd></div><div><dt>Current limit</dt><dd>{template.limitations}</dd></div></dl><button data-action-id={`data.connector.request.${template.id}`} type="button" onClick={() => onRequestConnector(template.id)}>Request source setup</button></article>)}</div>{connectorDrafts.length > 0 && <div className="iot-draft-list"><header><b>SESSION REQUESTS</b><span>Project {project.code}</span></header>{connectorDrafts.map((connector) => <article key={connector.id}><div><span>{connector.state}</span><b>{connector.name}</b><small>{connector.protocol}</small></div><dl><div><dt>Policy</dt><dd>{connector.policyReviewState}</dd></div><div><dt>Fixture sample</dt><dd>{connector.sampleState}</dd></div><div><dt>Endpoint</dt><dd>{connector.endpointState}</dd></div><div><dt>Credentials</dt><dd>{connector.credentialState}</dd></div><div><dt>Network</dt><dd>{connector.networkState}</dd></div></dl><button data-action-id={`data.connector.trace.${connector.id}`} type="button" onClick={() => onEvidence(connectorReceiptFor(project, connector))}>Trace request</button><button data-action-id={`data.connector.review.${connector.id}`} type="button" onClick={() => onReviewConnector(connector.id)}>{connector.policyReviewState === "Policy review queued" ? "Policy review queued" : "Send to policy review"}</button><button data-action-id={`data.connector.test.${connector.id}`} type="button" onClick={() => onTestConnector(connector.id)}>{connector.sampleState === "Fixed payload replayed" ? "Replay fixed sample" : "Test fixed sample"}</button></article>)}</div>}</section>
+    <section className="source-file-register"><header><div><p>FILES AND RECORDS</p><h2>{normalizedQuery ? `${visibleProjectDocuments.length} matching artifacts` : `${allProjectDocuments.length} source artifacts`}</h2><span>Inspectable Excel, PDF, CSV, JSON, and SQL catalog fixtures. Maya does not open an external file or database.</span></div><span>{project.counts.documents} DECLARED DOCUMENTS</span></header><div>{visibleProjectDocuments.map((document) => <button data-action-id={`data.document.${document.id}`} type="button" key={document.id} onClick={() => onEvidence(projectDocumentReceipt(project, document))}><i>{document.kind === "Excel workbook" ? "XLSX" : document.kind === "SQL table" ? "SQL" : document.kind.toUpperCase()}</i><span><b>{document.name}</b><small>{document.detail}</small></span><em><b>{document.records}</b><small>{document.state}</small></em></button>)}{normalizedQuery && !visibleProjectDocuments.length && <p className="inline-empty">No file or record artifact matches this query.</p>}{!normalizedQuery && !allProjectDocuments.length && <p className="inline-empty">No source artifact exists yet. Stage a file name or request a governed source above.</p>}</div></section>
+    <section className="iot-sources"><header><div><p>IOT AND EDGE SOURCES</p><h2>Source integration requests</h2><span>Choose a project-scoped template. Requests never connect a device, endpoint, credential, broker, or external feed.</span></div><span>{connectorDrafts.length} session drafts</span></header><div className="iot-template-grid">{visibleTemplates.map((template) => <article key={template.id}><div><span>{template.sourceClass}</span><em>{template.catalogState}</em></div><h3>{template.name}</h3><p>{template.protocol}</p><small>{template.targetData.join(" · ")}</small><dl><div><dt>Boundary</dt><dd>{template.targetBoundary}</dd></div><div><dt>Direction</dt><dd>{template.targetDirection}</dd></div><div><dt>Current limit</dt><dd>{template.limitations}</dd></div></dl><button data-action-id={`data.connector.request.${template.id}`} type="button" onClick={() => onRequestConnector(template.id)}>Request source setup</button></article>)}</div>{visibleConnectorDrafts.length > 0 && <div className="iot-draft-list"><header><b>SESSION REQUESTS</b><span>Project {project.code}</span></header>{visibleConnectorDrafts.map((connector) => <article key={connector.id}><div><span>{connector.state}</span><b>{connector.name}</b><small>{connector.protocol}</small></div><dl><div><dt>Policy</dt><dd>{connector.policyReviewState}</dd></div><div><dt>Fixture sample</dt><dd>{connector.sampleState}</dd></div><div><dt>Endpoint</dt><dd>{connector.endpointState}</dd></div><div><dt>Credentials</dt><dd>{connector.credentialState}</dd></div><div><dt>Network</dt><dd>{connector.networkState}</dd></div></dl><button data-action-id={`data.connector.trace.${connector.id}`} type="button" onClick={() => onEvidence(connectorReceiptFor(project, connector))}>Trace request</button><button data-action-id={`data.connector.review.${connector.id}`} type="button" onClick={() => onReviewConnector(connector.id)}>{connector.policyReviewState === "Policy review queued" ? "Policy review queued" : "Send to policy review"}</button><button data-action-id={`data.connector.test.${connector.id}`} type="button" onClick={() => onTestConnector(connector.id)}>{connector.sampleState === "Fixed payload replayed" ? "Replay fixed sample" : "Test fixed sample"}</button></article>)}</div>}</section>
   </div>;
 }
 
-function GraphPanel({ project, nodes, traceSteps, selectedNode, onSelect, selected, traceIndex, onEvidence, onSteer }: { project: WorkspaceProject; nodes: ReturnType<typeof graphNodesFor>; traceSteps: readonly TraceStep[]; selectedNode: string; onSelect: (id: string) => void; selected: ReturnType<typeof graphNodesFor>[number]; traceIndex: number; onEvidence: (target: string | EvidenceReceipt) => void; onSteer: (label: string) => void }) {
+function GraphPanel({ project, nodes, traceSteps, selectedNode, onSelect, selected, traceIndex, onEvidence, onSteer, canSteer, onOpenData, query = "", embedded = false }: { project: WorkspaceProject; nodes: ReturnType<typeof graphNodesFor>; traceSteps: readonly TraceStep[]; selectedNode: string; onSelect: (id: string) => void; selected: ReturnType<typeof graphNodesFor>[number] | undefined; traceIndex: number; onEvidence: (target: string | EvidenceReceipt) => void; onSteer: (label: string) => void; canSteer: boolean; onOpenData: () => void; query?: string; embedded?: boolean }) {
   const activeNodes: readonly string[] = traceIndex >= 0 ? traceSteps[traceIndex]?.nodes ?? [] : [];
-  if (!selected) return <section className="project-empty-state"><span>KNOWLEDGE GRAPH</span><h2>No project graph yet</h2><p>Add a governed dataset or source contract before agents can traverse project entities and relationships.</p><button data-action-id="graph.open-data" type="button" onClick={() => onSteer("Open Data to add the first governed source")}>Record graph setup intent</button></section>;
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!selected) return <section className="project-empty-state"><span>KNOWLEDGE GRAPH</span><h2>No project graph yet</h2><p>Add a governed dataset or source contract before agents can traverse project entities and relationships.</p><button data-action-id="graph.open-data" type="button" onClick={onOpenData}>Open Sources</button></section>;
   const selectedReceipt = fixtureEvidenceFor(project, { id: `EV-GRAPH-${selected.id}`, claim: `${selected.kind} graph node`, displayedValue: `${selected.label} · ${selected.detail}`, source: "Project knowledge-graph deterministic fixture", formula: "Selected project-scoped node and its fixture relationship context", inputs: [selected.evidenceRef, selected.id], grain: "Graph node" });
-  return <div className="graph-os"><header className="section-hero"><div><p>GRAPH</p><h2>Project knowledge graph</h2><span>Inspect evidence-linked entities and steer the visible synthetic traversal.</span></div><span className="truth-chip">7 NODES · {project.counts.entities} ENTITIES</span></header><div className="graph-layout"><section className="project-knowledge-canvas"><div className="graph-grid-lines" />{projectGraphEdges.map((edge,index) => <span className={`graph-edge ge${index+1}`} key={`${edge[0]}-${edge[1]}`}><i />{edge[2]}</span>)}{nodes.map((node) => <button data-action-id={`graph.select.${node.id}`} style={{left:`${node.x}%`,top:`${node.y}%`}} className={`project-graph-node kind-${node.kind.toLowerCase()} ${selectedNode === node.id ? "selected" : ""} ${activeNodes.includes(node.id) ? "tracing" : ""}`} type="button" key={node.id} onClick={() => onSelect(node.id)}><small>{node.kind}</small><b>{node.label}</b><span>{node.detail}</span></button>)}</section><aside className="graph-sidecar"><p>SELECTED NODE</p><h2>{selected.label}</h2><span>{selected.kind} · {selected.detail}</span><button data-action-id={`graph.evidence.${selected.id}`} type="button" onClick={() => onEvidence(selectedReceipt)}><small>EVIDENCE RECEIPT</small><b>{selectedReceipt.id}</b><em>Open fixture manifest</em></button><section><p>STEER TRACE</p>{["Pin as assumption", "Exclude this source", "Make a hard constraint", "Assign specialist", "Request alternative path"].map((action) => <button data-action-id={`graph.steer.${action}`} type="button" key={action} onClick={() => onSteer(action)}>{action}<span>+</span></button>)}</section></aside></div><section className="trace-playback"><header><p>AGENT TRAVERSAL</p><span>{traceIndex >= 0 ? `Step ${traceIndex+1} of ${traceSteps.length}` : "Start a run from Agents"}</span></header>{traceSteps.map((step,index) => <article className={index < traceIndex ? "done" : index === traceIndex ? "active" : ""} key={step.title}><span>{String(index+1).padStart(2,"0")}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b></div></article>)}</section></div>;
+  return <div className="graph-os">{!embedded && <header className="section-hero"><div><p>GRAPH</p><h2>Project knowledge graph</h2><span>Inspect evidence-linked entities and steer the visible synthetic traversal.</span></div><span className="truth-chip">{nodes.length} NODES · {project.counts.entities} ENTITIES</span></header>}<div className="graph-layout"><section className="project-knowledge-canvas"><div className="graph-grid-lines" />{projectGraphEdges.map((edge,index) => <span className={`graph-edge ge${index+1}`} key={`${edge[0]}-${edge[1]}`}><i />{edge[2]}</span>)}{nodes.map((node) => { const queryMatch = normalizedQuery && `${node.id} ${node.label} ${node.kind} ${node.detail} ${node.evidenceRef}`.toLowerCase().includes(normalizedQuery); return <button data-action-id={`graph.select.${node.id}`} style={{left:`${node.x}%`,top:`${node.y}%`}} className={`project-graph-node kind-${node.kind.toLowerCase()} ${selectedNode === node.id ? "selected" : ""} ${activeNodes.includes(node.id) ? "tracing" : ""} ${queryMatch ? "query-match" : ""}`} type="button" key={node.id} onClick={() => onSelect(node.id)}><small>{node.kind}</small><b>{node.label}</b><span>{node.detail}</span></button>; })}</section><aside className="graph-sidecar"><p>SELECTED NODE</p><h2>{selected.label}</h2><span>{selected.kind} · {selected.detail}</span><button data-action-id={`graph.evidence.${selected.id}`} type="button" onClick={() => onEvidence(selectedReceipt)}><small>EVIDENCE RECEIPT</small><b>{selectedReceipt.id}</b><em>Open fixture manifest</em></button><section><p>STEER TRACE</p>{["Pin as assumption", "Exclude this source", "Make a hard constraint", "Assign specialist", "Request alternative path"].map((action) => <button data-action-id={`graph.steer.${action}`} type="button" disabled={!canSteer} key={action} onClick={() => onSteer(action)}>{action}<span>+</span></button>)}</section></aside></div><section className="trace-playback"><header><p>AGENT TRAVERSAL</p><span>{traceIndex >= 0 ? `Step ${traceIndex+1} of ${traceSteps.length}` : "Start a run from Playground"}</span></header>{traceSteps.map((step,index) => <article className={index < traceIndex ? "done" : index === traceIndex ? "active" : ""} key={step.title}><span>{String(index+1).padStart(2,"0")}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b></div></article>)}</section></div>;
 }
 
 type AgentPanelProps = {
@@ -781,9 +880,10 @@ function AgentPanel({ project, traceSteps, selectedAgent, selectedAgentId, onSel
   const linkedRuns = selectedSession ? appRuns.filter((run) => run.sessionId === selectedSession.id) : [];
   const result = selectedSession?.finalResult;
   return <div className={`agent-os ${sessionsOpen ? "" : "sessions-collapsed"} ${inspectorOpen ? "" : "inspector-collapsed"}`}>
-    <aside className="agent-session-rail"><header><div><p>SESSIONS</p><h2>{sessions.length} work threads</h2></div><button data-action-id="agents.toggle-sessions" type="button" aria-expanded={sessionsOpen} title={sessionsOpen ? "Collapse sessions" : "Expand sessions"} onClick={onToggleSessions}>{sessionsOpen ? "‹" : "›"}</button></header>{sessionsOpen && <><div className="agent-session-list">{sessions.map((session) => <button data-action-id={`agents.session.select.${session.id}`} className={selectedSession?.id === session.id ? "active" : ""} type="button" key={session.id} onClick={() => onSelectSession(session.id)}><span className={`session-status status-${session.status.toLowerCase().replaceAll(" ", "-")}`} /><div><small>{session.id}</small><b>{session.title}</b><em>{session.updatedAt}</em></div><strong>{session.status}</strong></button>)}</div>{selectedSession && <button data-action-id={`agents.session.continue.${selectedSession.id}`} className="agent-new-session" type="button" onClick={() => onContinueSession(selectedSession.id)}>Continue as new session</button>}</>}</aside>
-    <section className="agent-session"><header><div><p>{selectedSession ? `${selectedSession.id} · ${selectedSession.entryPoint} entry` : "NEW PROJECT SESSION"}</p><h2>{selectedSession?.title ?? `${project.name} work session`}</h2></div><span className={`run-state run-${runState.toLowerCase()}`}>{selectedSession?.status ?? runState}</span></header><div className="agent-messages">{messages.length ? messages.map((message) => <article className={`message-${message.role}`} key={message.id}><header><span>{message.role === "user" ? "YOU" : message.role === "agent" ? message.author : "SYSTEM"}</span><code>{message.id}</code><time>{message.time}</time></header><p>{message.body}</p>{(message.evidenceRefs.length > 0 || message.appRunRefs.length > 0) && <footer>{message.evidenceRefs.map((ref) => <button data-action-id={`agents.message.evidence.${message.id}.${ref}`} type="button" key={ref} onClick={() => onEvidence(ref)}>◇ {ref}</button>)}{message.appRunRefs.map((ref) => <button data-action-id={`agents.message.app-run.${message.id}.${ref}`} type="button" key={ref} onClick={() => onOpenRun(ref)}>▣ {ref}</button>)}</footer>}</article>) : <div className="agent-session-zero"><b>Start the first project session</b><p>Send a brief below. Maya will create a stable session ID and visible scope receipt.</p></div>}{traceIndex >= 0 && <div className="tool-trace-stream">{traceSteps.slice(0, traceIndex+1).map((step,index) => { const receipt = fixtureEvidenceFor(project, { id: `EV-AGENT-TRACE-${index+1}`, claim: step.title, displayedValue: `${step.state} · ${step.agent}`, source: "Visible agent-trace deterministic fixture", formula: step.detail, inputs: step.nodes, grain: "Agent run × trace step" }); return <button data-action-id={`agents.trace.${index+1}`} type="button" className={index === traceIndex ? "active" : "done"} key={step.title} onClick={() => onEvidence(receipt)}><span>{index < traceIndex ? "✓" : "›"}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b><p>{step.detail}</p></div><em>◇</em></button>; })}</div>}{result && <section className="agent-final-result"><span>FINAL RESULT · HUMAN REVIEW REQUIRED</span><h3>{result.headline}</h3><p>{result.recommendation}</p><div>{result.metrics.map((metric) => <dl key={metric.label}><dt>{metric.label}</dt><dd>{metric.value}</dd></dl>)}</div><footer>{result.evidenceRefs.map((ref) => <button data-action-id={`agents.result.evidence.${ref}`} type="button" key={ref} onClick={() => onEvidence(ref)}>{ref}</button>)}</footer><small>{result.reviewGate} · {result.claimBoundary}</small></section>}</div><div className="agent-steering-bar">{["Pause + pin assumption", "Add service constraint", "Reject source", "Compare robust model"].map((action) => <button data-action-id={`agents.steer.${action}`} type="button" key={action} onClick={() => onSteer(action)}>{action}</button>)}</div><form className="agent-prompt" onSubmit={onSubmit}><label className="sr-only" htmlFor="project-agent-prompt">Ask project agents</label><textarea id="project-agent-prompt" value={chatText} onChange={(event) => onChatText(event.target.value)} placeholder="Ask the project agents, change an assumption, or request another formulation…" /><footer><span>{project.client} / {project.name} only · fixture tools require approval</span><button data-action-id="agents.send-prompt" type="submit" disabled={!chatText.trim()}>Send ↵</button></footer></form></section>
-    <aside className="agent-trace-panel"><header className="agent-inspector-heading"><div><p>SESSION CONTEXT</p><h2>{selectedSession?.id ?? "No session"}</h2></div><button data-action-id="agents.toggle-inspector" type="button" aria-expanded={inspectorOpen} title={inspectorOpen ? "Collapse context" : "Expand context"} onClick={onToggleInspector}>{inspectorOpen ? "›" : "‹"}</button></header>{inspectorOpen && <><nav className="agent-inspector-tabs" aria-label="Agent session context">{(["result","trace","apps","agents"] as const).map((item) => <button data-action-id={`agents.inspector.${item}`} className={inspectorTab === item ? "active" : ""} type="button" key={item} onClick={() => setInspectorTab(item)}>{item}</button>)}</nav><div className="agent-inspector-body">{inspectorTab === "result" && <section><p>REVIEW PACKAGE</p>{result ? <><h3>{result.headline}</h3><dl className="agent-result-metrics">{result.metrics.map((metric) => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value}</dd></div>)}</dl><small>{result.reviewGate}</small></> : <p>No final result has been recorded for this session.</p>}</section>}{inspectorTab === "trace" && <section><p>WORK TRACE</p><div className="session-activity-list">{activities.map((activity) => <button data-action-id={`agents.activity.${activity.id}`} type="button" key={activity.id} onClick={() => activity.appRunId ? onOpenRun(activity.appRunId) : activity.evidenceRefs[0] ? onEvidence(activity.evidenceRefs[0]) : onEvidence(fixtureEvidenceFor(project, { id: `EV-${activity.id}`, claim: activity.title, displayedValue: activity.state, source: "Project activity fixture", formula: activity.detail, inputs: [activity.actor, activity.type], grain: "Session activity" }))}><span>{String(activity.sequence).padStart(2,"0")}</span><div><small>{activity.id} · {activity.actor}</small><b>{activity.title}</b><p>{activity.detail}</p></div><em>{activity.state}</em></button>)}</div></section>}{inspectorTab === "apps" && <section><p>APPS USED</p><div className="session-app-runs">{linkedRuns.map((run) => <button data-action-id={`agents.app-run.${run.id}`} type="button" key={run.id} onClick={() => onOpenRun(run.id)}><b>{projectApps.find((app) => app.id === run.appId)?.name}</b><small>{run.id}</small><span>{run.status}</span></button>)}{!linkedRuns.length && <p>No application run is linked yet.</p>}</div></section>}{inspectorTab === "agents" && <section><div className="agent-roster-heading"><p>EXPERT AGENTS</p><button data-action-id="agents.open-builder" type="button" onClick={onOpenBuilder}>New agent</button></div><div className="agent-roster-compact">{agents.map((agent) => <button data-action-id={`agents.select.${agent.id}`} className={selectedAgentId === agent.id ? "active" : ""} type="button" key={agent.id} onClick={() => onSelectAgent(agent.id)}><span>{agent.name.split(" ").map((word) => word[0]).join("").slice(0,2)}</span><div><b>{agent.name}</b><small>{agent.level} · {agent.years}y fixture profile</small></div></button>)}</div><div className="agent-profile-compact"><h3>{selectedAgent.name}</h3><p>{selectedAgent.role}</p><div className="agent-level"><b>{selectedAgent.level}</b><span>{selectedAgent.years} years domain-profile fixture</span></div><dl><div><dt>Evaluated</dt><dd>{selectedAgent.evaluatedRuns}</dd></div><div><dt>Approved</dt><dd>{selectedAgent.approvedRuns}</dd></div><div><dt>Calibration</dt><dd>{selectedAgent.calibration}%</dd></div></dl><button data-action-id="agents.trace-profile" type="button" onClick={() => onEvidence(evaluationReceipt)}>Trace profile</button><small>{selectedAgent.authority}</small></div></section>}</div><div className="run-controls"><button data-action-id="agents.advance-run" type="button" onClick={onAdvance}>{runState === "Ready" ? "Start new trace" : runState === "Completed" || runState === "Cancelled" ? "Replay trace" : traceIndex === traceSteps.length - 1 ? "Complete at human gate" : "Next trace step"}</button><button data-action-id="agents.cancel-run" type="button" disabled={runState !== "Running"} onClick={onCancel}>Cancel</button></div></>}</aside>
+    <aside id="agent-session-list" className="agent-session-rail"><header><div><p>SESSIONS</p><h2>{sessions.length} work threads</h2></div><button data-action-id="agents.toggle-sessions" type="button" aria-controls="agent-session-list" aria-expanded={sessionsOpen} title={sessionsOpen ? "Collapse sessions" : "Expand sessions"} onClick={onToggleSessions}>{sessionsOpen ? "‹" : "›"}</button></header>{sessionsOpen && <><div className="agent-session-list">{sessions.map((session) => <button data-action-id={`agents.session.select.${session.id}`} className={selectedSession?.id === session.id ? "active" : ""} type="button" key={session.id} onClick={() => onSelectSession(session.id)}><span className={`session-status status-${session.status.toLowerCase().replaceAll(" ", "-")}`} /><div><small>{session.id}</small><b>{session.title}</b><em>{session.updatedAt}</em></div><strong>{session.status}</strong></button>)}</div>{selectedSession && <button data-action-id={`agents.session.continue.${selectedSession.id}`} className="agent-new-session" type="button" onClick={() => onContinueSession(selectedSession.id)}>Continue as new session</button>}</>}</aside>
+    <div className="playground-runner-bar"><label><span>Run as</span><select aria-label="Select Playground agent" value={selectedAgentId} onChange={(event) => onSelectAgent(event.target.value)}>{agents.map((agent) => <option value={agent.id} key={agent.id}>{agent.name}</option>)}</select></label><button data-action-id="agents.open-builder" type="button" onClick={onOpenBuilder}>New agent</button></div>
+    <section className="agent-session"><header><div><p>{selectedSession ? `${selectedSession.id} · ${selectedSession.entryPoint} entry` : "NEW PROJECT SESSION"}</p><h2>{selectedSession?.title ?? `${project.name} work session`}</h2></div><span className={`run-state run-${runState.toLowerCase()}`}>{runState === "Running" ? "Trace running" : selectedSession?.status ?? runState}</span></header><div className="agent-messages">{messages.length ? messages.map((message) => <article className={`message-${message.role}`} key={message.id}><header><span>{message.role === "user" ? "YOU" : message.role === "agent" ? message.author : "SYSTEM"}</span><code>{message.id}</code><time>{message.time}</time></header><p>{message.body}</p>{(message.evidenceRefs.length > 0 || message.appRunRefs.length > 0) && <footer>{message.evidenceRefs.map((ref) => <button data-action-id={`agents.message.evidence.${message.id}.${ref}`} type="button" key={ref} onClick={() => onEvidence(ref)}>◇ {ref}</button>)}{message.appRunRefs.map((ref) => <button data-action-id={`agents.message.app-run.${message.id}.${ref}`} type="button" key={ref} onClick={() => onOpenRun(ref)}>▣ {ref}</button>)}</footer>}</article>) : <div className="agent-session-zero"><b>Start the first project session</b><p>Send a brief below. Maya will create a stable session ID and visible scope receipt.</p></div>}{traceIndex >= 0 && <div className="tool-trace-stream">{traceSteps.slice(0, traceIndex+1).map((step,index) => { const receipt = fixtureEvidenceFor(project, { id: `EV-AGENT-TRACE-${index+1}`, claim: step.title, displayedValue: `${step.state} · ${step.agent}`, source: "Visible agent-trace deterministic fixture", formula: step.detail, inputs: step.nodes, grain: "Agent run × trace step" }); return <button data-action-id={`agents.trace.${index+1}`} type="button" className={index === traceIndex ? "active" : "done"} key={step.title} onClick={() => onEvidence(receipt)}><span>{index < traceIndex ? "✓" : "›"}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b><p>{step.detail}</p></div><em>◇</em></button>; })}</div>}{result && <section className="agent-final-result"><span>FINAL RESULT · HUMAN REVIEW REQUIRED</span><h3>{result.headline}</h3><p>{result.recommendation}</p><div>{result.metrics.map((metric) => <dl key={metric.label}><dt>{metric.label}</dt><dd>{metric.value}</dd></dl>)}</div><footer>{result.evidenceRefs.map((ref) => <button data-action-id={`agents.result.evidence.${ref}`} type="button" key={ref} onClick={() => onEvidence(ref)}>{ref}</button>)}</footer><small>{result.reviewGate} · {result.claimBoundary}</small></section>}</div><div className="agent-steering-bar">{["Pause + pin assumption", "Add service constraint", "Reject source", "Compare robust model"].map((action) => <button data-action-id={`agents.steer.${action}`} type="button" disabled={!selectedSession} key={action} onClick={() => onSteer(action)}>{action}</button>)}</div><form className="agent-prompt" onSubmit={onSubmit}><label className="sr-only" htmlFor="project-agent-prompt">Ask project agents</label><textarea id="project-agent-prompt" value={chatText} onChange={(event) => onChatText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask the project agents, change an assumption, or request another formulation…" /><footer><span>{project.client} / {project.name} only · fixture tools require approval</span><button data-action-id="agents.send-prompt" type="submit" disabled={!chatText.trim()}>Send ↵</button></footer></form></section>
+    <aside id="agent-session-context" className="agent-trace-panel"><header className="agent-inspector-heading"><div><p>SESSION CONTEXT</p><h2>{selectedSession?.id ?? "No session"}</h2></div><button data-action-id="agents.toggle-inspector" type="button" aria-controls="agent-session-context" aria-expanded={inspectorOpen} title={inspectorOpen ? "Collapse context" : "Expand context"} onClick={onToggleInspector}>{inspectorOpen ? "›" : "‹"}</button></header>{inspectorOpen && <><nav className="agent-inspector-tabs" aria-label="Agent session context">{(["result","trace","apps","agents"] as const).map((item) => <button data-action-id={`agents.inspector.${item}`} className={inspectorTab === item ? "active" : ""} type="button" key={item} onClick={() => setInspectorTab(item)}>{item}</button>)}</nav><div className="agent-inspector-body">{inspectorTab === "result" && <section><p>REVIEW PACKAGE</p>{result ? <><h3>{result.headline}</h3><dl className="agent-result-metrics">{result.metrics.map((metric) => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value}</dd></div>)}</dl><small>{result.reviewGate}</small></> : <p>No final result has been recorded for this session.</p>}</section>}{inspectorTab === "trace" && <section><p>WORK TRACE</p><div className="session-activity-list">{activities.map((activity) => <button data-action-id={`agents.activity.${activity.id}`} type="button" key={activity.id} onClick={() => activity.appRunId ? onOpenRun(activity.appRunId) : activity.evidenceRefs[0] ? onEvidence(activity.evidenceRefs[0]) : onEvidence(fixtureEvidenceFor(project, { id: `EV-${activity.id}`, claim: activity.title, displayedValue: activity.state, source: "Project activity fixture", formula: activity.detail, inputs: [activity.actor, activity.type], grain: "Session activity" }))}><span>{String(activity.sequence).padStart(2,"0")}</span><div><small>{activity.id} · {activity.actor}</small><b>{activity.title}</b><p>{activity.detail}</p></div><em>{activity.state}</em></button>)}</div></section>}{inspectorTab === "apps" && <section><p>APPS USED</p><div className="session-app-runs">{linkedRuns.map((run) => <button data-action-id={`agents.app-run.${run.id}`} type="button" key={run.id} onClick={() => onOpenRun(run.id)}><b>{projectApps.find((app) => app.id === run.appId)?.name}</b><small>{run.id}</small><span>{run.status}</span></button>)}{!linkedRuns.length && <p>No application run is linked yet.</p>}</div></section>}{inspectorTab === "agents" && <section><div className="agent-roster-heading"><p>EXPERT AGENTS</p><button data-action-id="agents.open-builder" type="button" onClick={onOpenBuilder}>New agent</button></div><div className="agent-roster-compact">{agents.map((agent) => <button data-action-id={`agents.select.${agent.id}`} className={selectedAgentId === agent.id ? "active" : ""} type="button" key={agent.id} onClick={() => onSelectAgent(agent.id)}><span>{agent.name.split(" ").map((word) => word[0]).join("").slice(0,2)}</span><div><b>{agent.name}</b><small>{agent.level} · {agent.years}y fixture profile</small></div></button>)}</div><div className="agent-profile-compact"><h3>{selectedAgent.name}</h3><p>{selectedAgent.role}</p><div className="agent-level"><b>{selectedAgent.level}</b><span>{selectedAgent.years} years domain-profile fixture</span></div><dl><div><dt>Evaluated</dt><dd>{selectedAgent.evaluatedRuns}</dd></div><div><dt>Approved</dt><dd>{selectedAgent.approvedRuns}</dd></div><div><dt>Calibration</dt><dd>{selectedAgent.calibration}%</dd></div></dl><button data-action-id="agents.trace-profile" type="button" onClick={() => onEvidence(evaluationReceipt)}>Trace profile</button><small>{selectedAgent.authority}</small></div></section>}</div><div className="run-controls"><button data-action-id="agents.advance-run" type="button" disabled={!selectedSession} onClick={onAdvance}>{!selectedSession ? "Send a brief to start" : runState === "Ready" ? "Start new trace" : runState === "Completed" || runState === "Cancelled" ? "Replay trace" : traceIndex === traceSteps.length - 1 ? "Complete at human gate" : "Next trace step"}</button><button data-action-id="agents.cancel-run" type="button" disabled={runState !== "Running"} onClick={onCancel}>Cancel</button></div></>}</aside>
   </div>;
 }
 
@@ -819,10 +919,12 @@ function GovernancePanel({ project, onOutcome, onEvidence }: { project: Workspac
 }
 
 function EvidenceDrawer({ receipt, onClose, onOutcome }: { receipt: EvidenceReceipt; onClose: () => void; onOutcome: OutcomeHandler }) {
-  return <div className="evidence-overlay"><button data-action-id="evidence.dismiss" className="evidence-scrim" type="button" aria-label="Close evidence" onClick={onClose} /><aside className="evidence-drawer" role="dialog" aria-modal="true" aria-label={`Evidence receipt ${receipt.id}`}><header><div><p>EVIDENCE RECEIPT · {receipt.id}</p><h2>{receipt.claim}</h2><span>{receipt.state} · {receipt.sourceKind}</span></div><button data-action-id="evidence.close" type="button" onClick={onClose}>×</button></header><div className="evidence-value"><small>DISPLAYED VALUE</small><strong>{receipt.displayedValue}</strong><span>{receipt.confidence}% confidence · {receipt.variableId}</span></div><section><p>SOURCE IDENTITY</p><dl><div><dt>Source</dt><dd>{receipt.source}</dd></div><div><dt>Exact locator</dt><dd><code>{receipt.locator}</code></dd></div><div><dt>As of</dt><dd>{receipt.asOf}</dd></div><div><dt>Valid for</dt><dd>{receipt.validFor}</dd></div><div><dt>Version</dt><dd>{receipt.version}</dd></div><div><dt>Evidence fingerprint</dt><dd><code>{receipt.contentHash}</code><small>Fixture fingerprints identify this demo record; they are not content hashes.</small></dd></div></dl></section><section><p>TRACE MANIFEST</p><div className="evidence-lineage"><article><span>DECLARED INPUTS</span><b>{receipt.inputs.join(" · ")}</b></article><i>used by ↓</i><article><span>DECLARED ACTIVITY</span><b>{receipt.formula}</b></article><i>generated ↓</i><article className="active"><span>CLAIM</span><b>{receipt.displayedValue} · {receipt.claim}</b></article><i>attributed to ↓</i><article><span>AGENT / REVIEWER</span><b>{receipt.agent} · {receipt.reviewer}</b></article></div><small className="trace-boundary">This is one bounded receipt. Recursive upstream lineage requires connected source records in production.</small></section><section><p>FITNESS + ACCESS</p><dl><div><dt>Decision grain</dt><dd>{receipt.grain}</dd></div><div><dt>Project policy</dt><dd>{receipt.access}</dd></div><div><dt>Trace</dt><dd>{receipt.traceId}</dd></div></dl>{receipt.quality.map((item) => <span className="quality-check" key={item}>✓ {item}</span>)}</section><footer><button data-action-id="evidence.copy-reference" type="button" onClick={() => { onClose(); onOutcome("Evidence-reference receipt recorded", `${receipt.id} was recorded in the browser-session action ledger; no transcript, source system, or durable evidence store was changed.`, receipt.id); }}>Record reference receipt</button><button data-action-id="evidence.done" type="button" onClick={onClose}>Done</button></footer></aside></div>;
+  const dialogRef = useDialogLifecycle<HTMLElement>(true, onClose);
+  return <div className="evidence-overlay" data-modal-root><button data-action-id="evidence.dismiss" className="evidence-scrim" type="button" aria-label="Close evidence" onClick={onClose} /><aside ref={dialogRef} className="evidence-drawer" role="dialog" aria-modal="true" aria-label={`Evidence receipt ${receipt.id}`} tabIndex={-1}><header><div><p>EVIDENCE RECEIPT · {receipt.id}</p><h2>{receipt.claim}</h2><span>{receipt.state} · {receipt.sourceKind}</span></div><button data-action-id="evidence.close" type="button" onClick={onClose}>×</button></header><div className="evidence-value"><small>DISPLAYED VALUE</small><strong>{receipt.displayedValue}</strong><span>{receipt.confidence}% confidence · {receipt.variableId}</span></div><section><p>SOURCE IDENTITY</p><dl><div><dt>Source</dt><dd>{receipt.source}</dd></div><div><dt>Exact locator</dt><dd><code>{receipt.locator}</code></dd></div><div><dt>As of</dt><dd>{receipt.asOf}</dd></div><div><dt>Valid for</dt><dd>{receipt.validFor}</dd></div><div><dt>Version</dt><dd>{receipt.version}</dd></div><div><dt>Evidence fingerprint</dt><dd><code>{receipt.contentHash}</code><small>Fixture fingerprints identify this demo record; they are not content hashes.</small></dd></div></dl></section><section><p>TRACE MANIFEST</p><div className="evidence-lineage"><article><span>DECLARED INPUTS</span><b>{receipt.inputs.join(" · ")}</b></article><i>used by ↓</i><article><span>DECLARED ACTIVITY</span><b>{receipt.formula}</b></article><i>generated ↓</i><article className="active"><span>CLAIM</span><b>{receipt.displayedValue} · {receipt.claim}</b></article><i>attributed to ↓</i><article><span>AGENT / REVIEWER</span><b>{receipt.agent} · {receipt.reviewer}</b></article></div><small className="trace-boundary">This is one bounded receipt. Recursive upstream lineage requires connected source records in production.</small></section><section><p>FITNESS + ACCESS</p><dl><div><dt>Decision grain</dt><dd>{receipt.grain}</dd></div><div><dt>Project policy</dt><dd>{receipt.access}</dd></div><div><dt>Trace</dt><dd>{receipt.traceId}</dd></div></dl>{receipt.quality.map((item) => <span className="quality-check" key={item}>✓ {item}</span>)}</section><footer><button data-action-id="evidence.copy-reference" type="button" onClick={() => { onClose(); onOutcome("Evidence-reference receipt recorded", `${receipt.id} was recorded in the browser-session action ledger; no transcript, source system, or durable evidence store was changed.`, receipt.id); }}>Record reference receipt</button><button data-action-id="evidence.done" type="button" onClick={onClose}>Done</button></footer></aside></div>;
 }
 
 function AgentBuilder({ project, step, name, onName, onStep, onClose, onPublish }: { project: WorkspaceProject; step: number; name: string; onName: (name: string) => void; onStep: (step: number) => void; onClose: () => void; onPublish: (draft: AgentDraft) => void }) {
+  const dialogRef = useDialogLifecycle<HTMLElement>(true, onClose);
   const steps = ["Identity", "Skills manifest", "Connection requests", "Evaluation plan", "Review"];
   const skillOptions = ["or-formulation/SKILL.md", "provenance-audit/SKILL.md", "critical-minerals/SKILL.md"];
   const connectionOptions = [["project-graph", "Read project subgraph"], ["evidence-ledger", "Read and append trace"], ["solver-registry", "Request approved run · disconnected"], ["tool-forge", "Create quarantined draft only"]] as const;
@@ -833,9 +935,9 @@ function AgentBuilder({ project, step, name, onName, onStep, onClose, onPublish 
   const toggle = (current: readonly string[], value: string) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
   const draft = { specialty, skills, connections, skillFile };
 
-  return <div className="builder-overlay">
+  return <div className="builder-overlay" data-modal-root>
     <button data-action-id="agent-builder.dismiss" className="evidence-scrim" type="button" aria-label="Close agent builder" onClick={onClose} />
-    <section className="agent-builder" role="dialog" aria-modal="true" aria-label="Create a project agent draft">
+    <section ref={dialogRef} className="agent-builder" role="dialog" aria-modal="true" aria-label="Create a project agent draft" tabIndex={-1}>
       <header><div><p>AGENT BUILDER · PROJECT MANIFEST</p><h2>Draft a governed project specialist</h2></div><button data-action-id="agent-builder.close" type="button" aria-label="Close agent builder" onClick={onClose}>×</button></header>
       <nav>{steps.map((item,index) => <button data-action-id={`agent-builder.step.${index+1}`} disabled={index > step} className={index === step ? "active" : index < step ? "done" : ""} type="button" key={item} onClick={() => onStep(index)}><span>{index < step ? "✓" : index+1}</span><b>{item}</b></button>)}</nav>
       <div className="builder-panel">
