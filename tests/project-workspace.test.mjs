@@ -150,7 +150,8 @@ test("project workspace buttons are action-identified and shell actions end in r
   assert.match(workspace, /const projectSessionCache: Record<string, ProjectSessionState>/);
   assert.match(workspace, /projectSessionCache\[projectId\] =/);
   assert.match(workspace, /datasetsFor\(project\)\.length \+ sessionDatasets\.length/);
-  assert.match(workspace, /expertAgents\.length \+ createdAgents\.length/);
+  assert.match(workspace, /const availableAgents = \[\.\.\.agentsFor\(project\), \.\.\.createdAgents\]/);
+  assert.match(workspace, /agents: availableAgents\.length/);
   assert.match(workspace, /assignedExperts\.length/);
 });
 
@@ -204,7 +205,7 @@ test("a valid explicit project is authoritative and returns canonical ancestry",
   assert.equal(result.caseId, "CASE-007-01");
 });
 
-test("unresolvable explicit hierarchy fails closed instead of selecting Apex", async () => {
+test("unresolvable explicit hierarchy fails closed to the Workspace root", async () => {
   const { resolveNavigation } = await loadNavigation();
   const invalidInputs = [
     { view: "company", sector: "unknown-sector" },
@@ -215,13 +216,106 @@ test("unresolvable explicit hierarchy fails closed instead of selecting Apex", a
 
   for (const input of invalidInputs) {
     const result = resolveNavigation(input);
-    assert.equal(result.view, "global");
-    assert.equal(result.scope, "global");
+    assert.equal(result.view, "company");
+    assert.equal(result.scope, "company");
     assert.equal(result.projectId, "");
     assert.equal(result.sectorId, null);
     assert.equal(result.clientId, null);
     assert.equal(result.projectApp, null);
   }
+});
+
+test("Operations World scope is authoritative even when project parameters are stale", async () => {
+  const { resolveNavigation } = await loadNavigation();
+
+  for (const view of ["global", "region"]) {
+    const result = resolveNavigation({
+      view,
+      scope: "company",
+      sector: "mobility-ev",
+      client: "apex-mobility",
+      project: "anode-shield",
+      projectTab: "data",
+      projectApp: "minerals",
+      case: "CASE-1042",
+    });
+
+    assert.equal(result.view, view);
+    assert.equal(result.scope, view);
+    assert.equal(result.projectId, "");
+    assert.equal(result.sectorId, null);
+    assert.equal(result.clientId, null);
+    assert.equal(result.projectTab, "overview");
+    assert.equal(result.projectApp, null);
+  }
+});
+
+test("project-only capabilities require a resolvable project and canonicalize valid ancestry", async () => {
+  const { resolveNavigation } = await loadNavigation();
+  const projectOnlyViews = ["risk", "optimizer", "flow", "demand", "suppliers", "decisions", "case", "action", "agents", "graph"];
+
+  for (const view of projectOnlyViews) {
+    const result = resolveNavigation({ view, scope: "company" });
+    assert.equal(result.view, "company", `${view} must fail closed to Workspace`);
+    assert.equal(result.scope, "company", `${view} must remain in Workspace scope`);
+    assert.equal(result.projectId, "", `${view} must not inherit a project`);
+    assert.equal(result.sectorId, null);
+    assert.equal(result.clientId, null);
+    assert.equal(result.projectTab, "overview");
+    assert.equal(result.projectApp, null);
+  }
+
+  const decision = resolveNavigation({ view: "case", project: "cold-chain-promise" });
+  assert.equal(decision.view, "case");
+  assert.equal(decision.scope, "company");
+  assert.equal(decision.projectId, "cold-chain-promise");
+  assert.equal(decision.sectorId, "life-sciences");
+  assert.equal(decision.clientId, "helixora");
+  assert.equal(decision.caseId, "CASE-002-01");
+
+  const graph = resolveNavigation({ view: "graph", project: "cold-chain-promise" });
+  assert.equal(graph.view, "company");
+  assert.equal(graph.projectTab, "graph");
+  assert.equal(graph.projectId, "cold-chain-promise");
+});
+
+test("a session-created project has zero resources and explicit project memberships", async () => {
+  const model = await loadWorkspaceModel();
+  const client = model.createSessionClient({
+    name: "Northstar Components",
+    sector: "Industrial Automation",
+    classification: "Client confidential",
+    dataResidency: "EU policy intent",
+    clientLead: "Client Lead Fixture",
+    kearneyLead: "Kearney Lead Fixture",
+  });
+  const project = model.createSessionProject({
+    clientId: client.id,
+    name: "Zero State Network",
+    problem: "Frame a new project decision without inheriting operational data.",
+    outcome: "Create a governed zero-state workspace shell.",
+    owner: client.clientLead,
+    currency: "USD",
+    regions: "EU · India",
+  }, [...model.workspaceClients, client]);
+  const collaborators = model.createSessionCollaborators(client);
+  const memberships = model.createSessionProjectMemberships(project, collaborators[0], collaborators[1]);
+
+  assert.equal(client.origin, "Browser-session draft");
+  assert.equal(project.origin, "Browser-session draft");
+  assert.deepEqual(project.counts, { entities: "0", relationships: "0", observations: "0", documents: "0", events: "0", claims: "0", decisions: 0, runs: 0, apps: 0, agents: 0, experts: 2 });
+  assert.deepEqual(project.mountedAppIds, []);
+  assert.deepEqual(project.variablePack, { l2: [], l1: [], l0: [] });
+  assert.deepEqual(project.methodCodes, []);
+  assert.deepEqual(model.datasetsFor(project), []);
+  assert.deepEqual(model.decisionsFor(project), []);
+  assert.deepEqual(model.graphNodesFor(project), []);
+  assert.deepEqual(model.agentsFor(project), []);
+  assert.equal(memberships.length, 2);
+  assert.ok(memberships.every((membership) => membership.projectId === project.id && membership.origin === "Browser-session draft"));
+  assert.equal(model.hasProjectAccess(project.id, collaborators[0].id, "decisions.approve", memberships), true);
+  assert.equal(model.hasProjectAccess(project.id, collaborators[1].id, "decisions.approve", memberships), false);
+  assert.equal(model.hasProjectAccess("anode-shield", collaborators[0].id, "project.view", memberships), false);
 });
 
 test("project cases are canonical, including generated deep links and the Anode exception", async () => {
@@ -248,6 +342,41 @@ test("projectApp requires the company apps tab and a mounted specialist studio",
   assert.equal(resolveNavigation({ ...mounted, projectTab: "overview" }).projectApp, null);
   assert.equal(resolveNavigation({ ...mounted, projectApp: "risk" }).projectApp, null);
   assert.equal(resolveNavigation({ ...mounted, project: "cold-chain-promise" }).projectApp, null);
+});
+
+test("workspace hydration independently rejects an unmounted specialist studio", async () => {
+  const source = await read("../app/ProjectWorkspace.tsx");
+  assert.match(source, /mountedForTarget\.includes\(requestedApp\)/);
+  assert.match(source, /initialSession\.mountedApps\.includes\(initialApp\)/);
+  assert.match(source, /searchParams\.delete\("projectApp"\)/);
+});
+
+test("project authorization evaluates the explicit signed-in collaborator", async () => {
+  const [source, shell, model] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/PlatformShell.tsx"),
+    read("../app/workspace-model.ts"),
+  ]);
+  assert.match(source, /activeCollaboratorId = signedInCollaboratorId/);
+  assert.match(source, /evaluateProjectAccess\(project\.id, activeCollaboratorId, capability, memberships\)/);
+  assert.match(source, /projectViewAccess = evaluateProjectAccess\(project\.id, activeCollaboratorId, "project\.view", memberships\)/);
+  assert.match(source, /if \(deniedAccess\) return <section className="project-access-boundary"/);
+  assert.match(source, /evaluateProjectAccess\(next\.id, activeCollaboratorId, "project\.view", memberships\)/);
+  assert.match(source, /if \(!authorize\("agents\.run"\)\) return/);
+  assert.match(source, /if \(!authorize\("agents\.create"\)\) return/);
+  assert.match(source, /if \(!authorize\("team\.manage"\)\) return/);
+  assert.match(shell, /evaluateProjectAccess\(project\.id, signedInCollaboratorId, "project\.view", memberships\)/);
+  assert.match(shell, /activeRouteAccess = resolvedProject && activeRouteCapability/);
+  assert.match(shell, /accessibleProjects = useMemo\(\(\) => projectCatalog\.filter/);
+  assert.match(shell, /accessibleClients = useMemo\(\(\) => clientCatalog\.filter/);
+  assert.match(shell, /accessibleProjects\.slice\(0, 5\)\.map/);
+  assert.match(shell, /\.\.\.accessibleProjects\.map/);
+  assert.match(shell, /<WorkspaceHome projects=\{accessibleProjects\} clients=\{accessibleClients\}/);
+  assert.match(shell, /patch\.stage === "Execute" \? "decisions\.approve" : "decisions\.draft"/);
+  assert.match(shell, /<ProjectAccessBoundary decision=\{deniedProjectAccess\}/);
+  assert.match(model, /signedInCollaboratorId = "kearney-engagement"/);
+  assert.doesNotMatch(source, /projectRole === "Client owner"/);
+  assert.doesNotMatch(source, /AGENT FOUNDRY · FRONT-END CONCEPT/);
 });
 
 test("all primary clickflow buttons have a terminal handler or submit a handled form", async () => {

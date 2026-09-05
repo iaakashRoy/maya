@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import ApplicationOperatingModel from "./ApplicationOperatingModel";
 import { dataAgents, type AgentStatus, type DataViewId, type ScopeSnapshot, type StatusTone } from "./platform-model";
 
 type DataOperationsProps = {
@@ -46,7 +45,7 @@ function AgentHub({ snapshot, onToast }: Pick<DataOperationsProps, "snapshot" | 
 
   return (
     <div className="data-workspace agent-workspace">
-      <section className="data-intro"><div className="app-code">DA</div><div><p className="kicker">DATA PLATFORM TARGET MODEL · {snapshot.shortLabel.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>Data Agent Hub</h1><p>Explore how policy-controlled agents could observe approved systems, documents, messages, portals, and events, then resolve governed records into a private operational knowledge graph.</p></div><aside><span>OPERATING PRINCIPLE</span><b>Keep source data governed and connect its decision meaning.</b><button type="button" onClick={() => onToast("Synthetic deployment preview opened; no agent or credential was created.")}>Preview agent deployment →</button></aside></section>
+      <section className="data-intro"><div className="app-code">DA</div><div><p className="kicker">{snapshot.shortLabel.toUpperCase()} · PROJECT DATA</p><h1 tabIndex={-1} data-page-heading>Data agents</h1><p>Manage approved source adapters, quality checks, and knowledge-graph inputs for this project.</p></div><aside><span>ACCESS</span><b>Read-only synthetic profiles</b><button type="button" onClick={() => onToast("Synthetic deployment preview opened; no agent or credential was created.")}>Review setup →</button></aside></section>
       <div className="app-metrics"><TraceMetric label="Profiles active" value={`${running}/${dataAgents.length}`} detail="Browser-session adapter profiles" tone="healthy" onTrace={onToast} /><TraceMetric label="Record fixtures" value="180M" detail="Illustrative structured and unstructured scale" onTrace={onToast} /><TraceMetric label="Entity fixtures" value="8.4M" detail="27.6M illustrative relationships" tone="opportunity" onTrace={onToast} /><TraceMetric label="Exception fixtures" value="214" detail="12 modeled for business review" tone="watch" onTrace={onToast} /></div>
 
       <section className="ingestion-pipeline panel" aria-labelledby="pipeline-title"><header className="panel-header"><div><p className="kicker">INGESTION + KNOWLEDGE PIPELINE · SYNTHETIC</p><h2 id="pipeline-title">From source evidence to controlled application context</h2><span>Every modeled stage is policy-scoped and attributable; this concept does not contact source systems.</span></div><span className="live-chip"><Dot tone="healthy" />18 sec fixture latency</span></header><div className="pipeline-stages">{[
@@ -125,7 +124,7 @@ function KnowledgeGraph({ snapshot, onOpenApp, onToast }: Omit<DataOperationsPro
 
   return (
     <div className="data-workspace graph-workspace">
-      <section className="data-intro"><div className="app-code">KG</div><div><p className="kicker">KNOWLEDGE GRAPH CONCEPT · {snapshot.shortLabel.toUpperCase()}</p><h1 tabIndex={-1} data-page-heading>Operational Knowledge Graph</h1><p>Explore an illustrative model of companies, sites, materials, products, orders, movements, cash, events, evidence, decisions, and outcomes while retaining a bounded reference path for each displayed claim.</p></div><aside><span>FIXTURE SCALE</span><b>8.4M entities · 27.6M relationships</b><button type="button" onClick={() => onToast("Synthetic governed subgraph preview prepared; no file or source data was exported.")}>Preview governed subgraph →</button></aside></section>
+      <section className="data-intro"><div className="app-code">KG</div><div><p className="kicker">{snapshot.shortLabel.toUpperCase()} · PROJECT GRAPH</p><h1 tabIndex={-1} data-page-heading>Knowledge graph</h1><p>Inspect entities, relationships, evidence lineage, and decision impact.</p></div><aside><span>FIXTURE SCALE</span><b>8.4M entities · 27.6M relationships</b><button type="button" onClick={() => onToast("Synthetic governed subgraph preview prepared; no file or source data was exported.")}>Review subgraph →</button></aside></section>
       <div className="app-metrics"><TraceMetric label="Entity fixtures" value="8.4M" detail="98.2% illustrative identity resolution" onTrace={onToast} /><TraceMetric label="Relationship fixtures" value="27.6M" detail="96.8% illustrative reference coverage" tone="opportunity" onTrace={onToast} /><TraceMetric label="Shown reference coverage" value="100%" detail="All facts in the displayed subgraph have fixture references" tone="healthy" onTrace={onToast} /><TraceMetric label="Mapping exceptions" value="214" detail="12 synthetic business-critical examples" tone="watch" onTrace={onToast} /></div>
       <section className="panel graph-toolbar"><div className="segmented-control wide">{["Business impact","Supply network","Money flow","Evidence lineage"].map((item) => <button className={layer === item ? "active" : ""} type="button" key={item} onClick={() => setLayer(item)}>{item}</button>)}</div><label>Entity type<select value={entityType} onChange={(event) => setEntityType(event.target.value)}><option>All entities</option><option>Supplier</option><option>Material</option><option>Product</option><option>Order</option></select></label><label>Confidence<select value={confidenceFilter} onChange={(event) => setConfidenceFilter(event.target.value)}><option>All confidence</option><option>Above 90%</option><option>Review required</option></select></label><button type="button" onClick={resetGraph}>Reset graph ⛶</button></section>
       <section className="panel knowledge-canvas-panel">
@@ -157,7 +156,6 @@ export default function DataOperations({ view, snapshot, onOpenApp, onToast }: D
   return (
     <div className="data-operation-stack">
       {view === "agents" ? <AgentHub snapshot={snapshot} onToast={onToast} /> : <KnowledgeGraph snapshot={snapshot} onOpenApp={onOpenApp} onToast={onToast} />}
-      <ApplicationOperatingModel id={view} onTrace={onToast} />
     </div>
   );
 }

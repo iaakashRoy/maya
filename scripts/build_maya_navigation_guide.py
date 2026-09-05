@@ -292,7 +292,7 @@ def add_footer(section):
     paragraph = footer.paragraphs[0]
     paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     paragraph.paragraph_format.space_before = Pt(3)
-    set_font(paragraph.add_run("Maya concept experience  |  Synthetic data  |  Page "), size=8, color=MUTED)
+    set_font(paragraph.add_run("Maya Workspace  |  Synthetic data  |  Page "), size=8, color=MUTED)
     add_page_number(paragraph)
 
 
@@ -313,30 +313,30 @@ def build_document():
     add_footer(section)
 
     core_properties = doc.core_properties
-    core_properties.title = "Maya Concept Experience Navigation Guide"
-    core_properties.subject = "How to navigate the Maya supply chain decision platform concept"
+    core_properties.title = "Maya Workspace Navigation Guide"
+    core_properties.subject = "How to navigate Maya Workspace and its project-scoped capabilities"
     core_properties.author = "Kearney"
     core_properties.keywords = "Maya, supply chain, navigation, projects, operations research, evidence, agents"
 
-    add_label(doc, "Concept experience user guide")
+    add_label(doc, "Workspace user guide")
     title = doc.add_paragraph(style="Title")
-    title.add_run("Maya Concept Experience Navigation Guide")
+    title.add_run("Maya Workspace Navigation Guide")
     remove_paragraph_border(title)
     subtitle = doc.add_paragraph(style="Subtitle")
-    subtitle.add_run("Workspace  Applications  Evidence  Agents  Network Operations")
+    subtitle.add_run("Workspace  Projects  Operations World  Evidence")
     meta = doc.add_paragraph()
     meta.paragraph_format.space_before = Pt(18)
     meta.paragraph_format.space_after = Pt(16)
-    set_font(meta.add_run("Version 3  |  4 September 2026  |  Front end concept"), name="Consolas", size=9, bold=True, color=MUTED)
+    set_font(meta.add_run("Version 4  |  5 September 2026  |  Front-end concept"), name="Consolas", size=9, bold=True, color=MUTED)
     opening = doc.add_paragraph()
     opening.paragraph_format.space_after = Pt(13)
-    set_font(opening.add_run("This guide shows how to move from a global signal to a client project, assemble specialist applications, inspect evidence, steer an expert agent trace, compare an operations research response, and stop at a human decision gate. It also marks the boundary between interactive concept behavior and future production services."), size=12)
+    set_font(opening.add_run("This guide explains the complete Maya Workspace journey: onboard a client, create a collaborative project, bring in governed data and IoT signals, mount specialist apps, inspect evidence, work with expert agents, compare an operations-research response, and stop at a human decision gate."), size=12)
 
     add_heading(doc, "Use this guide", level=2)
     add_bullets(doc, [
         "For a five minute walkthrough, follow the Fastest demonstration route on the next page.",
         "For project delivery, start with Workspace hierarchy and Project tabs.",
-        "For trust and governance, read Evidence receipts, Agent society, and Concept boundaries before demonstrating an approval or optimization flow.",
+        "For trust and governance, read Evidence receipts, Agents, and Concept boundaries before demonstrating an approval or optimization flow.",
     ], numbered=True)
     p = doc.add_paragraph()
     run = p.add_run("Important boundary  ")
@@ -347,37 +347,37 @@ def build_document():
     add_label(doc, "Orientation")
     add_heading(doc, "Platform map", intro="Maya organizes work around a client project. The platform, apps, agents, and evidence all inherit that project context.")
     add_code_block(doc, [
-        "Global intelligence",
-        "  Sector tower",
-        "    Client tenant",
-        "      Project workspace",
-        "        Project data and knowledge graph",
-        "        Mounted specialist applications",
-        "        Decision tree and case workspace",
-        "        Expert agent society and human team",
-        "        Evidence receipts and governance",
-        "          Session-only outcome or blocked gate",
+        "Workspace",
+        "  Operations World (Global or Regional)",
+        "  Sector",
+        "    Client",
+        "      Project",
+        "        Overview and collaborators",
+        "        Decisions and review",
+        "        Apps, data and IoT requests",
+        "        Knowledge graph and agents",
+        "        Evidence and controls",
     ])
     add_heading(doc, "Fastest demonstration route", level=2)
     add_table(doc, ["Step", "Click", "What the audience should notice", "Terminal result"], [
-        ["1", "Expert workspace", "The left tree is Sector, Client, Project rather than a generic company dashboard.", "Anode Shield project home"],
+        ["1", "Workspace", "The left tree is Sector, Client, Project; the application opens here by default.", "Client and project workspace"],
         ["2", "Any project KPI", "Every headline value exposes source type, formula, inputs, variable ID, confidence, trace, reviewer, and access scope.", "Evidence drawer"],
-        ["3", "Mounted apps", "Ten apps have different visual languages, interaction models, outputs, methods, and variables.", "App mount graph"],
+        ["3", "Apps", "Ten apps have different visual languages, interaction models, outputs, methods, and variables.", "Project app graph"],
         ["4", "MineralAtlas", "Country, reserve, refinery, route, and product context use an atlas workflow rather than a generic dashboard.", "Mineral sourcing scenario"],
-        ["5", "Agent society", "A code-style session shows a bounded agent trace, skill and tool profile, steering controls, and a human gate.", "Session run receipt"],
-        ["6", "Project data", "Upload is project-scoped and demonstrates staged metadata, mapping, review, and receipt states.", "Session dataset receipt"],
+        ["5", "Agents", "A code-style session shows a bounded agent trace, skill and tool profile, steering controls, and a human gate.", "Session run receipt"],
+        ["6", "Data", "Uploads and IoT source requests stay inside the project boundary.", "Dataset or connector receipt"],
         ["7", "Decisions", "High-level choices decompose into lower-level decisions, variables, methods, and evidence.", "Expert review draft"],
-        ["8", "Global platform then Network map", "The radar supports pan, zoom, region presets, time frames, layers, hover details, pinned entities, and app handoff.", "Retained network context"],
+        ["8", "Operations World", "Toggle Global or Regional, choose a region, inspect the map, and start a dependency, route, or value intake from retained context.", "Project intake draft"],
     ], [0.42, 1.35, 3.25, 1.45], body_size=8.0)
 
     page_break(doc)
     add_label(doc, "Client delivery")
-    add_heading(doc, "Workspace hierarchy", intro="The Expert workspace replaces the former Company platform. A specialist selects a sector, a client, and a project. Every project owns its data, apps, agents, decisions, experts, evidence, and governance context.")
+    add_heading(doc, "Workspace hierarchy", intro="Workspace is the application root. A specialist selects a sector, client, and project. Every project owns its data, apps, agents, decisions, collaborators, evidence, and controls.")
     add_table(doc, ["Level", "Purpose", "Isolation rule", "Primary actions"], [
         ["Sector", "Groups related clients and reusable domain patterns.", "Client records remain separated even when sector methods are shared.", "Filter portfolio, compare common risks, reuse approved templates"],
         ["Client", "Represents the governed tenant and commercial relationship.", "Client data, identities, residency, and policies must be enforced server-side in production.", "Open client projects, manage access, inspect client-wide evidence"],
         ["Project", "Contains the decision memory for one engagement or operating problem.", "Uploads, mounted apps, traces, decisions, and receipts carry the project key.", "Work the problem, collaborate, review evidence, prepare decisions"],
-        ["Decision case", "Packages a specific choice and its lifecycle.", "The case retains variables, methods, scenarios, owners, approvals, evidence, and outcome measures.", "Validate, simulate, approve, execute, measure"],
+        ["Decision", "Packages a specific choice and its lifecycle.", "The decision retains variables, methods, scenarios, owners, approvals, evidence, and outcome measures.", "Validate, simulate, approve, execute, measure"],
         ["Evidence receipt", "Explains a displayed claim or action.", "A receipt fails closed when its reference is unknown or belongs to another project.", "Inspect source, formula, inputs, version, confidence, access"],
     ], [0.72, 1.68, 2.65, 1.5], body_size=8.2)
     add_heading(doc, "How to switch projects", level=2)
@@ -386,8 +386,15 @@ def build_document():
         "Use the Sector, Client, and Project selectors above the workspace on smaller screens.",
         "Use Search anything or Command K to jump directly to a project by sector, client, project name, or project code.",
         "The URL records the sector, client, project, active tab, and app studio. Browser Back and Forward restore the same route.",
-        "Each project preserves its own browser-session app mounts, uploads, agent chat, trace state, steering instructions, draft agents, and team assignments while the page remains open.",
+        "Each project preserves its own browser-session app mounts, uploads, connector requests, agent chat, trace state, steering instructions, draft agents, and team assignments while the page remains open.",
     ])
+    add_heading(doc, "Onboard a client and project", level=2)
+    add_bullets(doc, [
+        "Choose New client to register a session-only client under a sector, with a named client lead and engagement context.",
+        "Choose New project to select the client, define the problem and outcome, and assign one client collaborator plus one Kearney specialist.",
+        "A new project starts empty: zero datasets, apps, agents, decisions, graph nodes, and runs until the team adds them explicitly.",
+        "Creation ends at a project overview and a browser-session receipt; no tenant, identity, cloud resource, or production record is provisioned.",
+    ], numbered=True)
 
     page_break(doc)
     add_label(doc, "Synthetic portfolio")
@@ -410,31 +417,31 @@ def build_document():
 
     page_break(doc)
     add_label(doc, "Project workspace")
-    add_heading(doc, "Project tabs", intro="The tabs separate the jobs that specialists perform while keeping one project memory underneath them.")
+    add_heading(doc, "Project tabs", intro="The tabs separate specialist tasks while keeping one project context underneath them. Tabs wrap to the available width; there is no horizontal tab scroller.")
     add_table(doc, ["Tab", "Use it for", "Important interactions", "End state"], [
-        ["Project home", "Read outcome, project KPIs, mounted app summary, decision preview, and knowledge footprint.", "Open KPI evidence, governed case, app, agent society, or project data.", "Evidence drawer or destination workspace"],
+        ["Overview", "Read outcome, project KPIs, app summary, decision preview, collaborators, and knowledge footprint.", "Open KPI evidence, decision, app, agent, or project data.", "Evidence drawer or destination workspace"],
         ["Decisions", "Decompose the project outcome into D0 through D3 decisions.", "Select a decision, open its evidence, inspect L2 L1 L0 variables, open method references, create review draft.", "Expert review draft receipt"],
-        ["Mounted apps", "See the dependency graph and project-specific app contracts.", "Mount or unmount eligible apps, inspect mount manifest, open an app studio.", "Project app studio"],
-        ["Project data", "Stage project-owned data and inspect dataset contracts.", "Choose local file metadata or sample, advance stages, open dataset evidence and adapter previews.", "Session dataset receipt"],
-        ["Knowledge graph", "Inspect project entities and trace an agent path across evidence, variables, calculations, and decisions.", "Select nodes, open receipts, play trace, add visual steering constraints.", "Trace context updated"],
-        ["Agent society", "Work in a minimal code-style chat with specialist profiles.", "Select agent, enter prompt, advance or cancel trace, steer, inspect experience, create draft agent.", "Human gate or draft manifest receipt"],
-        ["Expert team", "Put human specialists in the loop.", "Inspect experience, specialties, active work, decision rights, and assign or remove experts.", "Session assignment receipt"],
-        ["Governance", "Review current concept controls and production gaps.", "Inspect evidence, control status, and boundary statements.", "Governance receipt"],
+        ["Apps", "See the dependency graph and project-specific app contracts.", "Mount or unmount eligible apps, inspect the manifest, open an app studio.", "Project app studio"],
+        ["Data", "Stage project-owned data and request governed IoT or enterprise sources.", "Advance file stages, inspect contracts, request a source, test a fixed sample, submit for policy review.", "Dataset or connector receipt"],
+        ["Graph", "Inspect project entities and trace an agent path across evidence, variables, calculations, and decisions.", "Select nodes, open receipts, play trace, add visual steering constraints.", "Trace context updated"],
+        ["Agents", "Work in a minimal code-style chat with specialist profiles.", "Create or select an agent, enter a prompt, advance or cancel trace, steer, and inspect experience.", "Human gate or draft manifest receipt"],
+        ["Team", "Put client and Kearney collaborators in the loop.", "Inspect affiliation, role, capability grants, experience, decision rights, and assignments.", "Membership or assignment receipt"],
+        ["Controls", "Review concept controls and production gaps.", "Inspect evidence, access, control status, and boundary statements.", "Control receipt"],
     ], [1.0, 2.2, 2.65, 1.0], body_size=7.8)
     add_heading(doc, "What project persistence means", level=2)
-    p = doc.add_paragraph("The concept preserves per-project state in browser memory only. A production implementation needs authenticated tenant context, project authorization, encrypted object storage, a project registry, lineage storage, versioned event history, retention policies, and audit controls. Do not interpret session restoration as backend persistence.")
+    p = doc.add_paragraph("The concept preserves per-project state in browser memory only. The signed-in Maya Rao fixture is one Kearney portfolio collaborator with an explicit membership in each seeded project. Project entry and governed session mutations evaluate that identity's declared capability grants; the interface never borrows a client owner's rights. A production implementation still needs authenticated tenant context, server-side project authorization, encrypted object storage, a project registry, lineage storage, versioned event history, retention policies, and audit controls. Do not interpret session restoration as backend persistence.")
 
     page_break(doc)
     add_label(doc, "Interaction completeness")
     add_heading(doc, "Clickable surfaces and terminal states", intro="Use this section to explain what a control does and how the user knows that it completed.")
     add_table(doc, ["Control family", "Expected behavior", "Visible completion", "No silent claim"], [
-        ["Navigation and search", "Open the selected platform, project, tab, app, case, graph, or agent surface and update the URL.", "Destination heading receives focus and Back restores the route.", "No placeholder page"],
+        ["Navigation and search", "Open Workspace, Operations World, a project, tab, app, decision, graph, or agent surface and update the URL.", "Destination heading receives focus and Back restores the route.", "No placeholder page"],
         ["Filters and selectors", "Recalculate or filter the deterministic fixture shown on screen.", "Selection, counts, chart, map, list, or inspector changes.", "No external refresh"],
         ["Metric and evidence controls", "Open a project evidence drawer or session action receipt.", "Receipt names the value, basis, context, and boundary.", "No unsupported source access"],
         ["Create and update controls", "Change browser-session state only when the user has enough context.", "Saved or Completed receipt, updated local state, and receipt ledger entry.", "No backend persistence"],
         ["Blocked controls", "Stay disabled or return a specific reason when prerequisites are missing.", "Blocked receipt or visible gate explanation.", "No pretend success"],
         ["Future connectors", "Open a preview or contract rather than simulate a hidden integration.", "Future adapter explanation and missing production requirements.", "No credential or service created"],
-        ["Approval and release", "Apply the case lifecycle gate and named human authority.", "Session-only stage change or an exact blocker.", "No ERP TMS WMS or payment write-back"],
+        ["Approval and release", "Apply the decision lifecycle gate and named human authority.", "Session-only stage change or an exact blocker.", "No ERP TMS WMS or payment write-back"],
     ], [1.15, 2.35, 2.15, 1.25], body_size=8.0)
     add_heading(doc, "Session receipt ledger", level=2)
     add_bullets(doc, [
@@ -444,10 +451,10 @@ def build_document():
     ])
 
     page_break(doc)
-    add_label(doc, "Decision operations")
-    add_heading(doc, "From signal to governed decision", intro="Decision operations sit inside the project workspace. They connect app evidence to a case, human authority, execution package, and measurable outcome.")
+    add_label(doc, "Project decisions")
+    add_heading(doc, "From signal to governed decision", intro="Decisions and review live inside a project. They connect app evidence to a governed choice, human authority, execution package, and measurable outcome.")
     add_table(doc, ["Stage", "Question", "Required content", "Exit condition in the concept"], [
-        ["Detect", "What changed and why might it matter", "Signal, affected entity, horizon, confidence, initial value exposure", "Named case exists"],
+        ["Detect", "What changed and why might it matter", "Signal, affected entity, horizon, confidence, initial value exposure", "Named decision exists"],
         ["Validate", "Is the signal credible and relevant", "Evidence records, source references, data quality, graph path, project variable contract", "Evidence threshold reached"],
         ["Simulate", "What responses are feasible under uncertainty", "Scenarios, constraints, assumptions, method stack, service, cost, cash, risk, carbon", "Candidate inside hard envelope"],
         ["Approve", "Who can accept the tradeoff", "Recommendation, evidence, finance review, decision rights, fallback", "Named human approval"],
@@ -484,10 +491,10 @@ def build_document():
     ], [1.18, 2.8, 2.3, 1.1], body_size=7.8)
 
     page_break(doc)
-    add_label(doc, "App operating model")
-    add_heading(doc, "How to inspect an app", intro="The first screen answers the specialist question. The operating model beneath it explains how that app should function as a governed product.")
+    add_label(doc, "Using a specialist app")
+    add_heading(doc, "How to inspect an app", intro="Each app opens on the specialist's task, with concise controls and inspectable methods, data, measures, and handoffs rather than a presentation layer.")
     add_table(doc, ["Section", "What to inspect", "Trace action"], [
-        ["Operating model", "Decision question, primary users, cadence, horizon, decision rights, workflow gates, accountable roles, and exit criteria", "Use the app-specific controls and case links"],
+        ["Task surface", "Decision scope, horizon, workflow state, accountable roles, and current constraint", "Use the app-specific controls and decision links"],
         ["Methods", "Purpose, model family, formulation, and validation contract for each app method", "Open method reference receipt"],
         ["Data and controls", "Data grain, expected source, target freshness, fitness checks, policy rule, owner, and evidence", "Open data contract or control receipt"],
         ["Measure and hand off", "KPI definition, target, accountable owner, downstream destination, trigger, artifact, and limitation", "Open KPI or handoff receipt"],
@@ -496,16 +503,16 @@ def build_document():
     add_heading(doc, "Mounted app dependency graph", level=2)
     p = doc.add_paragraph("The app graph explains how applications cooperate without collapsing into one interface. DemandSense can inform Network Optimizer. SupplierGraph and MineralAtlas can challenge sourcing feasibility. ManufacturingTwin and WorkforceStudio can constrain capacity. LogisticsRadar can validate route execution. QualityGenealogy can block release. RiskRadar can propagate external and operational change. FlowLens can translate a candidate into cash and margin. Every edge should identify the project, source app, target app, shared entity keys, variable IDs, evidence version, and handoff status in production.")
     add_bullets(doc, [
-        "Open an app from Mounted apps to keep the project context and selected case.",
+        "Open an app from Apps to keep the project context and selected decision.",
         "Use Mount or Unmount to change the session manifest. Core project views remain available even when an app is unmounted.",
         "Open the mount manifest receipt to see the fixture count and project boundary.",
     ])
 
     page_break(doc)
-    add_label(doc, "Agent society")
-    add_heading(doc, "Work with specialist agents", intro="The Agent society uses a minimal code-style workspace. It exposes what the agent is doing, which project entities it touches, which evidence it cites, and where a human must decide.")
+    add_label(doc, "Project agents")
+    add_heading(doc, "Work with specialist agents", intro="Agents use a minimal code-style workspace. It exposes what the agent is doing, which project entities it touches, which evidence it cites, and where a human must decide.")
     add_table(doc, ["Area", "What it shows", "How to use it", "Boundary"], [
-        ["Agent roster", "Name, role, level, state, and specialty", "Select a domain profile such as OR scientist, procurement strategist, mineral scout, or evidence auditor", "Profiles are synthetic"],
+        ["Agent roster", "Name, role, level, state, and specialty", "Create the first agent in a new project or select an existing project specialist", "Profiles are synthetic"],
         ["Conversation", "User prompt, agent response, and system status", "Ask a project-specific question. The deterministic response binds to the current project and selected specialist", "No model API is called"],
         ["Tool trace", "Step, agent, activity, detail, and graph node", "Start, advance, replay, cancel, and inspect the visible execution trace", "This is not hidden chain of thought"],
         ["Visual steering", "Instructions such as pin evidence, require human review, preserve service floor, or exclude an entity", "Click a steering control and confirm the instruction appears in the trace context", "No policy or model weights change"],
@@ -539,10 +546,10 @@ def build_document():
     ], [1.45, 2.25, 3.25], body_size=7.9)
     add_heading(doc, "Where receipts appear", level=2)
     add_bullets(doc, [
-        "Project home KPIs and app studio metrics open the full evidence drawer.",
-        "Decision case evidence, scenarios, outcomes, and app operating-model facts create a browser-session action receipt.",
+        "Overview KPIs and app studio metrics open the full evidence drawer.",
+        "Decision evidence, scenarios, outcomes, and app method or control facts create a browser-session action receipt.",
         "Knowledge graph nodes and trace steps point back to project receipts.",
-        "Network selections retain the selected entity and frame when opening a compatible app.",
+        "Operations World dependency, route, and value intakes retain the selected entity, frame, scenario, and evidence key when starting a project.",
         "Unknown evidence IDs show Not found with zero confidence. A receipt from a different project is not reused.",
     ])
 
@@ -557,10 +564,10 @@ def build_document():
         ["Review demo", "Inspect validation and project boundary", "Fixture quality checks and approval gate", "Data steward workflow, access policy, quality service"],
         ["Session receipt", "Complete the demonstration", "Browser-session dataset row and action receipt", "Persistent lineage, catalog registration, audit event"],
     ], [0.88, 1.7, 2.65, 1.72], body_size=8.0)
-    add_heading(doc, "Future edge data flow", level=2)
-    p = doc.add_paragraph("The product direction supports simple operational updates from ports, cargo handlers, warehouses, factories, suppliers, vehicles, robots, and field teams. QR scans, signed custody events, sensor telemetry, robot events, carrier milestones, and manual exceptions should enter through authenticated project or client contracts. Production ingestion must validate identity, device trust, timestamp, location, signature, unit, schema, consent, and access before updating the operational graph.")
+    add_heading(doc, "Request an IoT or enterprise source", level=2)
+    p = doc.add_paragraph("The Data tab includes explicit request templates for operational updates from ports, cargo handlers, warehouses, factories, suppliers, vehicles, robots, and field teams. QR scans, signed custody events, sensor telemetry, robot events, carrier milestones, CDC, and manual exceptions remain request drafts. Policy-review status and fixed-sample replay status are tracked independently, so completing one does not erase the other. Production ingestion must validate identity, device trust, timestamp, location, signature, unit, schema, consent, and access before updating the operational graph.")
     add_table(doc, ["Contributor", "Example event", "Secure contract", "Project use"], [
-        ["Port operator", "Berth, gate, customs, seal, or dwell update", "Operator identity, port role, signed timestamp, shipment key", "LogisticsRadar and case evidence"],
+        ["Port operator", "Berth, gate, customs, seal, or dwell update", "Operator identity, port role, signed timestamp, shipment key", "LogisticsRadar and decision evidence"],
         ["Cargo handler", "QR custody scan or damage exception", "GS1 identifier, device trust, chain-of-custody signature", "QualityGenealogy and LogisticsRadar"],
         ["Supplier", "Capacity, certificate, lead time, or shipment promise", "Supplier tenant, approved portal, evidence attachment, version", "SupplierGraph and RiskRadar"],
         ["Factory or robot", "Production count, state, downtime, quality or consumption event", "Machine identity, event schema, clock quality, plant boundary", "ManufacturingTwin and FlowLens"],
@@ -569,16 +576,18 @@ def build_document():
 
     page_break(doc)
     add_label(doc, "Network operations")
-    add_heading(doc, "Use the world network radar", intro="The world map is a synthetic operational radar. It combines geography, routes, assets, cargo, transfers, time, scenarios, and app handoffs in one scrollable and zoomable surface.")
+    add_heading(doc, "Use Operations World", intro="Operations World is a synthetic operational radar with Global and Regional modes. Its pannable, zoomable map combines geography, routes, assets, cargo, transfers, time, scenarios, and project intake. In Regional mode, the region selector changes the map, KPIs, signals, cash, suppliers, movements, and evidence scope together.")
     add_table(doc, ["Control", "What changes", "What to inspect"], [
-        ["Region presets", "Centers the world, Americas, Europe and Africa, Middle East and India, or APAC", "Ports, plants, airports, roads, rail nodes, and relevant corridors"],
+        ["Global or Regional", "Switches between the full network and a selected regional operating picture", "Global totals or the selected APAC, Europe, Americas, or Middle East and Africa slice"],
         ["Pan and zoom", "Changes the viewport while preserving filters", "Dense corridors and local handoffs at higher zoom"],
         ["Time frame", "Moves from historical fixture frames through Now and future scenario frames", "Position, arrival state, ETA, delay, cost, volume, and exposure changes"],
         ["Scenario", "Changes trajectory assumptions such as baseline or disruption", "Route geometry, predicted delay, committed quantity, value exposure, and service risk"],
         ["Layers", "Shows or hides ocean, air, road, rail, transfer, asset, cargo, and location records", "Use the smallest layer set that answers the question"],
         ["Hover and keyboard focus", "Shows compact identity, quantity, value, price, status, owner, origin, destination, or personnel details", "No click is required for a quick check"],
-        ["Pin selection", "Opens the detailed inspector and retains the canonical entity key", "Evidence, current state, related facts, and compatible app handoff"],
-        ["Open in app", "Moves the retained selection into RiskRadar, Network Optimizer, FlowLens, or SupplierGraph", "The project and map context remain visible in the app command bar"],
+        ["Pin selection", "Opens the detailed inspector and retains the canonical entity key", "Evidence, current state, related facts, and project intake context"],
+        ["Dependency intake", "Carries the selected dependency, entity ID, frame, scenario, and evidence key into New project", "Creates an empty governed project shell; no case or dataset is fabricated"],
+        ["Route intake", "Carries the selected corridor or movement and route-planning context into New project", "Creates a traceable route-intake record"],
+        ["Value intake", "Carries the selected entity and value-protection context into New project", "Creates a traceable value-intake record"],
     ], [1.35, 2.45, 3.05], body_size=8.0)
     add_heading(doc, "Map truth boundary", level=2)
     p = doc.add_paragraph("The map uses a local Natural Earth basemap and deterministic route, asset, cargo, transfer, and location fixtures. It does not call Google 3D Tiles, Cesium ion, OpenSky, ADS-B Exchange, AIS, CCTV, traffic, satellite, seismic, or weather services. Production use requires provider terms, attribution, licensing, privacy, retention, and security review in addition to connector engineering.")
@@ -587,7 +596,7 @@ def build_document():
     add_label(doc, "Operations research")
     add_heading(doc, "Use the optimization workbench", intro="Network Optimizer separates problem framing from calculation, comparison, validation, and release. The current experience runs a deterministic response calculator; it does not execute a mathematical solver or claim optimality.")
     add_table(doc, ["Workbench area", "Purpose", "Evidence to retain"], [
-        ["Decision contract", "Define case, horizon, selected entity, decision pattern, objective hierarchy, and assumptions", "Project, case, user, timestamp, variable and constraint version"],
+        ["Decision contract", "Define decision, horizon, selected entity, decision pattern, objective hierarchy, and assumptions", "Project, decision, user, timestamp, variable and constraint version"],
         ["Variable registry", "Bind canonical L0 variables to units, grain, domain, source contract, and decision role", "Variable IDs, bounds, type, unit, missingness, transformations"],
         ["Constraint library", "Classify hard, binding, advisory, and violated constraints", "Expression, tolerance, origin, owner, relaxation authority"],
         ["Method library", "Choose a primary and fallback stack from the 30 handbook methods", "Selection rationale, applicability, validation and fallback"],
@@ -613,17 +622,17 @@ def build_document():
     add_table(doc, ["Step", "Action", "Narration", "Visible proof"], [
         ["1", "Select Mobility and EV, Apex Mobility, Anode Shield", "The project owns the decision memory and access context.", "P-001 header and project metrics"],
         ["2", "Open Value at risk", "The value is a simulated P90 contribution exposure, not a finance-system fact.", "EV-001-01 receipt"],
-        ["3", "Open Knowledge graph", "The trace connects project evidence to supplier, material, route, plant, product, and decision nodes.", "Selectable nodes and trace steps"],
-        ["4", "Open Agent society and select the OR specialist", "The visible trace is a product execution log, not private reasoning.", "Agent profile and prompt-bound trace"],
+        ["3", "Open Graph", "The trace connects project evidence to supplier, material, route, plant, product, and decision nodes.", "Selectable nodes and trace steps"],
+        ["4", "Open Agents and select the OR specialist", "The visible trace is a product execution log, not private reasoning.", "Agent profile and prompt-bound trace"],
         ["5", "Steer with Preserve service floor and Require human review", "The instruction becomes part of the current trace context.", "Steering chips and trace state"],
-        ["6", "Open Network Optimizer", "The app carries the same project and case context into formulation and scenario comparison.", "Project binding strip and command bar"],
+        ["6", "Open Network Optimizer", "The app carries the same project and selected decision context into formulation and scenario comparison.", "Project binding strip and command bar"],
         ["7", "Inspect method, data, KPI, and change receipts", "Every app-level count and target says whether it is a catalog item, target contract, or fixture result.", "Session receipt ledger"],
         ["8", "Open Decisions and create expert review draft", "The package binds D0 to D3 choices, L2 L1 L0 variables, methods, and evidence.", "Review draft receipt"],
-        ["9", "Open Case Workspace and scenario receipts", "The case compares alternatives without calling a solver or labeling a result optimal.", "Scenario receipt and claim boundary"],
-        ["10", "Open Action Room", "The release either changes the browser-session case stage or explains the failed prerequisite.", "Saved or Blocked receipt"],
+        ["9", "Open Decision and scenario receipts", "The decision compares alternatives without calling a solver or labeling a result optimal.", "Scenario receipt and claim boundary"],
+        ["10", "Open Review", "The release either changes the browser-session decision stage or explains the failed prerequisite.", "Saved or Blocked receipt"],
     ], [0.45, 2.0, 3.1, 1.3], body_size=7.8)
     add_heading(doc, "A second storyline", level=2)
-    p = doc.add_paragraph("For ports and cargo, select P-008 Global Berth to Door. Open LogisticsRadar, choose route and transfer layers, focus a port region, pin a cargo or handoff, inspect quantity and value, then open the retained context in Network Optimizer or RiskRadar. Return to Project data to demonstrate how a future QR custody event or port update would be staged under the client and project boundary.")
+    p = doc.add_paragraph("For ports and cargo, select P-008 Global Berth to Door. Open LogisticsRadar, choose route and transfer layers, focus a port region, pin a cargo or handoff, and inspect quantity and value. Return to Data to request a future QR custody feed or port update under the client and project boundary.")
 
     page_break(doc)
     add_label(doc, "Deep links and controls")
@@ -638,7 +647,7 @@ def build_document():
     add_table(doc, ["Control", "Behavior"], [
         ["Command K or Control K", "Open global search"],
         ["Escape", "Close search, notifications, profile menu, or mobile navigation"],
-        ["Browser Back and Forward", "Restore URL-addressed views, scope, case, project, tab, and app studio"],
+        ["Browser Back and Forward", "Restore URL-addressed views, scope, decision, project, tab, and app studio"],
         ["Tab and Shift Tab", "Move through buttons, inputs, selectors, map entities, and dialog controls"],
         ["Enter or Space", "Activate the focused button or map entity"],
         ["Arrow keys on map", "Pan the focused radar viewport"],
@@ -707,7 +716,7 @@ def build_document():
         set_font(paragraph.add_run(f"  {url}"), name="Consolas", size=7.4, color=MUTED)
 
     add_heading(doc, "Final demonstration reminder", level=2)
-    p = doc.add_paragraph("Use the concept to demonstrate the intended operating model: one project context, distinct specialist apps, visible agent activity, human expertise, canonical variables, explicit OR methods, and traceable claims. When a screen shows a fixture, target contract, missing connector, or blocked gate, preserve that label. It is part of the trust model.")
+    p = doc.add_paragraph("Use the concept as one coherent workspace: Operations World for global or regional awareness, then Sector, Client, and Project for delivery. Keep apps, data, IoT requests, agents, decisions, collaborators, variables, OR methods, and evidence inside the selected project. When a screen shows a fixture, target contract, missing connector, or blocked gate, preserve that label; it is part of the trust model.")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUTPUT)

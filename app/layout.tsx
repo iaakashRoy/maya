@@ -16,22 +16,22 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "Explore a connected supply-chain decision platform spanning global intelligence, sector-client-project workspaces, ten distinct specialist apps, expert agents, operations research, and evidence-traceable decisions.";
+  "Maya Workspace connects supply-network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host =
     requestHeaders.get("x-forwarded-host") ??
     requestHeaders.get("host") ??
-    "resilience-os-clickflow.kearney-4763.chatgpt.site";
+    "maya-supply-chain-resilience-os.kearney-4763.chatgpt.site";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
-  const socialImage = `${protocol}://${host}/og.png`;
+  const socialImage = `${protocol}://${host}/og-workspace.png`;
 
   return {
-    title: "Resilience OS — Connected supply-network platform",
+    title: "Maya Workspace",
     description,
-    applicationName: "Resilience OS",
-    category: "Connected supply-network operations",
+    applicationName: "Maya Workspace",
+    category: "Supply-network workspace",
     robots: { index: false, follow: false },
     icons: {
       icon: "/favicon.svg",
@@ -39,20 +39,20 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       type: "website",
-      title: "Resilience OS — Signal to measured value",
+      title: "Maya Workspace",
       description,
       images: [
         {
           url: socialImage,
-          width: 1680,
-          height: 945,
-          alt: "Resilience OS supply-chain decision path from sensing to measured business outcomes",
+          width: 1731,
+          height: 909,
+          alt: "Maya Workspace for supply-network operations and client projects",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Resilience OS — Signal to measured value",
+      title: "Maya Workspace",
       description,
       images: [socialImage],
     },

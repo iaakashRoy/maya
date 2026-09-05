@@ -602,6 +602,7 @@ export function getAssetFrame(asset: TransportAsset, corridor: CorridorFrame): T
 
 export type NetworkFilters = {
   scope: ScopeId;
+  region?: NetworkRegion;
   frame: NetworkFrameId;
   scenario: NetworkScenarioId;
   category: string;
@@ -615,7 +616,7 @@ export function getNetworkView(filters: NetworkFilters) {
       const from = locationById.get(corridor.from);
       const to = locationById.get(corridor.to);
       const scopeMatch = filters.scope === "global" || filters.scope === "region"
-        ? filters.scope === "global" || from?.region === "APAC" || to?.region === "APAC"
+        ? filters.scope === "global" || from?.region === (filters.region ?? "APAC") || to?.region === (filters.region ?? "APAC")
         : corridor.companyRelevant;
       const categoryMatch = filters.category === "All categories" || filters.category === corridor.category;
       const layerMatch = filters.layers.has(corridor.mode);

@@ -2,6 +2,119 @@ export type WorkspaceTabId = "overview" | "decisions" | "apps" | "data" | "graph
 export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
 export type ProjectAppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
+export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
+export type CollaboratorAffiliation = "Client" | "Kearney";
+export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
+
+export type WorkspaceClient = {
+  id: string;
+  sectorId: string;
+  sector: string;
+  name: string;
+  classification: string;
+  dataResidency: string;
+  clientLead: string;
+  kearneyLead: string;
+  origin: WorkspaceOrigin;
+};
+
+export type WorkspaceCollaborator = {
+  id: string;
+  /** Canonical client binding for client identities; omitted for Kearney identities. */
+  clientId?: string;
+  name: string;
+  initials: string;
+  role: string;
+  affiliation: CollaboratorAffiliation;
+  organization: string;
+  profileOrigin: WorkspaceOrigin;
+};
+
+export type ProjectMembership = {
+  id: string;
+  projectId: string;
+  collaboratorId: string;
+  projectRole: "Client owner" | "Kearney engagement lead" | "Kearney OR scientist" | "Kearney data steward" | "Contributor" | "Viewer";
+  capabilities: readonly ProjectCapability[];
+  origin: WorkspaceOrigin;
+};
+
+export type ProjectAccessDecision = {
+  allowed: boolean;
+  projectId: string;
+  collaboratorId: string;
+  capability: ProjectCapability;
+  policyRef: string;
+  reason: string;
+};
+
+export type ConnectorTemplate = {
+  id: string;
+  name: string;
+  sourceClass: "Industrial IoT" | "Mobile handoff" | "Enterprise system" | "Licensed telemetry";
+  protocol: string;
+  targetData: readonly string[];
+  targetBoundary: string;
+  targetDirection: "Target read-only observation" | "Target inbound event ingestion";
+  catalogState: "Catalog only";
+  limitations: string;
+};
+
+export type ProjectConnectorDraft = {
+  id: string;
+  projectId: string;
+  templateId: string;
+  name: string;
+  protocol: string;
+  state: "Draft request";
+  policyReviewState: "Not requested" | "Policy review queued";
+  endpointState: "Not supplied";
+  credentialState: "Not provided";
+  networkState: "Not tested";
+  sampleState: "Not run" | "Fixed payload replayed";
+  requestedBy: string;
+  evidenceRef: string;
+  origin: "Browser-session draft";
+};
+
+export type SessionClientDraft = {
+  name: string;
+  sector: string;
+  sectorId?: string;
+  classification: string;
+  dataResidency: string;
+  clientLead: string;
+  kearneyLead: string;
+};
+
+export type SessionProjectDraft = {
+  clientId: string;
+  name: string;
+  problem: string;
+  outcome: string;
+  owner: string;
+  currency: string;
+  regions: string;
+  classification?: string;
+  dataResidency?: string;
+  operationsWorldIntake?: OperationsWorldIntakeDraft;
+};
+
+export type OperationsWorldIntakeIntent = "dependency" | "route" | "value";
+
+export type OperationsWorldIntakeDraft = {
+  intent: OperationsWorldIntakeIntent;
+  selectedKind: string;
+  selectedId: string;
+  selectedLabel: string;
+  frame: string;
+  scenario: string;
+  evidenceRef?: string;
+};
+
+export type OperationsWorldIntake = Omit<OperationsWorldIntakeDraft, "evidenceRef"> & {
+  evidenceRef: string;
+};
 
 export type WorkspaceMetric = {
   label: string;
@@ -13,6 +126,7 @@ export type WorkspaceMetric = {
 
 export type WorkspaceProject = {
   id: string;
+  origin: WorkspaceOrigin;
   sectorId: string;
   sector: string;
   clientId: string;
@@ -33,6 +147,7 @@ export type WorkspaceProject = {
   mountedAppIds: readonly ProjectAppId[];
   variablePack: { l2: readonly string[]; l1: readonly string[]; l0: readonly string[] };
   methodCodes: readonly string[];
+  operationsWorldIntake?: OperationsWorldIntake;
 };
 
 export type EvidenceReceipt = {
@@ -116,7 +231,7 @@ export type HumanExpert = {
 };
 
 export const workspaceTabs: readonly { id: WorkspaceTabId; label: string; count?: string }[] = [
-  { id: "overview", label: "Project home" }, { id: "decisions", label: "Decisions" }, { id: "apps", label: "Mounted apps" }, { id: "data", label: "Project data" }, { id: "graph", label: "Knowledge graph" }, { id: "agents", label: "Agent society" }, { id: "team", label: "Expert team" }, { id: "governance", label: "Governance" },
+  { id: "overview", label: "Overview" }, { id: "decisions", label: "Decisions" }, { id: "apps", label: "Apps" }, { id: "data", label: "Data" }, { id: "graph", label: "Graph" }, { id: "agents", label: "Agents" }, { id: "team", label: "Team" }, { id: "governance", label: "Controls" },
 ];
 
 const metricSet = (code: string, values: readonly [string, string, string, WorkspaceMetric["tone"]][]): readonly WorkspaceMetric[] =>
@@ -124,7 +239,7 @@ const metricSet = (code: string, values: readonly [string, string, string, Works
 
 export const workspaceProjects: readonly WorkspaceProject[] = [
   {
-    id: "anode-shield", sectorId: "mobility-ev", sector: "Mobility & EV", clientId: "apex-mobility", client: "Apex Mobility", name: "Anode Shield", code: "P-001", health: "watch", stage: "Validate response", currency: "USD", regions: "North America · APAC · Europe", owner: "Maya Rao", classification: "Client confidential", dataResidency: "India + EU policy partitions",
+    id: "anode-shield", origin: "Seed fixture", sectorId: "mobility-ev", sector: "Mobility & EV", clientId: "apex-mobility", client: "Apex Mobility", name: "Anode Shield", code: "P-001", health: "watch", stage: "Validate response", currency: "USD", regions: "North America · APAC · Europe", owner: "Maya Rao", classification: "Client confidential", dataResidency: "India + EU policy partitions",
     problem: "Protect the 800V drive-unit launch from graphite concentration, port delay, and qualification constraints.", outcome: "Preserve launch service while establishing a qualified, lower-risk anode supply portfolio.",
     counts: { entities: "9,480", relationships: "31,260", observations: "428K", documents: "1,240", events: "72.6K", claims: "12.8K", decisions: 18, runs: 96, apps: 9, agents: 12, experts: 14 },
     metrics: metricSet("P-001", [["Value at risk", "$42.0M", "P90 contribution exposure", "critical"], ["Launch service", "95.1%", "Against a governed 98.0% floor", "watch"], ["Graphite dependency", "92%", "One qualified refining path", "critical"], ["Decision clock", "3h 42m", "Before capacity option expires", "watch"]]),
@@ -132,54 +247,107 @@ export const workspaceProjects: readonly WorkspaceProject[] = [
     variablePack: { l2: ["L2-002", "L2-003", "L2-008", "L2-009", "L2-013", "L2-027", "L2-034"], l1: ["L1-006", "L1-007", "L1-008", "L1-010", "L1-019", "L1-032", "L1-041", "L1-054", "L1-056"], l0: ["L0-029", "L0-030", "L0-035", "L0-044", "L0-047", "L0-057", "L0-061", "L0-064", "L0-071", "L0-155", "L0-217", "L0-299", "L0-445"] }, methodCodes: ["M-02", "M-05", "M-06", "M-13", "M-20", "M-22", "M-23", "M-24"],
   },
   {
-    id: "cold-chain-promise", sectorId: "life-sciences", sector: "Life Sciences", clientId: "helixora", client: "Helixora Therapeutics", name: "Cold Chain Promise", code: "P-002", health: "critical", stage: "Simulate release", currency: "USD", regions: "US · EU · India", owner: "Dr. Nia Campbell", classification: "Restricted clinical supply", dataResidency: "US + EU",
+    id: "cold-chain-promise", origin: "Seed fixture", sectorId: "life-sciences", sector: "Life Sciences", clientId: "helixora", client: "Helixora Therapeutics", name: "Cold Chain Promise", code: "P-002", health: "critical", stage: "Simulate release", currency: "USD", regions: "US · EU · India", owner: "Dr. Nia Campbell", classification: "Restricted clinical supply", dataResidency: "US + EU",
     problem: "Protect an oncology launch across batch release, refrigerated storage, scarce packaging, and patient-service constraints.", outcome: "Release every compliant dose inside the stability window without compromising patient safety.", counts: { entities: "7,320", relationships: "22,840", observations: "615K", documents: "2,180", events: "184K", claims: "16.3K", decisions: 15, runs: 82, apps: 8, agents: 11, experts: 13 },
     metrics: metricSet("P-002", [["Doses at risk", "18,420", "P90 launch shortfall", "critical"], ["Cold-chain conformance", "99.76%", "Validated excursion window", "healthy"], ["Release queue", "14 lots", "Four require QP review", "watch"], ["Patient priority", "100%", "Hard allocation constraint", "healthy"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "manufacturing", "logistics", "quality"],
     variablePack: { l2: ["L2-003", "L2-006", "L2-007", "L2-022"], l1: ["L1-018", "L1-030", "L1-037"], l0: ["L0-026", "L0-131", "L0-145", "L0-178", "L0-275"] }, methodCodes: ["M-02", "M-13", "M-17", "M-20", "M-21", "M-23", "M-26", "M-30"],
   },
   {
-    id: "fab-recovery-x9", sectorId: "semiconductors", sector: "Semiconductors", clientId: "orion-silicon", client: "OrionSilicon Foundry", name: "Fab Recovery X9", code: "P-003", health: "critical", stage: "Execute recovery", currency: "USD", regions: "Taiwan · Japan · US", owner: "Kenji Ito", classification: "Export-controlled", dataResidency: "Taiwan + US",
+    id: "fab-recovery-x9", origin: "Seed fixture", sectorId: "semiconductors", sector: "Semiconductors", clientId: "orion-silicon", client: "OrionSilicon Foundry", name: "Fab Recovery X9", code: "P-003", health: "critical", stage: "Execute recovery", currency: "USD", regions: "Taiwan · Japan · US", owner: "Kenji Ito", classification: "Export-controlled", dataResidency: "Taiwan + US",
     problem: "Recover from tool failure while allocating constrained chemicals, utilities, WIP, and customer commitments.", outcome: "Restore qualified output and protect the highest-consequence customer allocation.", counts: { entities: "12,600", relationships: "48,900", observations: "3.24M", documents: "980", events: "520K", claims: "24.6K", decisions: 20, runs: 140, apps: 9, agents: 13, experts: 15 },
     metrics: metricSet("P-003", [["WIP exposed", "$186M", "Across 42 critical lots", "critical"], ["Constraint tool uptime", "61%", "ETCH-X9 recovery curve", "critical"], ["Qualified output", "78%", "Versus weekly commit", "watch"], ["Recovery horizon", "11 days", "P80 simulated duration", "watch"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "workforce", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-003", "L2-005", "L2-027"], l1: ["L1-010", "L1-011", "L1-012", "L1-050"], l0: ["L0-071", "L0-079", "L0-088", "L0-090", "L0-121", "L0-363", "L0-365"] }, methodCodes: ["M-02", "M-06", "M-08", "M-14", "M-15", "M-17", "M-20", "M-26", "M-27"],
   },
   {
-    id: "harvest-to-shelf", sectorId: "food-agriculture", sector: "Food & Agriculture", clientId: "verdant-foods", client: "Verdant Foods Cooperative", name: "Harvest-to-Shelf", code: "P-004", health: "watch", stage: "Plan peak", currency: "EUR", regions: "Europe · North Africa", owner: "Sofia Mendes", classification: "Client confidential", dataResidency: "EU",
+    id: "harvest-to-shelf", origin: "Seed fixture", sectorId: "food-agriculture", sector: "Food & Agriculture", clientId: "verdant-foods", client: "Verdant Foods Cooperative", name: "Harvest-to-Shelf", code: "P-004", health: "watch", stage: "Plan peak", currency: "EUR", regions: "Europe · North Africa", owner: "Sofia Mendes", classification: "Client confidential", dataResidency: "EU",
     problem: "Balance seasonal harvest, perishability, labor, cold-chain capacity, and food waste.", outcome: "Maximize fresh availability while reducing spoilage and grower rejection.", counts: { entities: "8,900", relationships: "27,400", observations: "1.18M", documents: "620", events: "265K", claims: "14.7K", decisions: 17, runs: 104, apps: 8, agents: 10, experts: 12 },
     metrics: metricSet("P-004", [["Harvest committed", "46.8K t", "Six-week inbound plan", "healthy"], ["Spoilage risk", "4.8%", "P90 modeled loss", "watch"], ["Cold slots", "87%", "Peak utilization", "watch"], ["Waste avoided", "€3.6M", "Candidate plan value", "opportunity"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "workforce", "manufacturing", "logistics"], variablePack: { l2: ["L2-001", "L2-003", "L2-007", "L2-019", "L2-021"], l1: ["L1-001", "L1-014", "L1-030", "L1-052"], l0: ["L0-003", "L0-033", "L0-101", "L0-165", "L0-234"] }, methodCodes: ["M-02", "M-03", "M-07", "M-10", "M-13", "M-16", "M-17", "M-20", "M-21", "M-26"],
   },
   {
-    id: "forging-continuity", sectorId: "aerospace", sector: "Aerospace", clientId: "stratos-aero", client: "Stratos Aero Systems", name: "Forging Continuity", code: "P-005", health: "critical", stage: "Qualify source", currency: "USD", regions: "US · UK · France", owner: "Elliot Price", classification: "Controlled technical data", dataResidency: "US + UK",
+    id: "forging-continuity", origin: "Seed fixture", sectorId: "aerospace", sector: "Aerospace", clientId: "stratos-aero", client: "Stratos Aero Systems", name: "Forging Continuity", code: "P-005", health: "critical", stage: "Qualify source", currency: "USD", regions: "US · UK · France", owner: "Elliot Price", classification: "Controlled technical data", dataResidency: "US + UK",
     problem: "Protect long-lead certified titanium forgings across opaque sub-tier dependencies.", outcome: "Create a certifiable second-source path before the current buffer is consumed.", counts: { entities: "11,240", relationships: "39,700", observations: "782K", documents: "4,300", events: "94K", claims: "21.8K", decisions: 14, runs: 76, apps: 9, agents: 12, experts: 16 },
     metrics: metricSet("P-005", [["Program exposure", "$312M", "Three certified programs", "critical"], ["Source coverage", "1.2×", "Against 2.0× policy", "critical"], ["Qualification", "17 weeks", "Critical path duration", "watch"], ["Evidence completeness", "93%", "176 certificates mapped", "healthy"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-002", "L2-007", "L2-013", "L2-027"], l1: ["L1-004", "L1-006", "L1-007", "L1-050", "L1-054"], l0: ["L0-025", "L0-031", "L0-055", "L0-057", "L0-154"] }, methodCodes: ["M-04", "M-06", "M-15", "M-20", "M-22", "M-23", "M-25", "M-29", "M-30"],
   },
   {
-    id: "copper-rare-earth", sectorId: "energy-grid", sector: "Energy & Grid", clientId: "solara-grid", client: "Solara Gridworks", name: "Copper & Rare-Earth Portfolio", code: "P-006", health: "watch", stage: "Compare portfolios", currency: "USD", regions: "Global · EU · India", owner: "Anika Shah", classification: "Client confidential", dataResidency: "EU + India",
+    id: "copper-rare-earth", origin: "Seed fixture", sectorId: "energy-grid", sector: "Energy & Grid", clientId: "solara-grid", client: "Solara Gridworks", name: "Copper & Rare-Earth Portfolio", code: "P-006", health: "watch", stage: "Compare portfolios", currency: "USD", regions: "Global · EU · India", owner: "Anika Shah", classification: "Client confidential", dataResidency: "EU + India",
     problem: "Secure transformer and wind-turbine materials under price, capacity, carbon, and cash limits.", outcome: "Fund a resilient mineral portfolio that meets grid expansion and carbon commitments.", counts: { entities: "10,820", relationships: "36,600", observations: "944K", documents: "1,760", events: "126K", claims: "19.4K", decisions: 19, runs: 128, apps: 9, agents: 12, experts: 14 },
     metrics: metricSet("P-006", [["Materials spend", "$1.18B", "Copper + rare earths", "watch"], ["Capacity covered", "84%", "2027 program demand", "watch"], ["Carbon envelope", "−18%", "Versus baseline plan", "healthy"], ["Portfolio NPV", "$74M", "Risk-adjusted candidate", "opportunity"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-002", "L2-008", "L2-012", "L2-014", "L2-019", "L2-034"], l1: ["L1-006", "L1-008", "L1-009", "L1-041", "L1-051", "L1-054"], l0: ["L0-030", "L0-044", "L0-061", "L0-064", "L0-371", "L0-376", "L0-410"] }, methodCodes: ["M-02", "M-05", "M-06", "M-16", "M-20", "M-22", "M-23", "M-24", "M-25"],
   },
   {
-    id: "lithium-cell-provenance", sectorId: "critical-minerals", sector: "Mining & Critical Minerals", clientId: "terrametals", client: "TerraMetals Alliance", name: "Lithium-to-Cell Provenance", code: "P-007", health: "critical", stage: "Verify origin", currency: "USD", regions: "South America · Africa · China · EU", owner: "Mateo Álvarez", classification: "Restricted commercial", dataResidency: "Regional partitions",
+    id: "lithium-cell-provenance", origin: "Seed fixture", sectorId: "critical-minerals", sector: "Mining & Critical Minerals", clientId: "terrametals", client: "TerraMetals Alliance", name: "Lithium-to-Cell Provenance", code: "P-007", health: "critical", stage: "Verify origin", currency: "USD", regions: "South America · Africa · China · EU", owner: "Mateo Álvarez", classification: "Restricted commercial", dataResidency: "Regional partitions",
     problem: "Balance mine, refinery, offtake, water, permit, rights, and origin constraints for battery supply.", outcome: "Build an auditable mineral-to-cell portfolio that remains feasible under policy and climate stress.", counts: { entities: "13,500", relationships: "52,000", observations: "1.46M", documents: "3,140", events: "171K", claims: "31.2K", decisions: 22, runs: 152, apps: 10, agents: 14, experts: 18 },
     metrics: metricSet("P-007", [["Contained LCE", "228K t", "2027 controlled supply", "healthy"], ["Refining concentration", "71%", "One jurisdiction", "critical"], ["Water-stress exposure", "38%", "Of controlled reserves", "watch"], ["Traceable volume", "82%", "Mine-to-cell evidence", "watch"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "workforce", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-002", "L2-013", "L2-019", "L2-031", "L2-034"], l1: ["L1-006", "L1-009", "L1-051", "L1-053", "L1-054", "L1-060"], l0: ["L0-030", "L0-035", "L0-051", "L0-121", "L0-371", "L0-394", "L0-399", "L0-476"] }, methodCodes: ["M-04", "M-05", "M-06", "M-16", "M-18", "M-19", "M-20", "M-22", "M-23", "M-24", "M-25", "M-28", "M-29"],
   },
   {
-    id: "berth-to-door", sectorId: "ports-maritime", sector: "Ports & Maritime", clientId: "blueharbor", client: "BlueHarbor Ports & Cargo", name: "Global Berth-to-Door", code: "P-008", health: "watch", stage: "Validate twin fixture", currency: "USD", regions: "Global ports", owner: "Leila Haddad", classification: "Port operational restricted", dataResidency: "Port-country partitions",
+    id: "berth-to-door", origin: "Seed fixture", sectorId: "ports-maritime", sector: "Ports & Maritime", clientId: "blueharbor", client: "BlueHarbor Ports & Cargo", name: "Global Berth-to-Door", code: "P-008", health: "watch", stage: "Validate twin fixture", currency: "USD", regions: "Global ports", owner: "Leila Haddad", classification: "Port operational restricted", dataResidency: "Port-country partitions",
     problem: "Coordinate berths, vessels, containers, labor, customs, theft risk, and inland transfers.", outcome: "Move every priority cargo through a secure, explainable berth-to-door chain.", counts: { entities: "16,800", relationships: "44,200", observations: "4.85M", documents: "1,120", events: "1.92M", claims: "28.6K", decisions: 24, runs: 184, apps: 10, agents: 15, experts: 17 },
     metrics: metricSet("P-008", [["Cargo in motion", "$2.8B", "2,840 tracked lots", "healthy"], ["Port dwell", "31.4h", "Weighted across 18 hubs", "watch"], ["Secure handoffs", "98.7%", "Signed scan events", "healthy"], ["Late commitments", "146", "P80 arrival risk", "critical"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "workforce", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-003", "L2-004", "L2-013", "L2-016", "L2-026"], l1: ["L1-028", "L1-032", "L1-033", "L1-035", "L1-048"], l0: ["L0-202", "L0-209", "L0-217", "L0-229", "L0-235", "L0-241", "L0-260"] }, methodCodes: ["M-05", "M-09", "M-10", "M-11", "M-12", "M-14", "M-17", "M-20", "M-22", "M-26"],
   },
   {
-    id: "factory-service-continuity", sectorId: "industrial-automation", sector: "Industrial Automation", clientId: "titanworks", client: "TitanWorks Robotics", name: "Factory & Service Continuity", code: "P-009", health: "watch", stage: "Balance capacity", currency: "EUR", regions: "Germany · Mexico · India", owner: "Jonas Weber", classification: "Client confidential", dataResidency: "EU + Mexico + India",
+    id: "factory-service-continuity", origin: "Seed fixture", sectorId: "industrial-automation", sector: "Industrial Automation", clientId: "titanworks", client: "TitanWorks Robotics", name: "Factory & Service Continuity", code: "P-009", health: "watch", stage: "Balance capacity", currency: "EUR", regions: "Germany · Mexico · India", owner: "Jonas Weber", classification: "Client confidential", dataResidency: "EU + Mexico + India",
     problem: "Balance machine reliability, scarce skills, production schedules, and service-spares positioning.", outcome: "Protect production and installed-base uptime with one capacity and reliability plan.", counts: { entities: "9,760", relationships: "34,100", observations: "2.31M", documents: "2,460", events: "640K", claims: "18.9K", decisions: 16, runs: 116, apps: 9, agents: 12, experts: 15 },
     metrics: metricSet("P-009", [["Service exposure", "€28.4M", "Installed-base revenue", "critical"], ["OEE", "76.8%", "Constraint-cell weighted", "watch"], ["Skill coverage", "89%", "Next 21 shifts", "watch"], ["Spares fill", "96.2%", "Priority machines", "healthy"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "workforce", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-003", "L2-005", "L2-021"], l1: ["L1-010", "L1-012", "L1-014"], l0: ["L0-071", "L0-088", "L0-098", "L0-101", "L0-102"] }, methodCodes: ["M-06", "M-07", "M-08", "M-14", "M-15", "M-17", "M-20", "M-26", "M-27", "M-30"],
   },
   {
-    id: "omnichannel-peak", sectorId: "retail-commerce", sector: "Retail & E-commerce", clientId: "meridian-commerce", client: "Meridian Commerce Group", name: "Omnichannel Peak", code: "P-010", health: "healthy", stage: "Commit peak plan", currency: "USD", regions: "North America · Europe", owner: "Avery Chen", classification: "Client confidential", dataResidency: "US + EU",
+    id: "omnichannel-peak", origin: "Seed fixture", sectorId: "retail-commerce", sector: "Retail & E-commerce", clientId: "meridian-commerce", client: "Meridian Commerce Group", name: "Omnichannel Peak", code: "P-010", health: "healthy", stage: "Commit peak plan", currency: "USD", regions: "North America · Europe", owner: "Avery Chen", classification: "Client confidential", dataResidency: "US + EU",
     problem: "Align promotion demand, ATP, picking labor, fleet capacity, last-mile promises, and margin.", outcome: "Deliver the peak promise at the lowest risk-adjusted cost without hiding service trade-offs.", counts: { entities: "18,400", relationships: "55,900", observations: "5.28M", documents: "780", events: "2.45M", claims: "35.4K", decisions: 28, runs: 196, apps: 9, agents: 13, experts: 16 },
     metrics: metricSet("P-010", [["Peak orders", "3.82M", "Six-week demand contract", "healthy"], ["Promise risk", "4.6%", "P90 late probability", "watch"], ["Labor coverage", "93%", "Peak roster demand", "watch"], ["Margin protected", "$21.6M", "Candidate fulfillment plan", "opportunity"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "workforce", "manufacturing", "logistics", "quality"], variablePack: { l2: ["L2-001", "L2-003", "L2-006", "L2-021"], l1: ["L1-001", "L1-002", "L1-014", "L1-019", "L1-037", "L1-038"], l0: ["L0-001", "L0-012", "L0-101", "L0-102", "L0-155", "L0-187", "L0-225", "L0-275"] }, methodCodes: ["M-02", "M-03", "M-05", "M-08", "M-09", "M-10", "M-13", "M-14", "M-16", "M-17", "M-20", "M-24", "M-26", "M-27"],
   },
 ];
 
 export const apexWorkspaceProject = workspaceProjects[0];
+
+const initialsFor = (name: string) => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "NA";
+
+export const workspaceClients: readonly WorkspaceClient[] = workspaceProjects.map((project) => ({
+  id: project.clientId,
+  sectorId: project.sectorId,
+  sector: project.sector,
+  name: project.client,
+  classification: project.classification,
+  dataResidency: project.dataResidency,
+  clientLead: project.owner,
+  kearneyLead: "Maya Rao",
+  origin: "Seed fixture",
+}));
+
+export const workspaceCollaborators: readonly WorkspaceCollaborator[] = [
+  ...workspaceProjects.map((project) => ({
+    id: `${project.id}-client-owner`,
+    clientId: project.clientId,
+    name: project.owner,
+    initials: initialsFor(project.owner),
+    role: "Project owner",
+    affiliation: "Client" as const,
+    organization: project.client,
+    profileOrigin: "Seed fixture" as const,
+  })),
+  { id: "kearney-engagement", name: "Maya Rao", initials: "MR", role: "Portfolio engagement lead", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
+  { id: "kearney-or-scientist", name: "Kearney OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
+  { id: "kearney-data-steward", name: "Kearney Data Steward", initials: "KD", role: "Data contracts and lineage", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Seed fixture" },
+];
+
+/** Explicit browser-session identity represented by the shell's Maya Rao profile. */
+export const signedInCollaboratorId = "kearney-engagement";
+
+const clientOwnerCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "decisions.approve", "agents.run", "team.manage"];
+const kearneyLeadCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "agents.run", "agents.create", "team.manage"];
+const kearneyOrCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "apps.view", "decisions.view", "decisions.draft", "agents.run", "agents.create"];
+const kearneyDataCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "decisions.view"];
+
+export const projectMemberships: readonly ProjectMembership[] = workspaceProjects.flatMap((project) => [
+  { id: `${project.id}:client-owner`, projectId: project.id, collaboratorId: `${project.id}-client-owner`, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:kearney-engagement`, projectId: project.id, collaboratorId: "kearney-engagement", projectRole: "Kearney engagement lead", capabilities: kearneyLeadCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:kearney-or-scientist`, projectId: project.id, collaboratorId: "kearney-or-scientist", projectRole: "Kearney OR scientist", capabilities: kearneyOrCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:kearney-data-steward`, projectId: project.id, collaboratorId: "kearney-data-steward", projectRole: "Kearney data steward", capabilities: kearneyDataCapabilities, origin: "Seed fixture" },
+]);
+
+export const connectorTemplates: readonly ConnectorTemplate[] = [
+  { id: "opc-ua-edge", name: "Machine and robot edge", sourceClass: "Industrial IoT", protocol: "OPC UA through a customer-managed edge gateway", targetData: ["Equipment state", "Cycle completion", "Alarm and quality events"], targetBoundary: "Customer edge to project ingestion boundary", targetDirection: "Target read-only observation", catalogState: "Catalog only", limitations: "No device, PLC, gateway, endpoint, certificate, credential, or network route is connected or tested." },
+  { id: "mqtt-sensor", name: "Sensor telemetry gateway", sourceClass: "Industrial IoT", protocol: "MQTT 5 over TLS through a customer-managed broker", targetData: ["Temperature", "Humidity", "Vibration", "Location and seal state"], targetBoundary: "Customer broker to project ingestion boundary", targetDirection: "Target inbound event ingestion", catalogState: "Catalog only", limitations: "No broker, topic, device identity, certificate, credential, or telemetry feed is connected or read." },
+  { id: "gs1-qr-handoff", name: "Port, cargo, and warehouse handoff", sourceClass: "Mobile handoff", protocol: "GS1 Digital Link-style QR payload over HTTPS", targetData: ["Asset identity", "Custody handoff", "Quantity", "Location and event time"], targetBoundary: "Approved mobile client to project event boundary", targetDirection: "Target inbound event ingestion", catalogState: "Catalog only", limitations: "No QR signature, device identity, mobile session, endpoint, or external event is verified or transmitted." },
+  { id: "readonly-cdc-api", name: "Enterprise source observer", sourceClass: "Enterprise system", protocol: "Read-only CDC or approved source API", targetData: ["Master data", "Transactions", "Status events", "Reference evidence"], targetBoundary: "Client-controlled source boundary", targetDirection: "Target read-only observation", catalogState: "Catalog only", limitations: "No source, database, API, credential, allow-list, or change stream is connected or inspected." },
+  { id: "licensed-movement-api", name: "Licensed movement telemetry", sourceClass: "Licensed telemetry", protocol: "Contracted AIS, ADS-B, or carrier-provider API", targetData: ["Position", "ETA", "Asset identity", "Cargo milestone"], targetBoundary: "Licensed provider to project ingestion boundary", targetDirection: "Target inbound event ingestion", catalogState: "Catalog only", limitations: "No provider account, license right, API, asset feed, or movement record is connected or available in this concept." },
+];
 
 export const projectApps: readonly ProjectAppDefinition[] = [
   { id: "risk", name: "RiskRadar", icon: "RR", accent: "#ff715b", archetype: "Signal room + causal propagation", outcome: "Know what can stop the project", artifact: "Risk control brief", methodCodes: ["M-04", "M-16", "M-20", "M-23"], variableIds: ["L2-027", "L0-025", "L0-054"], status: "Concept ready" },
@@ -233,11 +401,11 @@ export const humanExperts: readonly HumanExpert[] = [
 ];
 
 export const projectDatasets = [
-  { id: "DS-001", name: "Graphite allocation", source: "SAP S/4HANA fixture", grain: "Material × supplier-site × month", rows: "18,420", freshness: "18 sec", quality: 98, variables: ["L0-030", "L0-052", "L0-064"], state: "Published" },
-  { id: "DS-002", name: "800V product structure", source: "Teamcenter PLM fixture", grain: "Parent part × child part × revision", rows: "426,118", freshness: "4 min", quality: 96, variables: ["L0-028", "L0-029", "L0-031"], state: "Published" },
-  { id: "DS-003", name: "Supplier qualification", source: "QMS workbook upload", grain: "Supplier-site × part × approval", rows: "4,812", freshness: "2 hr", quality: 93, variables: ["L0-049", "L0-057", "L0-058"], state: "Published" },
-  { id: "DS-004", name: "Orders and customer priority", source: "Order fixture", grain: "Order line × requested date", rows: "82,640", freshness: "42 sec", quality: 99, variables: ["L0-001", "L0-008", "L0-275"], state: "Published" },
-  { id: "DS-005", name: "Movement and cargo events", source: "TMS/AIS demonstration fixture", grain: "Cargo × event time", rows: "1,284,440", freshness: "1 min", quality: 94, variables: ["L0-202", "L0-217", "L0-229"], state: "Review" },
+  { id: "DS-001", name: "Graphite allocation", source: "SAP S/4HANA fixture", grain: "Material × supplier-site × month", rows: "18,420", freshness: "Modeled age · 18 sec", quality: 98, variables: ["L0-030", "L0-052", "L0-064"], state: "Fixture snapshot" },
+  { id: "DS-002", name: "800V product structure", source: "Teamcenter PLM fixture", grain: "Parent part × child part × revision", rows: "426,118", freshness: "Modeled age · 4 min", quality: 96, variables: ["L0-028", "L0-029", "L0-031"], state: "Fixture snapshot" },
+  { id: "DS-003", name: "Supplier qualification", source: "QMS workbook upload", grain: "Supplier-site × part × approval", rows: "4,812", freshness: "Modeled age · 2 hr", quality: 93, variables: ["L0-049", "L0-057", "L0-058"], state: "Fixture snapshot" },
+  { id: "DS-004", name: "Orders and customer priority", source: "Order fixture", grain: "Order line × requested date", rows: "82,640", freshness: "Modeled age · 42 sec", quality: 99, variables: ["L0-001", "L0-008", "L0-275"], state: "Fixture snapshot" },
+  { id: "DS-005", name: "Movement and cargo events", source: "TMS/AIS demonstration fixture", grain: "Cargo × event time", rows: "1,284,440", freshness: "Modeled age · 1 min", quality: 94, variables: ["L0-202", "L0-217", "L0-229"], state: "Review fixture" },
   { id: "DS-006", name: "Country mineral context", source: "USGS-aligned synthetic fixture", grain: "Mineral × country × year", rows: "2,480", freshness: "Demo snapshot", quality: 82, variables: ["L0-030", "L0-035", "L0-387"], state: "Demo only" },
 ] as const;
 
@@ -268,11 +436,213 @@ export const methodFamilies = [
 
 export const portfolioTotals = { sectors: 10, clients: 10, projects: 10, entities: "118,820", relationships: "392,900", observations: "21.089M", documents: "18,580", events: "6.443M", claims: "223,700", decisions: 193, runs: "1,274", appMounts: 90, agents: 124, experts: 150 } as const;
 
+const requiredText = (value: string, label: string) => {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`${label} is required for a browser-session draft.`);
+  return normalized;
+};
+
+const slugify = (value: string, fallback: string) => value
+  .normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-|-$/g, "") || fallback;
+
+const collisionSafeId = (base: string, existingIds: ReadonlySet<string>) => {
+  if (!existingIds.has(base)) return base;
+  let suffix = 2;
+  while (existingIds.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+};
+
+export function createSessionClient(draft: SessionClientDraft, existingClients: readonly WorkspaceClient[] = workspaceClients): WorkspaceClient {
+  const name = requiredText(draft.name, "Client name");
+  const sector = requiredText(draft.sector, "Sector");
+  const baseId = slugify(name, "client-draft");
+  const id = collisionSafeId(baseId, new Set(existingClients.map((client) => client.id)));
+  return {
+    id,
+    sectorId: slugify(draft.sectorId || sector, "sector-draft"),
+    sector,
+    name,
+    classification: requiredText(draft.classification, "Classification"),
+    dataResidency: requiredText(draft.dataResidency, "Data-residency intent"),
+    clientLead: requiredText(draft.clientLead, "Client lead"),
+    kearneyLead: requiredText(draft.kearneyLead, "Kearney lead"),
+    origin: "Browser-session draft",
+  };
+}
+
+export function createSessionProject(draft: SessionProjectDraft, clients: readonly WorkspaceClient[] = workspaceClients, existingProjects: readonly WorkspaceProject[] = workspaceProjects): WorkspaceProject {
+  const client = clients.find((item) => item.id === draft.clientId);
+  if (!client) throw new Error(`Client '${draft.clientId}' is unavailable; the project draft was not created.`);
+  const name = requiredText(draft.name, "Project name");
+  const codeNumber = existingProjects.reduce((highest, project) => {
+    const match = /^P-(\d+)$/.exec(project.code);
+    return match ? Math.max(highest, Number(match[1])) : highest;
+  }, 0) + 1;
+  const code = `P-${String(codeNumber).padStart(3, "0")}`;
+  const id = collisionSafeId(slugify(name, "project-draft"), new Set(existingProjects.map((project) => project.id)));
+  const intake = draft.operationsWorldIntake;
+  const operationsWorldIntake: OperationsWorldIntake | undefined = intake ? {
+    intent: (["dependency", "route", "value"] as const).includes(intake.intent)
+      ? intake.intent
+      : (() => { throw new Error("Operations World intake intent must be dependency, route, or value."); })(),
+    selectedKind: requiredText(intake.selectedKind, "Operations World selection kind"),
+    selectedId: requiredText(intake.selectedId, "Operations World selection id"),
+    selectedLabel: requiredText(intake.selectedLabel, "Operations World selection label"),
+    frame: requiredText(intake.frame, "Operations World frame"),
+    scenario: requiredText(intake.scenario, "Operations World scenario"),
+    evidenceRef: intake.evidenceRef?.trim() || `${code}-OWI-${slugify(intake.selectedId, "selection").toUpperCase()}`,
+  } : undefined;
+  const metrics: readonly WorkspaceMetric[] = [
+    { label: "Setup state", value: "Draft", detail: "Browser-session project shell", evidenceRef: `EV-${code.slice(2)}-SETUP-01`, tone: "watch" },
+    { label: "Project data", value: "0", detail: "No dataset or source contract", evidenceRef: `EV-${code.slice(2)}-SETUP-02`, tone: "watch" },
+    { label: "Mounted apps", value: "0", detail: "No app contract mounted", evidenceRef: `EV-${code.slice(2)}-SETUP-03`, tone: "watch" },
+    { label: "Decision briefs", value: "0", detail: "No decision case created", evidenceRef: `EV-${code.slice(2)}-SETUP-04`, tone: "watch" },
+  ];
+  return {
+    id,
+    origin: "Browser-session draft",
+    sectorId: client.sectorId,
+    sector: client.sector,
+    clientId: client.id,
+    client: client.name,
+    name,
+    code,
+    problem: requiredText(draft.problem, "Problem statement"),
+    outcome: requiredText(draft.outcome, "Outcome statement"),
+    stage: "Draft setup",
+    health: "watch",
+    currency: requiredText(draft.currency, "Currency"),
+    regions: requiredText(draft.regions, "Region intent"),
+    owner: requiredText(draft.owner || client.clientLead, "Project owner"),
+    classification: draft.classification?.trim() || client.classification,
+    dataResidency: draft.dataResidency?.trim() || client.dataResidency,
+    counts: { entities: "0", relationships: "0", observations: "0", documents: "0", events: "0", claims: "0", decisions: 0, runs: 0, apps: 0, agents: 0, experts: 2 },
+    metrics,
+    mountedAppIds: [],
+    variablePack: { l2: [], l1: [], l0: [] },
+    methodCodes: [],
+    ...(operationsWorldIntake ? { operationsWorldIntake } : {}),
+  };
+}
+
+export function createSessionCollaborators(client: WorkspaceClient, existingCollaborators: readonly WorkspaceCollaborator[] = workspaceCollaborators): readonly [WorkspaceCollaborator, WorkspaceCollaborator] {
+  const existingIds = new Set(existingCollaborators.map((collaborator) => collaborator.id));
+  const clientId = collisionSafeId(`${client.id}-client-lead`, existingIds);
+  existingIds.add(clientId);
+  const kearneyId = collisionSafeId(`${client.id}-kearney-lead`, existingIds);
+  const existingKearneyLead = existingCollaborators.find((collaborator) => collaborator.affiliation === "Kearney"
+    && collaborator.clientId === undefined
+    && collaborator.name.trim().toLowerCase() === client.kearneyLead.trim().toLowerCase());
+  return [
+    { id: clientId, clientId: client.id, name: client.clientLead, initials: initialsFor(client.clientLead), role: "Client relationship lead", affiliation: "Client", organization: client.name, profileOrigin: "Browser-session draft" },
+    existingKearneyLead ?? { id: kearneyId, name: client.kearneyLead, initials: initialsFor(client.kearneyLead), role: "Kearney engagement lead", affiliation: "Kearney", organization: "Kearney", profileOrigin: "Browser-session draft" },
+  ];
+}
+
+export function createSessionProjectMemberships(project: WorkspaceProject, clientCollaborator: WorkspaceCollaborator, kearneyCollaborator: WorkspaceCollaborator): readonly ProjectMembership[] {
+  if (clientCollaborator.affiliation !== "Client" || clientCollaborator.clientId !== project.clientId) {
+    throw new Error(`Client collaborator '${clientCollaborator.id}' is not bound to canonical client '${project.clientId}'; no project membership was created.`);
+  }
+  if (kearneyCollaborator.affiliation !== "Kearney" || kearneyCollaborator.clientId !== undefined) {
+    throw new Error(`Kearney collaborator '${kearneyCollaborator.id}' has an invalid client binding; no project membership was created.`);
+  }
+  const clientId = requiredText(clientCollaborator.id, "Client collaborator");
+  const kearneyId = requiredText(kearneyCollaborator.id, "Kearney collaborator");
+  return [
+    { id: `${project.id}:${clientId}`, projectId: project.id, collaboratorId: clientId, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Browser-session draft" },
+    { id: `${project.id}:${kearneyId}`, projectId: project.id, collaboratorId: kearneyId, projectRole: "Kearney engagement lead", capabilities: kearneyLeadCapabilities, origin: "Browser-session draft" },
+  ];
+}
+
+export function membershipsForProject(projectId: string, memberships: readonly ProjectMembership[] = projectMemberships) {
+  return memberships.filter((membership) => membership.projectId === projectId);
+}
+
+export function evaluateProjectAccess(projectId: string, collaboratorId: string, capability: ProjectCapability, memberships: readonly ProjectMembership[] = projectMemberships): ProjectAccessDecision {
+  const membership = memberships.find((item) => item.projectId === projectId && item.collaboratorId === collaboratorId);
+  const allowed = Boolean(membership?.capabilities.includes(capability));
+  return {
+    allowed,
+    projectId,
+    collaboratorId,
+    capability,
+    policyRef: `FIXTURE-POLICY-${slugify(projectId, "unbound").toUpperCase()}-V1`,
+    reason: allowed
+      ? `The project-scoped synthetic membership includes '${capability}'. This browser-only result is not production authorization.`
+      : `No matching project-scoped synthetic grant includes '${capability}'. Access fails closed and no project resource is opened or changed.`,
+  };
+}
+
+export function hasProjectAccess(projectId: string, collaboratorId: string, capability: ProjectCapability, memberships: readonly ProjectMembership[] = projectMemberships) {
+  return evaluateProjectAccess(projectId, collaboratorId, capability, memberships).allowed;
+}
+
+export function createConnectorDraft(project: WorkspaceProject, templateId: string, requestedBy: string, existingDrafts: readonly ProjectConnectorDraft[] = []): ProjectConnectorDraft {
+  const template = connectorTemplates.find((item) => item.id === templateId);
+  if (!template) throw new Error(`Connector template '${templateId}' is unavailable; no request was drafted.`);
+  const requester = requiredText(requestedBy, "Connector requester");
+  const baseId = `${project.code}-CON-${template.id.toUpperCase()}`;
+  const id = collisionSafeId(baseId, new Set(existingDrafts.filter((item) => item.projectId === project.id).map((item) => item.id)));
+  return {
+    id,
+    projectId: project.id,
+    templateId: template.id,
+    name: template.name,
+    protocol: template.protocol,
+    state: "Draft request",
+    policyReviewState: "Not requested",
+    endpointState: "Not supplied",
+    credentialState: "Not provided",
+    networkState: "Not tested",
+    sampleState: "Not run",
+    requestedBy: requester,
+    evidenceRef: `${id}-EV`,
+    origin: "Browser-session draft",
+  };
+}
+
+export function connectorReceiptWording(project: WorkspaceProject, connector: ProjectConnectorDraft) {
+  if (connector.projectId !== project.id) return `Connector receipt blocked: ${connector.id} does not belong to ${project.client} / ${project.name}. No foreign connector detail was substituted.`;
+  return `${connector.protocol} catalog template saved as a project-scoped browser-session request for ${project.client} / ${project.name}. No device, PLC, broker, endpoint, credential, certificate, network route, source record, or telemetry feed was connected or read.`;
+}
+
+export function queueConnectorPolicyReview(connector: ProjectConnectorDraft): ProjectConnectorDraft {
+  return { ...connector, policyReviewState: "Policy review queued" };
+}
+
+export function replayConnectorFixture(connector: ProjectConnectorDraft): ProjectConnectorDraft {
+  return { ...connector, sampleState: "Fixed payload replayed" };
+}
+
+export function connectorReceiptFor(project: WorkspaceProject, connector: ProjectConnectorDraft): EvidenceReceipt {
+  if (connector.projectId !== project.id) return evidenceFor(project, `FOREIGN-CONNECTOR-${connector.id}`);
+  return fixtureEvidenceFor(project, {
+    id: connector.evidenceRef,
+    claim: `${connector.name} connector request`,
+    displayedValue: `${connector.state} · ${connector.policyReviewState} · ${connector.sampleState}`,
+    source: "Browser-session connector-contract fixture",
+    formula: connectorReceiptWording(project, connector),
+    inputs: [connector.templateId, connector.endpointState, connector.credentialState, connector.networkState, connector.policyReviewState, connector.sampleState],
+    variableId: "Project connector metadata",
+    grain: "Project × connector request",
+    confidence: 75,
+  });
+}
+
+export function agentsFor(project: WorkspaceProject) {
+  return project.origin === "Browser-session draft" ? [] : expertAgents.map((agent) => ({ ...agent }));
+}
+
 export function caseIdForProject(project: WorkspaceProject) {
   return project.id === "anode-shield" ? "CASE-1042" : `CASE-${project.code.slice(2)}-01`;
 }
 
 export function decisionsFor(project: WorkspaceProject) {
+  if (project.origin === "Browser-session draft") return [];
   if (project.id === "anode-shield") return decisionTree.map((item) => ({ ...item }));
   const values = project.metrics.map((item) => item.value);
   const refs = project.metrics.map((item) => item.evidenceRef);
@@ -286,6 +656,7 @@ export function decisionsFor(project: WorkspaceProject) {
 }
 
 export function graphNodesFor(project: WorkspaceProject) {
+  if (project.origin === "Browser-session draft") return [];
   if (project.id === "anode-shield") return projectGraphNodes.map((item) => ({ ...item }));
   const region = project.regions.split("·")[0]?.trim() ?? "Project region";
   return [
@@ -300,6 +671,7 @@ export function graphNodesFor(project: WorkspaceProject) {
 }
 
 export function datasetsFor(project: WorkspaceProject) {
+  if (project.origin === "Browser-session draft") return [];
   const names = ["Commercial demand and priorities", "Product and material structure", "Supply and qualification", "Capacity and workforce", "Movement and event history", "External context register"];
   const sources = ["Planning fixture", "PLM / master-data fixture", "Procurement fixture", "Operations fixture", "Logistics fixture", "Approved public-data fixture"];
   return projectDatasets.map((dataset, index) => ({

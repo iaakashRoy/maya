@@ -49,8 +49,8 @@ test("critical production modules retain their CSS contracts", async () => {
   }
 });
 
-test("the project-bound social preview is a landscape PNG", async () => {
-  const image = await readFile(new URL("../public/og.png", import.meta.url));
+test("the Workspace social preview is a landscape PNG", async () => {
+  const image = await readFile(new URL("../public/og-workspace.png", import.meta.url));
   assert.deepEqual([...image.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 
   const width = image.readUInt32BE(16);

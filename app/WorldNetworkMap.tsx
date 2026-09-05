@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ScopeId, StatusTone } from "./platform-model";
+import type { StatusTone } from "./platform-model";
 import {
   DEMO_AS_OF,
   getAssetFrame,
@@ -17,6 +17,7 @@ import {
   type MapLayer,
   type NetworkFrameId,
   type NetworkLocation,
+  type NetworkRegion,
   type NetworkScenarioId,
   type TransferEvent,
   type TransportAsset,
@@ -25,7 +26,8 @@ import {
 } from "./network-operations-model";
 
 type WorldNetworkMapProps = {
-  scope: ScopeId;
+  scope: "global" | "region";
+  region?: NetworkRegion;
   category: string;
   currency: string;
   horizon: string;
@@ -58,17 +60,15 @@ const regionPresets: readonly RegionPreset[] = [
   { label: "Europe", center: [12, 48], zoom: 3.2 },
   { label: "MEA", center: [37, 17], zoom: 2.45 },
   { label: "APAC", center: [105, 18], zoom: 2.05 },
-  { label: "Company footprint", center: [22, 20], zoom: 1.28 },
 ];
 
-const scopeMapLabels: Record<ScopeId, string> = {
+const scopeMapLabels: Record<"global" | "region", string> = {
   global: "GLOBAL NETWORK RADAR",
   region: "REGIONAL NETWORK RADAR",
-  company: "COMPANY NETWORK RADAR",
 };
 
-function initialCamera(scope: ScopeId): Camera {
-  const label = scope === "region" ? "APAC" : scope === "company" ? "Company footprint" : "World";
+function initialCamera(scope: "global" | "region", region: NetworkRegion = "APAC"): Camera {
+  const label = scope === "region" ? region : "World";
   const preset = regionPresets.find((item) => item.label === label) ?? regionPresets[0];
   return { center: preset.center, zoom: preset.zoom, label: preset.label };
 }
@@ -280,14 +280,15 @@ function TransferInspector({ transfer, formatMoney }: { transfer: TransferEvent;
   );
 }
 
-export default function WorldNetworkMap({ scope, category, currency, horizon, movement, onMovementChange, onOpenRisk, onOpenOptimizer, onOpenFlow, onTrace }: WorldNetworkMapProps) {
+export default function WorldNetworkMap({ scope, region = "APAC", category, currency, horizon, movement, onMovementChange, onOpenRisk, onOpenOptimizer, onOpenFlow, onTrace }: WorldNetworkMapProps) {
   const [frameSelection, setFrameSelection] = useState<{ horizon: string; frame: NetworkFrameId } | null>(null);
   const frame = frameSelection?.horizon === horizon ? frameSelection.frame : horizonFrame(horizon);
   const [scenario, setScenario] = useState<NetworkScenarioId>("trajectory");
   const [layers, setLayers] = useState<Set<MapLayer>>(() => new Set(allLayers));
-  const [cameraState, setCameraState] = useState<{ scope: ScopeId; camera: Camera }>(() => ({ scope, camera: initialCamera(scope) }));
-  const camera = cameraState.scope === scope ? cameraState.camera : initialCamera(scope);
-  const selectionViewKey = `${scope}|${frame}|${scenario}|${category}|${movement}|${[...layers].sort().join(",")}`;
+  const cameraContext = `${scope}:${region}`;
+  const [cameraState, setCameraState] = useState<{ context: string; camera: Camera }>(() => ({ context: cameraContext, camera: initialCamera(scope, region) }));
+  const camera = cameraState.context === cameraContext ? cameraState.camera : initialCamera(scope, region);
+  const selectionViewKey = `${scope}|${region}|${frame}|${scenario}|${category}|${movement}|${[...layers].sort().join(",")}`;
   const [selectionState, setSelectionState] = useState<{ viewKey: string; value: Selection } | null>(null);
   const [hoverState, setHoverState] = useState<{ viewKey: string; value: Selection } | null>(null);
   const selection = selectionState?.viewKey === selectionViewKey ? selectionState.value : null;
@@ -300,8 +301,8 @@ export default function WorldNetworkMap({ scope, category, currency, horizon, mo
   const [playing, setPlaying] = useState(false);
   const pointerStart = useRef<{ x: number; y: number; center: GeoPoint } | null>(null);
   const setCamera = (next: Camera | ((current: Camera) => Camera)) => setCameraState((currentState) => {
-    const current = currentState.scope === scope ? currentState.camera : initialCamera(scope);
-    return { scope, camera: typeof next === "function" ? next(current) : next };
+    const current = currentState.context === cameraContext ? currentState.camera : initialCamera(scope, region);
+    return { context: cameraContext, camera: typeof next === "function" ? next(current) : next };
   });
   const setSelection = (next: Selection | null) => setSelectionState(next ? { viewKey: selectionViewKey, value: next } : null);
   const setHover = (next: Selection | null) => setHoverState(next ? { viewKey: selectionViewKey, value: next } : null);
@@ -329,7 +330,7 @@ export default function WorldNetworkMap({ scope, category, currency, horizon, mo
     return () => window.clearInterval(timer);
   }, [horizon, playing]);
 
-  const view = useMemo(() => getNetworkView({ scope, frame, scenario, category, movement, layers }), [scope, frame, scenario, category, movement, layers]);
+  const view = useMemo(() => getNetworkView({ scope, region, frame, scenario, category, movement, layers }), [scope, region, frame, scenario, category, movement, layers]);
   const summary = useMemo(() => summarizeNetwork(view), [view]);
   const viewBox = useMemo(() => cameraViewBox(camera), [camera]);
   const corridorById = useMemo(() => new Map(view.corridors.map((corridor) => [corridor.id, corridor])), [view.corridors]);
@@ -378,7 +379,7 @@ export default function WorldNetworkMap({ scope, category, currency, horizon, mo
 
   const changeZoom = (delta: number) => setCamera((current) => ({ ...current, zoom: Math.max(1, Math.min(6, Number((current.zoom + delta).toFixed(2)))), label: "Custom view" }));
   const focusRegion = (preset: RegionPreset) => setCamera({ center: preset.center, zoom: preset.zoom, label: preset.label });
-  const resetCamera = () => setCamera(initialCamera(scope));
+  const resetCamera = () => setCamera(initialCamera(scope, region));
   const toggleLayer = (layer: MapLayer) => setLayers((current) => {
     const next = new Set(current);
     if (next.has(layer)) next.delete(layer); else next.add(layer);
@@ -520,7 +521,7 @@ export default function WorldNetworkMap({ scope, category, currency, horizon, mo
             {selectedAsset && assetCorridor && <AssetInspector asset={selectedAsset} corridor={assetCorridor} cargo={view.cargo.filter((lot) => lot.assetId === selectedAsset.id)} formatMoney={formatMoney} />}
             {selectedCargo && <CargoInspector cargo={selectedCargo} asset={cargoAsset} corridor={cargoCorridor} formatMoney={formatMoney} />}
             {selectedTransfer && <TransferInspector transfer={selectedTransfer} formatMoney={formatMoney} />}
-            {selectionContext && <div className="radar-inspector-actions"><button type="button" onClick={traceSelection}>Trace entity evidence ◇</button><button type="button" onClick={() => onOpenRisk(selectionContext)}>Analyze dependency</button><button type="button" onClick={() => onOpenOptimizer(selectionContext)}>{selectionContext.kind === "corridor" ? "Optimize corridor" : "Optimize selected context"}</button><button type="button" onClick={() => onOpenFlow(selectionContext)}>Inspect cash impact</button><button type="button" onClick={() => setSelection(null)}>Clear selection</button></div>}
+            {selectionContext && <div className="radar-inspector-actions"><button type="button" onClick={traceSelection}>Trace evidence</button><button type="button" onClick={() => onOpenRisk(selectionContext)}>Dependency intake</button><button type="button" onClick={() => onOpenOptimizer(selectionContext)}>Route intake</button><button type="button" onClick={() => onOpenFlow(selectionContext)}>Value intake</button><button type="button" onClick={() => setSelection(null)}>Clear</button></div>}
           </aside>
         </div>
       ) : (

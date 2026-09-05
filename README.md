@@ -1,4 +1,4 @@
-# Maya supply-chain decision platform concept
+# Maya Workspace
 
 Maya is an interactive, front-end-only concept for operating a connected supply
 chain through client projects, specialist applications, expert agents,
@@ -14,45 +14,65 @@ credential, learning loop, or write-back authority.
 The main delivery hierarchy is:
 
 ```text
-Global intelligence
-  Sector tower
-    Client tenant
-      Project workspace
-        Project-owned data and knowledge graph
-        Mounted specialist applications
-        Decision cases and decision operations
+Workspace
+  Operations World (Global / Regional)
+  Sector
+    Client
+      Project
+        Overview and collaborators
+        Decisions and review
+        Mounted specialist apps
+        Project data and IoT source requests
+        Knowledge graph and evidence
         Expert agents and human specialists
-        Evidence receipts and governance
+        Controls and governance
 ```
 
-The former company platform is now the **Expert workspace**. It contains ten
-synthetic clients and projects across mobility, life sciences, semiconductors,
-food and agriculture, aerospace, energy, critical minerals, ports, industrial
-automation, and retail. The URL preserves the selected sector, client, project,
-project tab, app studio, case, scope, and retained network entity.
+**Workspace is the application root.** It contains ten synthetic clients and
+projects across mobility, life sciences, semiconductors, food and agriculture,
+aerospace, energy, critical minerals, ports, industrial automation, and retail.
+The URL preserves the selected sector, client, project, project tab, app studio,
+decision, scope, and retained network entity.
+
+**Operations World** is the shared network view. Its Global and Regional modes
+use one consistent surface and a controlled region selector. Changing APAC,
+Europe, Americas, or Middle East & Africa updates the map, KPIs, signals, cash,
+suppliers, movement rows, and evidence scope together. Dependency, route, and
+value intakes retain the selected entity, frame, and scenario when they seed a
+new project. Project data, apps, decisions, agents, and reviews open only after
+a project has been selected.
 
 Each project exposes eight working surfaces:
 
-- **Project home** - outcomes, KPIs, mounted apps, decision preview, knowledge
+- **Overview** - outcomes, KPIs, mounted apps, decision preview, knowledge
   footprint, and direct handoffs.
 - **Decisions** - a D0-D3 choice tree connected to L2, L1, and L0 taxonomy
   variables, OR methods, and evidence.
-- **Mounted apps** - an app dependency graph and per-project mount manifest.
-- **Project data** - a session-only staged-data walkthrough with metadata,
-  schema, mapping, review, and receipt states.
-- **Knowledge graph** - selectable nodes, visible agent trace, evidence links,
+- **Apps** - an app dependency graph and per-project mount manifest.
+- **Data** - a session-only staged-data walkthrough with metadata,
+  schema, mapping, review, receipt states, and governed IoT source requests.
+- **Graph** - selectable nodes, visible agent trace, evidence links,
   playback, and visual steering instructions.
-- **Agent society** - a minimal code-style prompt workspace, trace controls,
+- **Agents** - a minimal code-style prompt workspace, trace controls,
   experience profiles, Skills/MCP/tool manifest builder, and human gate.
-- **Expert team** - OR scientists, procurement leaders, logisticians, planners,
-  data stewards, and other accountable human roles.
-- **Governance** - explicit concept controls, production gaps, evidence state,
+- **Team** - named client collaborators and Kearney specialists including
+  OR scientists, procurement leaders, logisticians, planners, and data stewards.
+- **Controls** - explicit concept controls, production gaps, evidence state,
   and project boundaries.
 
 Browser-session state is isolated by project for mounted apps, uploaded-file
 metadata, agent conversations, traces, steering, draft agents, expert
 assignments, and action receipts. This is demonstrative state, not backend
 persistence or security enforcement.
+
+New client and new project flows are available from Workspace. A session project
+starts empty, receives one client and one Kearney membership draft, and adds data,
+apps, agents, and decisions only through explicit project actions. Maya Rao is
+represented as a Kearney portfolio collaborator with an explicit membership in
+each seeded project. Project entry and governed session mutations evaluate that
+identity's capabilities instead of borrowing a client owner's rights.
+Top-level and project tabs wrap within the available width; navigation never
+depends on a horizontal tab carousel.
 
 ## Ten distinct specialist applications
 
@@ -72,10 +92,9 @@ different visual grammars and working rhythms:
 - **LogisticsRadar** - teal route, cargo, transfer, customs, and last-mile radar.
 - **QualityGenealogy** - amber lot genealogy and release/containment gate.
 
-Each app also explains its decision question, users, cadence, authority,
-workflow, method references, data contracts, controls, KPIs, handoffs, change
-ledger, validation rules, and interpretation limits. The operating-model facts
-create evidence or action receipts rather than pretending a service executed.
+Each app uses concise, task-specific controls and exposes its methods, data
+contracts, controls, KPIs, handoffs, change ledger, validation rules, and
+interpretation limits through inspectable evidence or action receipts.
 
 ## Evidence and terminal interaction contract
 
@@ -110,7 +129,7 @@ not execute a solver and never labels a generated candidate as optimal.
 
 ## World Network Radar
 
-The scrollable world map uses a bundled Natural Earth basemap and synthetic
+The pannable and zoomable world map uses a bundled Natural Earth basemap and synthetic
 locations, corridors, assets, cargo, transfers, and causal change records. It
 supports region presets, pan, wheel/keyboard zoom, time and scenario playback,
 layer controls, hover/focus detail, pinned inspection, and app handoff.

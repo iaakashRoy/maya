@@ -53,7 +53,7 @@ function DecisionInbox({ cases, activeCase, scopeLabel, onOpenCase, onToast }: D
   return (
     <section className="decision-workspace" aria-labelledby="decision-inbox-heading">
       <header className="workflow-intro">
-        <div><p className="kicker">GOVERNED DECISION OPERATIONS</p><h1 id="decision-inbox-heading" data-page-heading tabIndex={-1}>Decision Inbox</h1><p>One prioritized queue for signals, simulations, approvals, execution, and measured outcomes across every connected application.</p></div>
+        <div><p className="kicker">PROJECT DECISIONS</p><h1 id="decision-inbox-heading" data-page-heading tabIndex={-1}>Decisions</h1><p>Prioritize analysis, approvals, execution, and measured outcomes for this project.</p></div>
         <div className="workflow-intro-context"><span>ACTIVE SCOPE</span><b>{scopeLabel}</b><small>{cases.length} governed cases</small></div>
       </header>
 
@@ -90,7 +90,7 @@ function DecisionInbox({ cases, activeCase, scopeLabel, onOpenCase, onToast }: D
 function CaseWorkspace({ activeCase, onOpenCase, onOpenApp, onToast }: DecisionWorkspacesProps) {
   return (
     <section className="decision-workspace" aria-labelledby="case-workspace-heading">
-      <CaseHero item={activeCase} eyebrow="CASE WORKSPACE" titleId="case-workspace-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenApp("graph")}>Open evidence graph</button><button className="primary-action" type="button" onClick={() => onOpenCase(activeCase.id, "action")}>Open Action Room</button></>} />
+      <CaseHero item={activeCase} eyebrow="DECISION" titleId="case-workspace-heading" actions={<><button className="secondary-action" type="button" onClick={() => onOpenApp("graph")}>Open evidence graph</button><button className="primary-action" type="button" onClick={() => onOpenCase(activeCase.id, "action")}>Review decision</button></>} />
       <StageRail item={activeCase} />
 
       <section className="panel case-section">

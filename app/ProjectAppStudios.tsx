@@ -14,7 +14,7 @@ type Props = {
 function StudioHeader({ appId, project, onBack }: Pick<Props, "appId" | "project" | "onBack">) {
   const app = projectApps.find((item) => item.id === appId) ?? projectApps[0];
   return <header className="studio-header">
-    <button data-action-id="studio.back-to-apps" type="button" onClick={onBack}>← Mounted apps</button>
+    <button data-action-id="studio.back-to-apps" type="button" onClick={onBack}>← Apps</button>
     <div><span>{app.icon}</span><p>PROJECT APP · {project.code}</p><h1>{app.name}</h1><small>{app.archetype} · {app.outcome}</small></div>
     <aside><b>{app.status}</b><span>{app.methodCodes.join(" · ")}</span><small>Deterministic synthetic workspace</small></aside>
   </header>;
@@ -87,7 +87,7 @@ function QualityGenealogy({ project, onEvidence, onOutcome }: Omit<Props, "appId
 }
 
 function UnsupportedStudio({ project, appId, onBack }: Pick<Props, "project" | "appId" | "onBack">) {
-  return <section className="unsupported-studio"><p>SHARED APPLICATION ROUTE</p><h2>{projectApps.find((item) => item.id === appId)?.name} opens in its dedicated project-bound surface.</h2><span>{project.client} / {project.name} remains in the URL context. This fallback never substitutes another app&apos;s data.</span><button data-action-id="studio.unsupported.back" type="button" onClick={onBack}>Return to mounted apps</button></section>;
+  return <section className="unsupported-studio"><p>PROJECT APP</p><h2>{projectApps.find((item) => item.id === appId)?.name}</h2><span>{project.client} / {project.name} remains in the active project context.</span><button data-action-id="studio.unsupported.back" type="button" onClick={onBack}>Back to apps</button></section>;
 }
 
 export default function ProjectAppStudio(props: Props) {
