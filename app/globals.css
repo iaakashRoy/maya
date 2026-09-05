@@ -17,7 +17,7 @@
   --font-geist-sans: var(--font-ui);
   --font-geist-mono: var(--font-code);
   --rail-width: 260px;
-  --topbar-height: 64px;
+  --topbar-height: 56px;
   --statusbar-height: 34px;
   --shadow: 0 14px 38px rgba(17, 24, 21, .12);
 }
@@ -3717,10 +3717,10 @@ body {
    the right-side inspector share one compact light-mode application contract. */
 :root {
   --rail-width: 304px;
-  --project-app-row-height: 54px;
-  --project-people-row-height: 44px;
+  --project-app-row-height: 48px;
+  --project-people-row-height: 38px;
   --project-context-height: calc(var(--project-app-row-height) + var(--project-people-row-height));
-  --statusbar-height: 28px;
+  --statusbar-height: 24px;
   --project-chrome-height: calc(var(--topbar-height) + var(--project-context-height) + var(--statusbar-height));
   --strong-muted: #536159;
   --focus-ring: #2d6f89;
@@ -5230,8 +5230,8 @@ textarea:focus-visible,
 /* tanjx visual system ---------------------------------------------------------
    One type scale, one page gutter, semantic app glyphs, and neutral dark mode. */
 :root {
-  --workspace-gutter: clamp(18px, 2vw, 28px);
-  --workspace-block-gap: 14px;
+  --workspace-gutter: clamp(16px, 1.6vw, 24px);
+  --workspace-block-gap: 10px;
   --type-xs: 11px;
   --type-sm: 12px;
   --type-md: 13px;
@@ -6123,4 +6123,76 @@ textarea:focus-visible,
   .project-os.playground-app-mode .agent-os { height: auto !important; min-height: 760px !important; }
   .project-os.playground-fullscreen { height: 100dvh; overflow: auto; }
   .project-os.playground-fullscreen > .project-stage { height: 100%; padding: 6px !important; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: auto; }
+}
+
+/* Compact workspace density ------------------------------------------------
+   Reduce repeated chrome and container padding without shrinking the shared
+   content type scale. Dense controls remain distinct, aligned, and usable. */
+.topbar { padding-inline: 18px; gap: 12px; }
+.search-trigger { min-width: 200px; height: 32px; }
+.topbar-icon { width: 32px; height: 32px; }
+.user-button { min-height: 36px; gap: 7px; }
+.user-button > span { width: 30px; height: 30px; }
+.notification-panel { top: 52px; }
+
+.project-context-bar { padding: 3px 12px; gap: 6px; }
+.context-current { min-height: 40px; padding-block: 3px; }
+.context-mounted-apps { height: 40px; gap: 3px; }
+.context-mounted-apps > button,
+.context-back-button,
+.context-group-home { height: 34px !important; }
+.context-mounted-apps > button { padding-block: 1px; }
+.context-mounted-apps .app-glyph { width: 24px; height: 24px; font-size: 14px !important; }
+
+.project-people-bar { padding: 2px 12px; gap: 6px; }
+.context-identity-tools { height: 34px; gap: 3px; }
+.context-identity-home,
+.context-identity-tools > button:not(.context-identity-home):not(.context-more) { height: 32px !important; }
+.context-identity-tools > button > .identity-avatar { width: 22px; height: 22px; flex-basis: 22px; font-size: 8px !important; }
+.context-more { min-width: 28px !important; height: 28px !important; }
+.statusbar { padding-inline: 12px; gap: 12px; }
+.statusbar > span { font-size: 10px; }
+
+.project-commandbar { min-height: 48px; gap: 14px; }
+.project-commandbar > aside { min-height: 40px; padding: 5px 8px; }
+.project-tabs { margin: 6px 0 8px; }
+.project-tabs button { min-height: 34px; }
+.project-os .section-hero { min-height: 58px; padding: 8px 11px; }
+
+.application-container .app-canonical-header,
+.optimizer-workbench .app-canonical-header { min-height: 68px; padding: 7px 10px; }
+.application-container .app-canonical-header > aside,
+.optimizer-workbench .app-canonical-header > aside { min-height: 48px; padding: 6px 8px; }
+.app-canonical-header .app-glyph.app-code,
+.studio-header .app-glyph.app-code { width: 36px; height: 36px; font-size: 19px !important; }
+.panel-header,
+.panel-heading { min-height: 60px; padding: 10px 13px; }
+.app-metric { min-height: 108px; padding: 12px; }
+.project-metric-grid button { min-height: 112px; padding: 12px; gap: 6px; }
+
+.side-rail { padding: 10px; gap: 6px; }
+.brand-block { min-height: 40px; }
+.side-rail nav { gap: 6px; }
+.rail-quick-actions > button { min-height: 38px; }
+.workspace-primary-nav { padding: 5px; }
+.workspace-primary-nav .scope-nav { min-height: 36px; padding-block: 3px; }
+.sidebar-projects { padding: 6px; }
+.sidebar-path-tree { padding: 4px; }
+.sidebar-path-root { margin-bottom: 5px; }
+.sidebar-path-root > button { min-height: 48px !important; }
+.sidebar-path-branches > .sidebar-path-branch > button { min-height: 46px !important; }
+.sidebar-project-leaves .sidebar-project { min-height: 56px !important; padding-block: 6px !important; }
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  :root { --project-people-row-height: 66px; }
+  .project-people-bar { grid-template-rows: repeat(2, 30px); }
+}
+
+@media (max-width: 760px) {
+  :root { --workspace-gutter: 12px; }
+  .topbar { min-height: 52px; padding-inline: 10px; }
+  .project-context-bar,
+  .project-people-bar { padding-inline: 9px; }
+  .context-mounted-apps { height: auto; min-height: 36px; }
+  .project-tabs button { min-height: 36px; }
 }

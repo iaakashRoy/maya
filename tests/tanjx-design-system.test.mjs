@@ -69,7 +69,7 @@ test("the workspace uses one type scale, one gutter contract, and neutral dark s
   const css = await read("../app/globals.css");
   const contract = css.slice(css.lastIndexOf("tanjx visual system"));
 
-  assert.match(contract, /--workspace-gutter:\s*clamp\(18px, 2vw, 28px\)/);
+  assert.match(contract, /--workspace-gutter:\s*clamp\(16px, 1\.6vw, 24px\)/);
   assert.match(contract, /\.workspace-home,[\s\S]*?\.scope-dashboard,[\s\S]*?\.application-session-surface,[\s\S]*?\.project-stage\s*\{\s*padding:\s*var\(--workspace-gutter\)\s*!important/);
   assert.match(contract, /--type-xs:\s*11px/);
   assert.match(contract, /--type-base:\s*14px/);
@@ -80,4 +80,20 @@ test("the workspace uses one type scale, one gutter contract, and neutral dark s
   assert.match(contract, /Lime is a focus\/action accent, not a surface color/);
   assert.match(contract, /\.agent-os\s*\{[\s\S]*?background:\s*#f4f6f3\s*!important/);
   assert.match(contract, /\.theme-dark \.agent-os\s*\{[\s\S]*?background:\s*#101214\s*!important/);
+});
+
+test("the workspace uses a compact chrome and content density contract", async () => {
+  const css = await read("../app/globals.css");
+  const density = css.slice(css.lastIndexOf("Compact workspace density"));
+
+  assert.match(css, /--topbar-height:\s*56px/);
+  assert.match(css, /--project-app-row-height:\s*48px/);
+  assert.match(css, /--project-people-row-height:\s*38px/);
+  assert.match(css, /--statusbar-height:\s*24px/);
+  assert.match(density, /\.context-mounted-apps\s*\{\s*height:\s*40px/);
+  assert.match(density, /\.context-identity-tools\s*\{\s*height:\s*34px/);
+  assert.match(density, /\.project-tabs button\s*\{\s*min-height:\s*34px/);
+  assert.match(density, /\.application-container \.app-canonical-header,[\s\S]*?min-height:\s*68px/);
+  assert.match(density, /\.sidebar-project-leaves \.sidebar-project\s*\{\s*min-height:\s*56px/);
+  assert.match(density, /@media \(max-width:\s*1180px\) and \(min-width:\s*761px\)[\s\S]*?--project-people-row-height:\s*66px/);
 });
