@@ -523,6 +523,7 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
   assert.match(shell, /groupProjectsByPath\(pathProjects, projectPathMode\)/);
   assert.match(shell, /sidebarPathGroups/);
   assert.match(shell, /projectPathSegments\(resolvedProject, projectPathMode\)/);
+  assert.match(shell, /className="project-context-stack"/);
   assert.match(shell, /className="project-context-bar"/);
   assert.doesNotMatch(shell, />Recent projects</);
   assert.match(shell, /\.\.\.accessibleProjects\.map/);
@@ -567,7 +568,9 @@ test("project chrome has one hierarchy, mounted context, and three accessible co
   assert.match(shell, /className="rail-quick-actions"/);
   assert.match(shell, /data-action-id="nav\.onboard-client"/);
   assert.match(shell, /data-action-id="nav\.new-project"/);
-  assert.match(shell, /className="context-work-tools"/);
+  assert.match(shell, /className="project-people-bar"/);
+  assert.match(shell, /className="context-identity-tools context-agent-tools"/);
+  assert.match(shell, /className="context-identity-tools context-team-tools"/);
   assert.match(shell, /data-action-id="context\.open-apps"/);
   assert.match(shell, /data-action-id="context\.agents"/);
   assert.match(shell, /data-action-id="context\.team"/);
@@ -582,7 +585,9 @@ test("project chrome has one hierarchy, mounted context, and three accessible co
   assert.match(css, /\.dataset-card-grid \{ grid-template-columns: repeat\(2/);
   assert.match(css, /\.breadcrumb-segment \{[^}]*display: inline-flex/s);
   assert.match(css, /\.mobile-project-path \{[^}]*display: grid/s);
-  assert.match(css, /\.context-session \{[^}]*display: grid/s);
+  assert.doesNotMatch(shell, /context\.open-sessions|className="context-session"/);
+  assert.doesNotMatch(css, /\.context-session/);
+  assert.match(css, /\.project-people-bar \{[\s\S]*?grid-template-columns: minmax\(0, 1\.25fr\) minmax\(0, \.75fr\)/);
   assert.match(css, /\.side-rail \.rail-footer \{ display: none; \}/);
   assert.match(css, /--rail-width: 304px/);
   assert.match(css, /\.work-identity-inspector \{[\s\S]*?position: fixed/);

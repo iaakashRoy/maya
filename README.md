@@ -42,23 +42,24 @@ value intakes retain the selected entity, frame, and scenario when they seed a
 new project. Project data, apps, decisions, agents, and reviews open only after
 a project has been selected.
 
-Each project exposes eight working surfaces:
+Each project exposes five stable working surfaces:
 
 - **Overview** - outcomes, KPIs, mounted apps, decision preview, knowledge
   footprint, and direct handoffs.
 - **Decisions** - a D0-D3 choice tree connected to L2, L1, and L0 taxonomy
   variables, OR methods, and evidence.
-- **Apps** - an app dependency graph and per-project mount manifest.
-- **Data** - a session-only staged-data walkthrough with metadata,
-  schema, mapping, review, receipt states, and governed IoT source requests.
-- **Graph** - selectable nodes, visible agent trace, evidence links,
-  playback, and visual steering instructions.
-- **Agents** - a minimal code-style prompt workspace, trace controls,
+- **Data & graph** - one searchable surface for files, tables, PDFs, variables,
+  evidence, connectors, governed IoT source requests, and graph entities.
+- **Playground** - a minimal code-style prompt workspace, session history, trace controls,
   experience profiles, Skills/MCP/tool manifest builder, and human gate.
-- **Team** - named client collaborators and Kearney specialists including
-  OR scientists, procurement leaders, logisticians, planners, and data stewards.
 - **Controls** - explicit concept controls, production gaps, evidence state,
   and project boundaries.
+
+The project chrome keeps navigation separate from execution. Its first row
+contains the current surface and mounted specialist apps. A dedicated second
+row contains Agents and Team as separate accountability groups; each identity
+opens the same mutually exclusive right-side work record. Playground sessions
+remain inside Playground instead of competing for space in the navigation rows.
 
 Browser-session state is isolated by project for mounted apps, uploaded-file
 metadata, agent conversations, traces, steering, draft agents, expert
@@ -68,8 +69,8 @@ persistence or security enforcement.
 The fixed outer rail is the only project hierarchy. It defaults to
 Client > Tower > Project and can be switched to Tower > Client > Project,
 searched, or collapsed with Command/Control+B. The breadcrumb keeps the full
-project ancestry visible, while the context bar identifies the active surface,
-mounted apps, and work session. Valid agent-session and app-run IDs are also
+project ancestry visible, while the two context rows identify the active surface,
+mounted apps, accountable agents, and team members. Valid agent-session and app-run IDs are also
 addressable in the URL and restore through browser Back and Forward.
 
 New client and new project flows are available from Workspace. A session project
