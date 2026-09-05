@@ -46,8 +46,6 @@ function isViewId(value: string | undefined): value is ViewId {
 export function resolveNavigation(searchParams: NavigationSearchParams = {}, projectCatalog: readonly WorkspaceProject[] = workspaceProjects) {
   const requestedView = first(searchParams.view);
   const requestedCase = first(searchParams.case);
-  const requestedSector = first(searchParams.sector);
-  const requestedClient = first(searchParams.client);
   const requestedProject = first(searchParams.project);
   const requestedProjectTab = first(searchParams.projectTab);
   const requestedProjectApp = first(searchParams.projectApp);
@@ -83,7 +81,7 @@ export function resolveNavigation(searchParams: NavigationSearchParams = {}, pro
   const project = hasExplicitProject
     ? explicitProject
     : hasExplicitSector || hasExplicitClient
-      ? projectCatalog.find((item) => (!hasExplicitSector || item.sectorId === requestedSector) && (!hasExplicitClient || item.clientId === requestedClient))
+      ? undefined
       : projectFromGeneratedCase;
 
   if (!project) {

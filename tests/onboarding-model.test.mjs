@@ -47,8 +47,8 @@ test("session client and project factories are collision-safe and preserve canon
 
   assert.equal(firstProject.id, "anode-shield-2");
   assert.equal(secondProject.id, "anode-shield-3");
-  assert.equal(firstProject.code, "P-011");
-  assert.equal(secondProject.code, "P-012");
+  assert.equal(firstProject.code, "P-012");
+  assert.equal(secondProject.code, "P-013");
   assert.equal(firstProject.clientId, firstClient.id);
   assert.equal(firstProject.client, firstClient.name);
   assert.equal(firstProject.sectorId, firstClient.sectorId);

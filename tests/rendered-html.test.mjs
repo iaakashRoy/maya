@@ -109,6 +109,8 @@ test("server-renders the selected sector, client, project, data tab, and special
   assert.match(studioHtml, /TerraMetals Alliance/);
   assert.match(studioHtml, /MineralAtlas/);
   assert.match(studioHtml, /RESERVE[\s\S]*?REFINERY[\s\S]*?PRODUCT/);
+  assert.match(studioHtml, /Runs, reports, and reruns/);
+  assert.match(studioHtml, /APP-P007-MA-019/);
 });
 
 test("server-renders project-bound Decision and Review deep links", async () => {
@@ -116,7 +118,7 @@ test("server-renders project-bound Decision and Review deep links", async () => 
   const decisionResponse = await render(`/?view=case&scope=company&case=CASE-1042&${projectPath}`);
   assert.equal(decisionResponse.status, 200);
   const decisionHtml = await decisionResponse.text();
-  assert.match(decisionHtml, /class="project-binding-strip"/);
+  assert.match(decisionHtml, /class="project-context-bar"/);
   assert.match(decisionHtml, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
   assert.match(decisionHtml, /DECISION[\s\S]{0,80}CASE-1042/);
   assert.match(decisionHtml, /Secure alternate graphite volume/);
@@ -128,7 +130,7 @@ test("server-renders project-bound Decision and Review deep links", async () => 
   const reviewResponse = await render(`/?view=action&scope=company&case=CASE-1042&${projectPath}`);
   assert.equal(reviewResponse.status, 200);
   const reviewHtml = await reviewResponse.text();
-  assert.match(reviewHtml, /class="project-binding-strip"/);
+  assert.match(reviewHtml, /class="project-context-bar"/);
   assert.match(reviewHtml, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
   assert.match(reviewHtml, /CONTROLLED EXECUTION[\s\S]{0,80}CASE-1042/);
   assert.match(reviewHtml, /Decision authority/);
@@ -166,13 +168,15 @@ test("each decision app exposes a project-bound, decision-specific operating mod
     const response = await render(`/?view=${view}&scope=company&case=CASE-1042&sector=mobility-ev&client=apex-mobility&project=anode-shield`);
     assert.equal(response.status, 200, `${name} should render`);
     const html = await response.text();
-    assert.match(html, /class="project-binding-strip"/);
+    assert.match(html, /class="project-context-bar"/);
     assert.match(html, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
     assert.match(html, new RegExp(`data-app-theme="${view}"`));
     assert.match(html, new RegExp(`<h1[^>]*>${name}<\\/h1>`));
     assert.match(html, /ACTIVE DECISION/);
     assert.match(html, /Open decision/);
     assert.match(html, />Review/);
+    assert.match(html, /Runs, reports, and reruns/);
+    assert.match(html, /from[\s\S]{0,120}SES-P001-024/);
     assert.match(html, decisionFocus);
     assert.match(html, distinctiveSurface);
     assert.match(html, /SYNTHETIC/i);
@@ -187,7 +191,7 @@ test("Decisions, apps, data, graph, agents, and members resolve inside the selec
     [`/?view=company&projectTab=apps&${projectPath}`, "Project applications"],
     [`/?view=company&projectTab=data&${projectPath}`, "Project data and sources"],
     [`/?view=graph&${projectPath}`, "Project knowledge graph"],
-    [`/?view=agents&${projectPath}`, "PROJECT SESSION"],
+    [`/?view=agents&${projectPath}`, "SESSIONS"],
     [`/?view=company&projectTab=team&${projectPath}`, "Client and Kearney access"],
   ];
 
@@ -199,6 +203,15 @@ test("Decisions, apps, data, graph, agents, and members resolve inside the selec
     assert.match(html, /<h1>Cold Chain Promise<\/h1>/);
     assert.match(html, /Helixora Therapeutics/);
     assert.ok(html.includes(expected), `${path} should render ${expected}`);
+    if (path.includes("view=agents")) {
+      assert.match(html, /SES-P002-024/);
+      assert.match(html, /MSG-P002-024-001/);
+      assert.match(html, /Continue as new session/);
+    }
+    if (path.includes("projectTab=data")) {
+      assert.match(html, /class="dataset-card"/);
+      assert.doesNotMatch(html, /<table/);
+    }
     assert.doesNotMatch(html, /class="workspace-home"/);
   }
 });

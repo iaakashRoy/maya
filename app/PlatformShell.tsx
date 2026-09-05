@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import ApplicationViews from "./ApplicationViews";
 import DataOperations from "./DataOperations";
 import DecisionWorkspaces from "./DecisionWorkspaces";
-import ProjectWorkspace from "./ProjectWorkspace";
+import ProjectWorkspace, { AppRunHistory } from "./ProjectWorkspace";
 import ScopeDashboard, { regionalOperationsProfiles } from "./ScopeDashboard";
 import WorkspaceHome from "./WorkspaceHome";
 import WorkspaceOnboarding from "./WorkspaceOnboarding";
@@ -19,11 +19,13 @@ import {
   createSessionProjectMemberships,
   evaluateProjectAccess,
   humanExperts,
+  projectApps,
   projectMemberships,
   signedInCollaboratorId,
   workspaceClients,
   workspaceCollaborators,
   workspaceProjects,
+  workspaceTabs,
   type ProjectAppId,
   type ProjectAccessDecision,
   type ProjectCapability,
@@ -35,6 +37,8 @@ import {
   type WorkspaceProject,
   type WorkspaceTabId,
 } from "./workspace-model";
+import { appRunsFor, projectActivityReducer, seedProjectActivity, sessionsForProject } from "./project-activity-model";
+import { groupProjectsByPath, projectPathSegments, type ProjectPathMode } from "./project-path-model";
 import {
   applications,
   decisionCases,
@@ -197,6 +201,8 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   });
   const [projectDraft, setProjectDraft] = useState<SessionProjectDraft>({
     clientId: workspaceClients[0]?.id ?? "",
+    sectorId: workspaceClients[0]?.sectorId ?? "",
+    sector: workspaceClients[0]?.sector ?? "",
     name: "",
     problem: "",
     outcome: "",
@@ -211,6 +217,24 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId);
   const [activeProjectTab, setActiveProjectTab] = useState<WorkspaceTabId>(initialProjectTab);
   const [activeProjectApp, setActiveProjectApp] = useState<ProjectAppId | null>(initialProjectApp);
+  const [projectPathMode, setProjectPathMode] = useState<ProjectPathMode>("client");
+  const [expandedSidebarRoots, setExpandedSidebarRoots] = useState<readonly string[]>([]);
+  const [expandedSidebarBranches, setExpandedSidebarBranches] = useState<readonly string[]>([]);
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [activityState, dispatchActivity] = useReducer(projectActivityReducer, workspaceProjects, seedProjectActivity);
+  const handleMountedAppsChange = useCallback((projectId: string, appIds: readonly ProjectAppId[]) => {
+    setProjectCatalog((current) => {
+      const project = current.find((item) => item.id === projectId);
+      if (!project) return current;
+      const unchanged = project.mountedAppIds.length === appIds.length
+        && project.mountedAppIds.every((id, index) => id === appIds[index])
+        && project.counts.apps === appIds.length;
+      if (unchanged) return current;
+      return current.map((item) => item.id === projectId
+        ? { ...item, mountedAppIds: [...appIds], counts: { ...item.counts, apps: appIds.length } }
+        : item);
+    });
+  }, []);
   const [horizon, setHorizon] = useState("Now");
   const [category, setCategory] = useState("All categories");
   const [operationsRegion, setOperationsRegion] = useState<NetworkRegion>("APAC");
@@ -254,6 +278,19 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   const canViewActiveProject = Boolean(resolvedProject && activeProjectViewAccess?.allowed);
   const accessibleProjects = useMemo(() => projectCatalog.filter((project) => evaluateProjectAccess(project.id, signedInCollaboratorId, "project.view", membershipCatalog).allowed), [membershipCatalog, projectCatalog]);
   const accessibleClients = useMemo(() => clientCatalog.filter((client) => client.origin === "Browser-session draft" || accessibleProjects.some((project) => project.clientId === client.id)), [accessibleProjects, clientCatalog]);
+  const effectiveMountedApps = resolvedProject?.mountedAppIds ?? [];
+  const sidebarPathGroups = useMemo(() => {
+    const grouped = [...groupProjectsByPath(accessibleProjects, projectPathMode)];
+    if (projectPathMode === "client") {
+      for (const client of accessibleClients) {
+        if (!grouped.some((group) => group.id === client.id)) grouped.push({ id: client.id, key: `client:${client.id}`, kind: "client", label: client.name, branches: [], projects: [] });
+      }
+    }
+    return grouped.sort((left, right) => left.label.localeCompare(right.label));
+  }, [accessibleClients, accessibleProjects, projectPathMode]);
+  const projectPath = resolvedProject ? projectPathSegments(resolvedProject, projectPathMode) : [];
+  const activeWorkSessions = resolvedProject ? sessionsForProject(activityState, resolvedProject.id) : [];
+  const activeWorkSessionId = resolvedProject ? activityState.selectedSessionByProject[resolvedProject.id] ?? "" : "";
   const workspaceCollaboratorViews = useMemo(() => collaboratorCatalog.filter((collaborator) => {
     if (collaborator.id === signedInCollaboratorId) return true;
     if (collaborator.clientId && accessibleClients.some((client) => client.id === collaborator.clientId)) return true;
@@ -280,7 +317,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     ? hasProjectDecision ? [
       { tone: "critical", title: `${activeProject.name} expert review is ready`, detail: `${activeProject.metrics[0].value} · owned by ${activeProject.owner}`, caseId: activeCase.id },
       { tone: "watch", title: `${activeProject.metrics[1].label} requires a decision`, detail: `${activeProject.metrics[1].value} · trace ${activeProject.metrics[1].evidenceRef}`, caseId: activeCase.id },
-      { tone: "opportunity", title: `${activeProject.mountedAppIds.length} mounted apps can challenge the plan`, detail: `${activeProject.methodCodes.length} handbook method references · synthetic project fixture`, caseId: activeCase.id },
+      { tone: "opportunity", title: `${effectiveMountedApps.length} mounted apps can challenge the plan`, detail: `${activeProject.methodCodes.length} handbook method references · synthetic project fixture`, caseId: activeCase.id },
     ] : [
       { tone: "watch", title: `${activeProject.name} needs its first data contract`, detail: "No datasets, apps, agents, or decisions have been added", projectId: activeProject.id, caseId: "setup" },
       { tone: "opportunity", title: "Project access is ready for setup", detail: `${membershipCatalog.filter((item) => item.projectId === activeProject.id).length} project memberships · start in Data`, projectId: activeProject.id, caseId: "access" },
@@ -300,7 +337,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       ...accessibleProjects.map((item) => ({ id: "company" as ViewId, projectId: item.id, label: `${item.client} · ${item.name}`, detail: `${item.sector} · ${item.problem}`, group: "Project" })),
       ...(scope === "company" && resolvedProject && activeProjectViewAccess?.allowed ? [
         ...workflowViews.filter((item) => hasProjectDecision || item.id === "decisions").map((item) => ({ id: item.id as ViewId, label: item.label, detail: `${activeProject.name} · ${hasProjectDecision ? item.detail : "Create the first decision brief"}`, group: "Project capability" })),
-        ...applications.filter((item) => activeProject.mountedAppIds.includes(item.id)).map((item) => ({ id: item.id as ViewId, label: item.name, detail: `${activeProject.name} · ${item.description}`, group: "Project app" })),
+        ...applications.filter((item) => effectiveMountedApps.includes(item.id)).map((item) => ({ id: item.id as ViewId, label: item.name, detail: `${activeProject.name} · ${item.description}`, group: "Project app" })),
         ...dataViews.map((item) => ({ id: item.id as ViewId, label: item.label, detail: activeProject.name, group: "Project capability" })),
         ...(projectCase ? [{ id: "case" as ViewId, caseId: projectCase.id, label: `${projectCase.id} · ${projectCase.title}`, detail: `${projectCase.stage} · ${projectCase.owner}`, group: "Project decision" }] : []),
       ] : []),
@@ -425,7 +462,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       completeAction("Decision workspace unavailable", "Create the first project decision brief before opening analysis or review. No case was synthesized or opened.", "DECISION-ZERO-STATE", "Blocked");
       return;
     }
-    if (resolvedProject && applications.some((item) => item.id === next) && !activeProject.mountedAppIds.includes(next as ProjectAppId)) {
+    if (resolvedProject && applications.some((item) => item.id === next) && !effectiveMountedApps.includes(next as ProjectAppId)) {
       completeAction("Application unavailable", `${viewLabels[next]} is not mounted to ${activeProject.name}. No specialist workspace was opened.`, "APP-NOT-MOUNTED", "Blocked");
       return;
     }
@@ -523,6 +560,34 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     setOutcome(null);
   };
 
+  const openMountedProjectApp = (appId: ProjectAppId) => {
+    if (!resolvedProject || !effectiveMountedApps.includes(appId)) {
+      completeAction("Application unavailable", "Select a mounted application inside an accessible project.", "APP-NOT-MOUNTED", "Blocked");
+      return;
+    }
+    if (applications.some((item) => item.id === appId)) {
+      go(appId as AppId);
+      return;
+    }
+    if (!requireActiveProjectCapability("apps.view")) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "company");
+    url.searchParams.set("scope", "company");
+    url.searchParams.set("case", caseIdForProject(activeProject));
+    url.searchParams.set("sector", activeProject.sectorId);
+    url.searchParams.set("client", activeProject.clientId);
+    url.searchParams.set("project", activeProject.id);
+    url.searchParams.set("projectTab", "apps");
+    url.searchParams.set("projectApp", appId);
+    window.history.pushState({}, "", url);
+    setView("company");
+    setScope("company");
+    setActiveProjectTab("apps");
+    setActiveProjectApp(appId);
+    setOutcome(null);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
   const startOnboarding = (mode: "client" | "project", clientId?: string) => {
     openWorkspaceHome();
     setOnboardingMode(mode);
@@ -531,7 +596,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       setClientDraft({ name: "", sector: "Mobility & EV", classification: "Client confidential", dataResidency: "Policy review required", clientLead: "Client project owner", kearneyLead: "Maya Rao" });
     } else {
       const selectedClient = accessibleClients.find((client) => client.id === (clientId ?? accessibleClients[0]?.id));
-      setProjectDraft({ clientId: selectedClient?.id ?? "", name: "", problem: "", outcome: "", owner: selectedClient?.clientLead ?? "Client project owner", currency: "USD", regions: "Global", classification: "", dataResidency: "" });
+      setProjectDraft({ clientId: selectedClient?.id ?? "", sectorId: selectedClient?.sectorId ?? "", sector: selectedClient?.sector ?? "", name: "", problem: "", outcome: "", owner: selectedClient?.clientLead ?? "Client project owner", currency: "USD", regions: "Global", classification: "", dataResidency: "" });
     }
     setMobileOpen(false);
   };
@@ -542,7 +607,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       const collaborators = createSessionCollaborators(client, collaboratorCatalog);
       setClientCatalog((current) => [...current, client]);
       setCollaboratorCatalog((current) => [...current, ...collaborators.filter((collaborator) => !current.some((existing) => existing.id === collaborator.id))]);
-      setProjectDraft((current) => ({ ...current, clientId: client.id, owner: client.clientLead }));
+      setProjectDraft((current) => ({ ...current, clientId: client.id, sectorId: client.sectorId, sector: client.sector, owner: client.clientLead }));
       setOnboardingMode(null);
       completeAction("Client draft saved", `Client onboarding draft saved in this browser session for ${client.name}. No tenant, directory group, invitation, storage boundary, project, or source connection was created.`, `CLIENT-${client.id.toUpperCase()}`, "Saved");
     } catch (error) {
@@ -564,6 +629,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       const nextMemberships = [...membershipCatalog, ...memberships];
       setProjectCatalog(nextCatalog);
       setMembershipCatalog(nextMemberships);
+      dispatchActivity({ type: "ensure-project", project });
       setOnboardingMode(null);
       completeAction("Project draft saved", `Project setup and two browser-session membership drafts were saved under ${project.client}. No database, identity grant, invitation, dataset, app deployment, connector, agent, or solver run was provisioned.`, `PROJECT-${project.code}`, "Saved");
       window.setTimeout(() => openProject(project.id, nextCatalog, nextMemberships), 0);
@@ -621,6 +687,15 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   }, []);
 
   useEffect(() => {
+    try {
+      window.sessionStorage.setItem("maya.projectPathMode", projectPathMode);
+      window.sessionStorage.setItem("maya.railCollapsed", String(railCollapsed));
+    } catch {
+      // Ignore storage failures and retain the in-memory preference.
+    }
+  }, [projectPathMode, railCollapsed]);
+
+  useEffect(() => {
     if (searchOpen) window.setTimeout(() => searchRef.current?.focus(), 20);
   }, [searchOpen]);
 
@@ -634,8 +709,21 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  const currentProjectSurface = (() => {
+    if (view === "company") {
+      if (activeProjectApp) return projectApps.find((app) => app.id === activeProjectApp)?.name ?? "Application";
+      return workspaceTabs.find((item) => item.id === activeProjectTab)?.label ?? "Overview";
+    }
+    return applications.find((app) => app.id === view)?.name
+      ?? workflowViews.find((item) => item.id === view)?.label
+      ?? dataViews.find((item) => item.id === view)?.label
+      ?? viewLabels[view];
+  })();
+  const mountedAppPreview = effectiveMountedApps.slice(0, 4);
+  const toggleItem = (items: readonly string[], id: string) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id];
+
   return (
-    <div className="platform-shell">
+    <div className={`platform-shell ${railCollapsed ? "rail-collapsed" : ""}`}>
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside className={`side-rail ${mobileOpen ? "open" : ""}`}>
         <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open Maya Workspace"><span>M</span><div><b>Maya</b><small>Supply network workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
@@ -643,13 +731,34 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         <nav aria-label="Main navigation">
           <section className="nav-section workspace-primary-nav">
             <p>Workspace</p>
-            <button data-action-id="nav.workspace" className={`scope-nav ${scope === "company" && !resolvedProject ? "active" : ""}`} type="button" onClick={openWorkspaceHome}><span>⌂</span><div><b>Projects</b><small>Sectors, clients, and work</small></div><i>›</i></button>
-            <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" onClick={() => go("global")}><span>◎</span><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
+            <button data-action-id="nav.workspace" className={`scope-nav ${scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><span>⌂</span><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
+            <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><span>◎</span><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
           </section>
           <section className="nav-section sidebar-projects">
-            <div className="sidebar-section-heading"><p>Recent projects</p><button data-action-id="nav.create-project" type="button" aria-label="Create project" onClick={() => startOnboarding("project")}>+</button></div>
-            {accessibleProjects.slice(0, 5).map((project) => <button data-action-id={`nav.project.${project.id}`} className={`sidebar-project ${resolvedProject?.id === project.id ? "active" : ""}`} type="button" key={project.id} onClick={() => openProject(project.id)}><span className={`project-health health-${project.health}`} /><div><b>{project.name}</b><small>{project.client}</small></div><em>{project.code}</em></button>)}
-            <button data-action-id="nav.all-projects" className="sidebar-all-projects" type="button" onClick={openWorkspaceHome}>View all projects</button>
+            <div className="sidebar-section-heading"><p>Project path</p><button data-action-id="nav.create-project" type="button" aria-label="Create project" onClick={() => startOnboarding("project")}>+</button></div>
+            <div className="project-path-toggle sidebar-path-toggle" role="group" aria-label="Project hierarchy order">
+              <button data-action-id="nav.path.client" className={projectPathMode === "client" ? "active" : ""} type="button" aria-pressed={projectPathMode === "client"} onClick={() => setProjectPathMode("client")}>By client</button>
+              <button data-action-id="nav.path.tower" className={projectPathMode === "tower" ? "active" : ""} type="button" aria-pressed={projectPathMode === "tower"} onClick={() => setProjectPathMode("tower")}>By tower</button>
+            </div>
+            <div className="sidebar-path-tree">
+              {sidebarPathGroups.map((group) => {
+                const rootOpen = expandedSidebarRoots.includes(group.key) || group.projects.some((project) => project.id === resolvedProject?.id);
+                return <section key={group.key} className="sidebar-path-root">
+                  <button data-action-id={`nav.path.root.${group.key}`} className={group.projects.some((project) => project.id === resolvedProject?.id) ? "active-context" : ""} type="button" aria-expanded={rootOpen} onClick={() => setExpandedSidebarRoots((current) => toggleItem(current, group.key))}><span>{group.kind === "client" ? "C" : "T"}</span><b>{group.label}</b><em>{group.projects.length}</em><i>{rootOpen ? "−" : "+"}</i></button>
+                  {rootOpen && <div className="sidebar-path-branches">
+                    {group.branches.map((branch) => {
+                      const branchOpen = expandedSidebarBranches.includes(branch.key) || branch.projects.some((project) => project.id === resolvedProject?.id);
+                      return <section key={branch.key}>
+                        <button data-action-id={`nav.path.branch.${branch.key}`} className={branch.projects.some((project) => project.id === resolvedProject?.id) ? "active-context" : ""} type="button" aria-expanded={branchOpen} onClick={() => setExpandedSidebarBranches((current) => toggleItem(current, branch.key))}><span>{branch.kind === "client" ? "Client" : "Tower"}</span><b>{branch.label}</b><i>{branchOpen ? "−" : "+"}</i></button>
+                        {branchOpen && <div className="sidebar-project-leaves">{branch.projects.map((project) => <button data-action-id={`nav.project.${project.id}`} className={`sidebar-project ${resolvedProject?.id === project.id ? "active" : ""}`} type="button" key={project.id} onClick={() => openProject(project.id)}><span className={`project-health health-${project.health}`} /><div><b>{project.name}</b><small>{project.code}</small></div><em>›</em></button>)}</div>}
+                      </section>;
+                    })}
+                    {!group.branches.length && <button data-action-id={`nav.path.empty.${group.id}`} className="sidebar-empty-project" type="button" onClick={() => startOnboarding("project", group.id)}>Create first project</button>}
+                  </div>}
+                </section>;
+              })}
+            </div>
+            <button data-action-id="nav.all-projects" className="sidebar-all-projects" type="button" onClick={openWorkspaceHome}>Open workspace</button>
           </section>
           <section className="nav-section sidebar-create">
             <p>Set up</p>
@@ -657,13 +766,15 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
             <button data-action-id="nav.new-project" type="button" onClick={() => startOnboarding("project")}><span>＋</span><div><b>New project</b><small>Choose a client parent</small></div></button>
           </section>
         </nav>
-
+        <footer className="rail-footer">
+          <button data-action-id="nav.collapse" type="button" aria-expanded={!railCollapsed} onClick={() => setRailCollapsed((current) => !current)} title={railCollapsed ? "Expand navigation" : "Collapse navigation"}><b>{railCollapsed ? "›" : "‹"}</b><span><strong>{railCollapsed ? "Expand" : "Collapse"}</strong><small>Project navigation</small></span><em>{railCollapsed ? "" : "⌘B"}</em></button>
+        </footer>
       </aside>
 
       <div className="main-shell">
         <header className="topbar">
           <button className="menu-button" type="button" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>☰</button>
-          <nav className="breadcrumb" aria-label="Breadcrumb"><button type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && <><i>/</i><button type="button" onClick={openWorkspaceHome}>{activeProject.client}</button><i>/</i><b>{activeProject.name}</b></>}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}</nav>
+          <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b>{segment.label}</b> : <button data-action-id={`breadcrumb.${segment.kind}.${segment.id}`} type="button" onClick={() => openProject(activeProject.id)}>{segment.label}</button>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}</nav>
           <div className="topbar-actions">
             <span className="environment-badge">Synthetic workspace</span>
             <button className="search-trigger" type="button" onClick={() => setSearchOpen(true)}><span>⌕</span><b>Search workspace</b><kbd>⌘ K</kbd></button>
@@ -674,14 +785,18 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           {profileOpen && <aside className="profile-panel" aria-label="User menu"><header><span>{signedInCollaborator?.initials ?? "MR"}</span><div><b>{signedInCollaborator?.name ?? "Maya Rao"}</b><small>{signedInCollaborator ? `${signedInCollaborator.role} · ${signedInCollaborator.organization}` : "Identity unavailable"}</small></div></header><button data-action-id="profile.open-workspace" type="button" onClick={() => { setProfileOpen(false); if (canViewActiveProject) openProject(activeProject.id); else openWorkspaceHome(); }}><b>{canViewActiveProject ? "Open active project" : "Open workspace"}</b><small>{canViewActiveProject ? `${activeProject.client} · ${activeProject.name}` : `${accessibleProjects.length} accessible projects`}</small><i>›</i></button><button data-action-id="profile.open-receipts" type="button" disabled={!outcomeLedger.length} onClick={() => { setProfileOpen(false); setOutcome(outcomeLedger[0] ?? null); }}><b>Session receipts</b><small>{outcomeLedger.length ? `${outcomeLedger.length} browser-session receipts` : "No receipts recorded yet"}</small><i>›</i></button><button data-action-id="profile.decision-rights" type="button" onClick={() => { setProfileOpen(false); completeAction("Project rights opened", signedInProjectMembership && canViewActiveProject ? `${signedInCollaborator?.name ?? "Signed-in collaborator"} is ${signedInProjectMembership.projectRole} in ${activeProject.name} with ${signedInProjectMembership.capabilities.length} declared session capabilities.` : "Select an accessible project to inspect the signed-in collaborator's project-scoped rights.", canViewActiveProject ? signedInProjectMembership?.id ?? "RIGHTS-NO-PROJECT" : "RIGHTS-NO-PROJECT", "Saved"); }}><b>Project rights</b><small>{canViewActiveProject ? signedInProjectMembership?.projectRole ?? "No project membership" : "Select an accessible project"}</small><i>›</i></button><button data-action-id="profile.signout" type="button" onClick={() => { setProfileOpen(false); completeAction("Sign out unavailable", "Authentication is not configured for this workspace. No session was ended.", "AUTH-FUTURE", "Blocked"); }}><b>Sign out</b><small>Not configured</small><i>!</i></button></aside>}
         </header>
 
+        {canViewActiveProject && <section className="project-context-bar" aria-label="Current project application context">
+          <button data-action-id="context.current-surface" className="context-current" type="button" onClick={() => view === "company" ? openProjectTab(activeProjectTab) : go("company")}><span>YOU ARE HERE</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></button>
+          <div className="context-mounted-apps"><span>Mounted</span>{mountedAppPreview.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><i>{app.icon}</i><b>{app.name}</b></button>; })}{effectiveMountedApps.length > mountedAppPreview.length && <button data-action-id="context.more-apps" className="context-more" type="button" onClick={() => openProjectTab("apps")}>+{effectiveMountedApps.length - mountedAppPreview.length}</button>}</div>
+          <button data-action-id="context.open-sessions" className="context-session" type="button" onClick={() => openProjectTab("agents")}><span>WORK</span><b>{activeWorkSessionId || "No session"}</b><small>{activeWorkSessions.length} sessions</small></button>
+        </section>}
         <div className="statusbar">{canViewActiveProject ? <><span><i className="status-fixture" />{activeProject.stage}</span><span>{activeProject.client}</span><span>{activeProject.counts.observations} fixture observations</span><span>{membershipCatalog.filter((item) => item.projectId === activeProject.id).length} collaborators · project context</span></> : resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div>
 
         <main className="main-content">
-          {resolvedProject && scope === "company" && activeProjectViewAccess?.allowed && view !== "company" && <section className="project-binding-strip"><div><span>PROJECT</span><b>{activeProject.sector} / {activeProject.client} / {activeProject.name}</b><small>{activeProject.code} · project-scoped session</small></div><button data-action-id="project-binding.return" type="button" onClick={() => go("company")}>Back to project</button></section>}
           {resolvedProject && scope === "company" && deniedProjectAccess ? (
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
           ) : view === "company" && resolvedProject ? (
-            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} onProjectChange={(project) => { setOutcome(null); setActiveProjectId(project.id); setSelectedCaseId(caseIdForProject(project)); }} onTabChange={setActiveProjectTab} onStudioChange={setActiveProjectApp} onOpenApp={(app) => go(app)} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
+            <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} pathMode={projectPathMode} onPathModeChange={setProjectPathMode} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onProjectChange={(project) => { setOutcome(null); setActiveProjectId(project.id); setSelectedCaseId(caseIdForProject(project)); }} onTabChange={setActiveProjectTab} onStudioChange={setActiveProjectApp} onOpenApp={(app) => go(app)} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
           ) : view === "company" ? (
             <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />
           ) : view === "global" || view === "region" ? (
@@ -710,7 +825,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           ) : resolvedProject && workflowViews.some((item) => item.id === view) ? (
             <DecisionWorkspaces key={`workflow:${activeProject.id}:${view}`} view={view as WorkflowViewId} cases={visibleCases} activeCase={activeCase} scopeLabel={`${activeProject.client} / ${activeProject.name}`} financeReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 2) % humanExperts.length].name} executiveReviewer={humanExperts[(projectCatalog.indexOf(activeProject) + 3) % humanExperts.length].name} onOpenCase={openCase} onOpenApp={(app) => go(app)} onUpdateCase={updateCase} onToast={(message) => completeAction("Decision interaction recorded", message, "DECISION-INTERACTION", interactionStatus(message))} />
           ) : resolvedProject && applications.some((item) => item.id === view) ? (
-            <ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} />
+            <div className="application-session-surface"><ApplicationViews key={`application:${activeProject.id}:${view}`} app={view as AppId} project={activeProject} snapshot={snapshot} activeCase={activeCase} networkSelection={networkSelection} onClearNetworkSelection={() => setNetworkSelection(null)} onOpenCase={() => openCase(activeCase.id)} onOpenAction={() => openCase(activeCase.id, "action")} onOpenAgents={() => go("agents")} onOpenGraph={() => go("graph")} onToast={(message) => completeAction("Application interaction recorded", message, "APPLICATION-INTERACTION", interactionStatus(message))} /><AppRunHistory project={activeProject} runs={appRunsFor(activityState, activeProject.id, view as ProjectAppId)} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openMountedProjectApp} onOpenSession={(sessionId) => { dispatchActivity({ type: "select-session", projectId: activeProject.id, sessionId }); go("agents"); }} onEvidence={(target) => { const ref = typeof target === "string" ? target : target.id; completeAction("Application evidence opened", `${ref} was opened from the selected application run.`, ref, "Saved", `${activeProject.client} / ${activeProject.name}`); }} onOutcome={completeAction} canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed} activeSessionId={activeWorkSessionId} /></div>
           ) : resolvedProject ? (
             <DataOperations key={`data:${activeProject.id}:${view}`} view={view as DataViewId} snapshot={snapshot} onOpenApp={(app) => go(app)} onToast={(message) => completeAction("Data interaction recorded", message, "DATA-INTERACTION", interactionStatus(message))} />
           ) : <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />}

@@ -45,13 +45,14 @@ export default function WorkspaceOnboarding({
   const steps = mode === "client" ? clientSteps : projectSteps;
   const safeStep = Math.max(0, Math.min(step, steps.length - 1));
   const selectedClient = clients.find((client) => client.id === projectDraft.clientId);
+  const towerOptions = Array.from(new Map(clients.map((client) => [client.sectorId, { id: client.sectorId, label: client.sector }])).values()).sort((left, right) => left.label.localeCompare(right.label));
   const clientComplete = [clientDraft.name, clientDraft.sector, clientDraft.classification, clientDraft.dataResidency, clientDraft.clientLead, clientDraft.kearneyLead].every(hasText);
-  const projectComplete = Boolean(selectedClient) && [projectDraft.name, projectDraft.problem, projectDraft.outcome, projectDraft.owner, projectDraft.currency, projectDraft.regions].every(hasText);
+  const projectComplete = Boolean(selectedClient) && [projectDraft.sectorId, projectDraft.sector, projectDraft.name, projectDraft.problem, projectDraft.outcome, projectDraft.owner, projectDraft.currency, projectDraft.regions].every(hasText);
   const stepComplete = mode === "client"
     ? safeStep === 0 ? [clientDraft.name, clientDraft.sector].every(hasText)
       : safeStep === 1 ? [clientDraft.classification, clientDraft.dataResidency].every(hasText)
         : safeStep === 2 ? [clientDraft.clientLead, clientDraft.kearneyLead].every(hasText) : clientComplete
-    : safeStep === 0 ? Boolean(selectedClient && hasText(projectDraft.name))
+    : safeStep === 0 ? Boolean(selectedClient && hasText(projectDraft.name) && hasText(projectDraft.sectorId) && hasText(projectDraft.sector))
       : safeStep === 1 ? [projectDraft.problem, projectDraft.outcome].every(hasText)
         : safeStep === 2 ? [projectDraft.owner, projectDraft.currency, projectDraft.regions].every(hasText) : projectComplete;
 
@@ -89,11 +90,11 @@ export default function WorkspaceOnboarding({
         <div className="builder-panel">
           {mode === "client" && safeStep === 0 && <>
             <p className="kicker">01 · CLIENT IDENTITY</p>
-            <h3>Place the client inside one sector tower</h3>
+            <h3>Set the client identity and its primary setup tower</h3>
             <label>Client name<input required value={clientDraft.name} onChange={(event) => updateClient({ name: event.target.value })} placeholder="Example organization" /></label>
             <label>Sector<input required value={clientDraft.sector} onChange={(event) => updateClient({ sector: event.target.value })} placeholder="Industrial Automation" /></label>
             <label>Optional sector key<input value={clientDraft.sectorId ?? ""} onChange={(event) => updateClient({ sectorId: event.target.value })} placeholder="Generated from sector when blank" /></label>
-            <p>The saved object is an in-memory catalog draft. It does not establish a legal relationship or provision a tenant.</p>
+            <p>The primary tower is a setup default, not an ownership boundary. Each project can bind this client to a different tower. The saved object remains an in-memory catalog draft.</p>
           </>}
 
           {mode === "client" && safeStep === 1 && <>
@@ -121,11 +122,12 @@ export default function WorkspaceOnboarding({
 
           {mode === "project" && safeStep === 0 && <>
             <p className="kicker">01 · CLIENT PARENT</p>
-            <h3>Bind the project to exactly one client</h3>
+            <h3>Bind the project to one client and one tower</h3>
             {projectDraft.operationsWorldIntake && <aside><b>OPERATIONS WORLD · {projectDraft.operationsWorldIntake.intent.toUpperCase()} INTAKE</b><p>{projectDraft.operationsWorldIntake.selectedLabel} · {projectDraft.operationsWorldIntake.selectedKind} {projectDraft.operationsWorldIntake.selectedId} · {projectDraft.operationsWorldIntake.frame} · {projectDraft.operationsWorldIntake.scenario}</p></aside>}
-            <label>Client<select required value={projectDraft.clientId} onChange={(event) => { const client = clients.find((item) => item.id === event.target.value); updateProject({ clientId: event.target.value, owner: client?.clientLead ?? "" }); }}><option value="">Select client</option>{clients.map((client) => <option value={client.id} key={client.id}>{client.name} · {client.sector}</option>)}</select></label>
+            <label>Client<select required value={projectDraft.clientId} onChange={(event) => { const client = clients.find((item) => item.id === event.target.value); updateProject({ clientId: event.target.value, sectorId: client?.sectorId ?? "", sector: client?.sector ?? "", owner: client?.clientLead ?? "" }); }}><option value="">Select client</option>{clients.map((client) => <option value={client.id} key={client.id}>{client.name}</option>)}</select></label>
+            <label>Tower<select required value={projectDraft.sectorId ?? ""} onChange={(event) => { const tower = towerOptions.find((item) => item.id === event.target.value); updateProject({ sectorId: event.target.value, sector: tower?.label ?? "" }); }}><option value="">Select tower</option>{towerOptions.map((tower) => <option value={tower.id} key={tower.id}>{tower.label}</option>)}</select></label>
             <label>Project name<input required value={projectDraft.name} onChange={(event) => updateProject({ name: event.target.value })} placeholder="Project name" /></label>
-            <p>The selected client becomes the only parent. The model does not infer or substitute another client when the identifier is unavailable.</p>
+            <p>The project is the canonical client-to-tower association. The model never infers or substitutes another client when the identifier is unavailable.</p>
           </>}
 
           {mode === "project" && safeStep === 1 && <>
@@ -150,7 +152,7 @@ export default function WorkspaceOnboarding({
           {mode === "project" && safeStep === 3 && <>
             <p className="kicker">04 · REVIEW ZERO-STATE PROJECT</p>
             <h3>{projectDraft.name}</h3>
-            <dl className="builder-review"><div><dt>Client</dt><dd>{selectedClient?.name}</dd></div><div><dt>Problem</dt><dd>{projectDraft.problem}</dd></div><div><dt>Outcome</dt><dd>{projectDraft.outcome}</dd></div><div><dt>Owner</dt><dd>{projectDraft.owner}</dd></div><div><dt>Boundary intent</dt><dd>{projectDraft.classification?.trim() || selectedClient?.classification} · {projectDraft.dataResidency?.trim() || selectedClient?.dataResidency}</dd></div><div><dt>Initial footprint</dt><dd>0 data products · 0 mounted apps · 0 agents · 0 runs</dd></div>{projectDraft.operationsWorldIntake && <><div><dt>Intake</dt><dd>{projectDraft.operationsWorldIntake.intent} · {projectDraft.operationsWorldIntake.selectedLabel}</dd></div><div><dt>Network context</dt><dd>{projectDraft.operationsWorldIntake.frame} · {projectDraft.operationsWorldIntake.scenario}</dd></div></>}</dl>
+            <dl className="builder-review"><div><dt>Client</dt><dd>{selectedClient?.name}</dd></div><div><dt>Tower</dt><dd>{projectDraft.sector}</dd></div><div><dt>Problem</dt><dd>{projectDraft.problem}</dd></div><div><dt>Outcome</dt><dd>{projectDraft.outcome}</dd></div><div><dt>Owner</dt><dd>{projectDraft.owner}</dd></div><div><dt>Boundary intent</dt><dd>{projectDraft.classification?.trim() || selectedClient?.classification} · {projectDraft.dataResidency?.trim() || selectedClient?.dataResidency}</dd></div><div><dt>Initial footprint</dt><dd>0 data products · 0 mounted apps · 0 agents · 0 runs</dd></div>{projectDraft.operationsWorldIntake && <><div><dt>Intake</dt><dd>{projectDraft.operationsWorldIntake.intent} · {projectDraft.operationsWorldIntake.selectedLabel}</dd></div><div><dt>Network context</dt><dd>{projectDraft.operationsWorldIntake.frame} · {projectDraft.operationsWorldIntake.scenario}</dd></div></>}</dl>
             <aside><b>SESSION PROJECT SHELL ONLY</b><p>Saving adds a project setup draft under {selectedClient?.name}. No database, dataset, decision case, access grant, app deployment, connector, agent, or solver run is provisioned.</p></aside>
           </>}
         </div>

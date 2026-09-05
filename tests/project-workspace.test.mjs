@@ -28,13 +28,14 @@ async function loadNavigation() {
   return import(asModuleUrl(transpile(linkedSource)));
 }
 
-test("ten client projects are isolated, evidence-aware, and mounted to distinct app contracts", async () => {
+test("ten clients and their cross-tower projects are isolated, evidence-aware, and mounted to distinct app contracts", async () => {
   const model = await loadWorkspaceModel();
   const { workspaceProjects, projectApps, evidenceFor, decisionsFor, graphNodesFor, datasetsFor } = model;
 
-  assert.equal(workspaceProjects.length, 10);
+  assert.equal(workspaceProjects.length, 11);
   assert.equal(new Set(workspaceProjects.map((project) => project.sectorId)).size, 10);
   assert.equal(new Set(workspaceProjects.map((project) => project.clientId)).size, 10);
+  assert.equal(workspaceProjects.filter((project) => project.clientId === "apex-mobility").length, 2);
   assert.equal(projectApps.length, 10);
   assert.equal(new Set(projectApps.map((app) => app.accent)).size, 10);
   assert.equal(new Set(projectApps.map((app) => app.archetype)).size, 10);
@@ -155,6 +156,20 @@ test("project workspace buttons are action-identified and shell actions end in r
   assert.match(workspace, /assignedExperts\.length/);
 });
 
+test("agent app-run links and run artifacts terminate on exact, concrete project records", async () => {
+  const workspace = await read("../app/ProjectWorkspace.tsx");
+  assert.match(workspace, /const openAppRun = \(runId: string\)/);
+  assert.match(workspace, /setFocusedAppRunId\(linkedRun\.id\)/);
+  assert.match(workspace, /onClick=\{\(\) => onOpenRun\(ref\)\}/);
+  assert.match(workspace, /const \[selectedRunId, setSelectedRunId\] = useState\(fallback\?\.id \?\? ""\)/);
+  assert.match(workspace, /setArtifactReceipt\(reportReceipt\)/);
+  assert.match(workspace, /setArtifactReceipt\(traceReceipt\)/);
+  assert.match(workspace, /planAppRerun\(activityState, project\.id, selected\.id, activeSessionId\)/);
+  assert.match(workspace, /plan\.runId} was created in \$\{plan\.sessionId\}/);
+  assert.doesNotMatch(workspace, /Application report opened/);
+  assert.doesNotMatch(workspace, /\$\{selected\.id\}-REPLAY/);
+});
+
 test("project route wiring preserves project, tab, and mounted-studio parameters", async () => {
   const [navigation, page, workspace] = await Promise.all([
     read("../app/navigation.ts"),
@@ -171,21 +186,21 @@ test("project route wiring preserves project, tab, and mounted-studio parameters
   assert.match(navigation, /workspaceStudioIds\.includes/);
 });
 
-test("navigation resolves sector and client paths without crossing hierarchy boundaries", async () => {
+test("navigation requires an explicit project and never guesses a leaf from a client or tower path", async () => {
   const { resolveNavigation } = await loadNavigation();
 
   const sectorOnly = resolveNavigation({ view: "company", sector: "semiconductors" });
-  assert.equal(sectorOnly.projectId, "fab-recovery-x9");
-  assert.equal(sectorOnly.sectorId, "semiconductors");
-  assert.equal(sectorOnly.clientId, "orion-silicon");
+  assert.equal(sectorOnly.projectId, "");
+  assert.equal(sectorOnly.sectorId, null);
+  assert.equal(sectorOnly.clientId, null);
 
   const clientOnly = resolveNavigation({ view: "company", client: "blueharbor" });
-  assert.equal(clientOnly.projectId, "berth-to-door");
-  assert.equal(clientOnly.sectorId, "ports-maritime");
-  assert.equal(clientOnly.clientId, "blueharbor");
+  assert.equal(clientOnly.projectId, "");
+  assert.equal(clientOnly.sectorId, null);
+  assert.equal(clientOnly.clientId, null);
 
   const matchedPair = resolveNavigation({ view: "company", sector: "life-sciences", client: "helixora" });
-  assert.equal(matchedPair.projectId, "cold-chain-promise");
+  assert.equal(matchedPair.projectId, "");
 });
 
 test("a valid explicit project is authoritative and returns canonical ancestry", async () => {
@@ -344,6 +359,45 @@ test("projectApp requires the company apps tab and a mounted specialist studio",
   assert.equal(resolveNavigation({ ...mounted, project: "cold-chain-promise" }).projectApp, null);
 });
 
+test("browser-session specialist mounts become canonical and survive route restoration", async () => {
+  const [{ resolveNavigation }, model, shell] = await Promise.all([
+    loadNavigation(),
+    loadWorkspaceModel(),
+    read("../app/PlatformShell.tsx"),
+  ]);
+  const seed = model.workspaceProjects[0];
+  const draft = {
+    ...seed,
+    id: "browser-route-fixture",
+    code: "P-S001",
+    origin: "Browser-session draft",
+    mountedAppIds: [],
+    counts: { ...seed.counts, apps: 0 },
+  };
+  const route = {
+    view: "company",
+    scope: "company",
+    project: draft.id,
+    projectTab: "apps",
+    projectApp: "minerals",
+  };
+
+  assert.equal(resolveNavigation(route, [draft]).projectApp, null);
+
+  const mountedDraft = {
+    ...draft,
+    mountedAppIds: ["minerals"],
+    counts: { ...draft.counts, apps: 1 },
+  };
+  assert.equal(resolveNavigation(route, [mountedDraft]).projectApp, "minerals");
+  assert.equal(resolveNavigation({ ...route, projectTab: "overview" }, [mountedDraft]).projectApp, null);
+  assert.equal(resolveNavigation(route, [mountedDraft]).projectApp, "minerals");
+
+  assert.match(shell, /const handleMountedAppsChange = useCallback[\s\S]*?setProjectCatalog[\s\S]*?mountedAppIds: \[\.\.\.appIds\][\s\S]*?counts: \{ \.\.\.item\.counts, apps: appIds\.length \}/);
+  assert.match(shell, /const effectiveMountedApps = resolvedProject\?\.mountedAppIds \?\? \[\]/);
+  assert.doesNotMatch(shell, /mountedAppsByProject/);
+});
+
 test("workspace hydration independently rejects an unmounted specialist studio", async () => {
   const source = await read("../app/ProjectWorkspace.tsx");
   assert.match(source, /mountedForTarget\.includes\(requestedApp\)/);
@@ -369,7 +423,11 @@ test("project authorization evaluates the explicit signed-in collaborator", asyn
   assert.match(shell, /activeRouteAccess = resolvedProject && activeRouteCapability/);
   assert.match(shell, /accessibleProjects = useMemo\(\(\) => projectCatalog\.filter/);
   assert.match(shell, /accessibleClients = useMemo\(\(\) => clientCatalog\.filter/);
-  assert.match(shell, /accessibleProjects\.slice\(0, 5\)\.map/);
+  assert.match(shell, /groupProjectsByPath\(accessibleProjects, projectPathMode\)/);
+  assert.match(shell, /sidebarPathGroups/);
+  assert.match(shell, /projectPathSegments\(resolvedProject, projectPathMode\)/);
+  assert.match(shell, /className="project-context-bar"/);
+  assert.doesNotMatch(shell, />Recent projects</);
   assert.match(shell, /\.\.\.accessibleProjects\.map/);
   assert.match(shell, /<WorkspaceHome projects=\{accessibleProjects\} clients=\{accessibleClients\}/);
   assert.match(shell, /patch\.stage === "Execute" \? "decisions\.approve" : "decisions\.draft"/);
@@ -397,4 +455,25 @@ test("all primary clickflow buttons have a terminal handler or submit a handled 
     visit(file);
     assert.deepEqual(missing, [], `${path} buttons without onClick or handled submit at lines ${missing.join(", ")}`);
   }
+});
+
+test("project chrome exposes both hierarchy modes, mounted context, and four accessible collapse controls", async () => {
+  const [workspace, shell, css] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/PlatformShell.tsx"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(shell, />By client</);
+  assert.match(shell, />By tower</);
+  assert.match(shell, /projectPathSegments\(resolvedProject, projectPathMode\)/);
+  assert.match(shell, /className="project-context-bar"/);
+  assert.match(shell, /aria-label="Open clients and projects"/);
+  assert.match(shell, /data-action-id="nav\.collapse"[^>]*aria-expanded=/);
+  assert.match(workspace, /data-action-id="workspace\.toggle-project-tree"[^>]*aria-expanded=/);
+  assert.match(workspace, /data-action-id="agents\.toggle-sessions"[^>]*aria-expanded=/);
+  assert.match(workspace, /data-action-id="agents\.toggle-inspector"[^>]*aria-expanded=/);
+  assert.match(css, /@container project-stage \(max-width: 960px\)/);
+  assert.match(css, /\.dataset-card-grid \{ grid-template-columns: repeat\(2/);
+  assert.match(css, /\.breadcrumb-segment \{[^}]*display: inline-flex/s);
+  assert.doesNotMatch(css, /\.project-tabs[^}]*overflow-x:\s*(?:auto|scroll)/s);
 });

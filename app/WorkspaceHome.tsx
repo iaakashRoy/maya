@@ -2,22 +2,19 @@
 
 import { useMemo, useState } from "react";
 import type { HumanExpert, WorkspaceProject } from "./workspace-model";
+import {
+  buildWorkspacePortfolio,
+  type WorkspacePortfolioClient,
+  type WorkspacePortfolioClientInput,
+  type WorkspacePortfolioTower,
+} from "./workspace-portfolio-model";
 
 /**
  * Deliberately structural: the normalized WorkspaceClient model can be passed
  * directly once it is exported, while today's denormalized fixtures need only
  * a small adapter.
  */
-export type WorkspaceHomeClient = {
-  id: string;
-  sectorId: string;
-  name?: string;
-  label?: string;
-  status?: string;
-  classification?: string;
-  dataResidency?: string;
-  relationshipOwner?: string;
-};
+export type WorkspaceHomeClient = WorkspacePortfolioClientInput;
 
 export type WorkspaceHomeCollaborator = Pick<
   HumanExpert,
@@ -40,71 +37,14 @@ export type WorkspaceHomeProps = {
   onOpenOperationsWorld: () => void;
 };
 
-type PortfolioClient = WorkspaceHomeClient & {
-  displayName: string;
-  projects: readonly WorkspaceProject[];
-};
-
-type PortfolioSector = {
-  id: string;
-  name: string;
-  clients: readonly PortfolioClient[];
-};
+type PortfolioClient = WorkspacePortfolioClient;
+type PortfolioSector = WorkspacePortfolioTower;
 
 const healthLabel: Record<WorkspaceProject["health"], string> = {
   healthy: "On track",
   watch: "Watch",
   critical: "Needs attention",
 };
-
-const readableId = (value: string) =>
-  value
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
-const clientName = (client: WorkspaceHomeClient) => client.name ?? client.label ?? readableId(client.id);
-
-function buildPortfolio(
-  projects: readonly WorkspaceProject[],
-  clients: readonly WorkspaceHomeClient[],
-): readonly PortfolioSector[] {
-  const clientRegistry = new Map<string, WorkspaceHomeClient>();
-  clients.forEach((client) => clientRegistry.set(client.id, client));
-
-  projects.forEach((project) => {
-    if (!clientRegistry.has(project.clientId)) {
-      clientRegistry.set(project.clientId, {
-        id: project.clientId,
-        sectorId: project.sectorId,
-        name: project.client,
-        classification: project.classification,
-        dataResidency: project.dataResidency,
-        relationshipOwner: project.owner,
-      });
-    }
-  });
-
-  const sectorIds = Array.from(new Set([
-    ...clients.map((client) => client.sectorId),
-    ...projects.map((project) => project.sectorId),
-  ]));
-
-  return sectorIds.map((sectorId) => {
-    const sectorProjects = projects.filter((project) => project.sectorId === sectorId);
-    const sectorName = sectorProjects[0]?.sector ?? readableId(sectorId);
-    const sectorClients = Array.from(clientRegistry.values())
-      .filter((client) => client.sectorId === sectorId)
-      .map((client) => ({
-        ...client,
-        displayName: clientName(client),
-        projects: sectorProjects.filter((project) => project.clientId === client.id),
-      }));
-
-    return { id: sectorId, name: sectorName, clients: sectorClients };
-  });
-}
 
 export default function WorkspaceHome({
   projects,
@@ -116,7 +56,7 @@ export default function WorkspaceHome({
   onOpenOperationsWorld,
 }: WorkspaceHomeProps) {
   const [query, setQuery] = useState("");
-  const portfolio = useMemo(() => buildPortfolio(projects, clients), [projects, clients]);
+  const portfolio = useMemo(() => buildWorkspacePortfolio(projects, clients), [projects, clients]);
   const normalizedQuery = query.trim().toLowerCase();
 
   const visiblePortfolio: readonly PortfolioSector[] = useMemo(() => {
@@ -175,7 +115,7 @@ export default function WorkspaceHome({
 
       <dl className="workspace-home__metrics" aria-label="Portfolio summary">
         <div><dt>Sectors</dt><dd>{portfolio.length}</dd><span>delivery towers</span></div>
-        <div><dt>Clients</dt><dd>{portfolio.reduce((sum, sector) => sum + sector.clients.length, 0)}</dd><span>supplied records</span></div>
+        <div><dt>Clients</dt><dd>{new Set(portfolio.flatMap((sector) => sector.clients.map((client) => client.id))).size}</dd><span>supplied records</span></div>
         <div><dt>Projects</dt><dd>{projects.length}</dd><span>governed workspaces</span></div>
         <div><dt>Collaborators</dt><dd>{collaborators.length}</dd><span>human specialists</span></div>
       </dl>
@@ -220,11 +160,11 @@ export default function WorkspaceHome({
 
                   <div className="workspace-home__client-list">
                     {sector.clients.map((client) => (
-                      <section className="workspace-home__client" key={client.id} aria-labelledby={`client-${client.id}`}>
+                      <section className="workspace-home__client" key={client.id} aria-labelledby={`client-${sector.id}-${client.id}`}>
                         <header>
                           <div>
                             <small>CLIENT</small>
-                            <h4 id={`client-${client.id}`}>{client.displayName}</h4>
+                            <h4 id={`client-${sector.id}-${client.id}`}>{client.displayName}</h4>
                           </div>
                           <button
                             data-action-id={`workspace.home.create-project.${client.id}`}

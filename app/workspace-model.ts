@@ -89,6 +89,9 @@ export type SessionClientDraft = {
 
 export type SessionProjectDraft = {
   clientId: string;
+  /** Project-owned tower binding. Falls back to the client's primary setup tower for older drafts. */
+  sectorId?: string;
+  sector?: string;
   name: string;
   problem: string;
   outcome: string;
@@ -247,6 +250,14 @@ export const workspaceProjects: readonly WorkspaceProject[] = [
     variablePack: { l2: ["L2-002", "L2-003", "L2-008", "L2-009", "L2-013", "L2-027", "L2-034"], l1: ["L1-006", "L1-007", "L1-008", "L1-010", "L1-019", "L1-032", "L1-041", "L1-054", "L1-056"], l0: ["L0-029", "L0-030", "L0-035", "L0-044", "L0-047", "L0-057", "L0-061", "L0-064", "L0-071", "L0-155", "L0-217", "L0-299", "L0-445"] }, methodCodes: ["M-02", "M-05", "M-06", "M-13", "M-20", "M-22", "M-23", "M-24"],
   },
   {
+    id: "cathode-origin-assurance", origin: "Seed fixture", sectorId: "critical-minerals", sector: "Mining & Critical Minerals", clientId: "apex-mobility", client: "Apex Mobility", name: "Cathode Origin Assurance", code: "P-011", health: "watch", stage: "Compare origin paths", currency: "USD", regions: "North America · Australia · Indonesia · EU", owner: "Maya Rao", classification: "Client confidential", dataResidency: "US + EU policy partitions",
+    problem: "Qualify a traceable nickel and lithium portfolio across origin, processing, price, rights, carbon, and launch constraints.", outcome: "Select an auditable cathode-material pathway that protects launch volume without crossing origin or sustainability gates.",
+    counts: { entities: "11,860", relationships: "38,420", observations: "812K", documents: "2,340", events: "118K", claims: "19.6K", decisions: 16, runs: 88, apps: 9, agents: 11, experts: 15 },
+    metrics: metricSet("P-011", [["Qualified volume", "18.4K t", "2027 cathode-active-material coverage", "watch"], ["Origin evidence", "91.8%", "Mine-to-active-material claim coverage", "watch"], ["Refining concentration", "68%", "Highest-country share", "critical"], ["Portfolio premium", "$14.6M", "Versus current sourcing baseline", "opportunity"]]),
+    mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "minerals", "manufacturing", "logistics", "quality"],
+    variablePack: { l2: ["L2-002", "L2-008", "L2-013", "L2-019", "L2-031", "L2-034"], l1: ["L1-006", "L1-008", "L1-009", "L1-041", "L1-051", "L1-053", "L1-054"], l0: ["L0-030", "L0-035", "L0-044", "L0-051", "L0-061", "L0-064", "L0-371", "L0-394", "L0-399", "L0-410"] }, methodCodes: ["M-04", "M-05", "M-06", "M-16", "M-18", "M-20", "M-22", "M-23", "M-24", "M-25", "M-29"],
+  },
+  {
     id: "cold-chain-promise", origin: "Seed fixture", sectorId: "life-sciences", sector: "Life Sciences", clientId: "helixora", client: "Helixora Therapeutics", name: "Cold Chain Promise", code: "P-002", health: "critical", stage: "Simulate release", currency: "USD", regions: "US · EU · India", owner: "Dr. Nia Campbell", classification: "Restricted clinical supply", dataResidency: "US + EU",
     problem: "Protect an oncology launch across batch release, refrigerated storage, scarce packaging, and patient-service constraints.", outcome: "Release every compliant dose inside the stability window without compromising patient safety.", counts: { entities: "7,320", relationships: "22,840", observations: "615K", documents: "2,180", events: "184K", claims: "16.3K", decisions: 15, runs: 82, apps: 8, agents: 11, experts: 13 },
     metrics: metricSet("P-002", [["Doses at risk", "18,420", "P90 launch shortfall", "critical"], ["Cold-chain conformance", "99.76%", "Validated excursion window", "healthy"], ["Release queue", "14 lots", "Four require QP review", "watch"], ["Patient priority", "100%", "Hard allocation constraint", "healthy"]]), mountedAppIds: ["risk", "optimizer", "flow", "demand", "suppliers", "manufacturing", "logistics", "quality"],
@@ -298,17 +309,20 @@ export const apexWorkspaceProject = workspaceProjects[0];
 
 const initialsFor = (name: string) => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "NA";
 
-export const workspaceClients: readonly WorkspaceClient[] = workspaceProjects.map((project) => ({
-  id: project.clientId,
-  sectorId: project.sectorId,
-  sector: project.sector,
-  name: project.client,
-  classification: project.classification,
-  dataResidency: project.dataResidency,
-  clientLead: project.owner,
-  kearneyLead: "Maya Rao",
-  origin: "Seed fixture",
-}));
+export const workspaceClients: readonly WorkspaceClient[] = Array.from(workspaceProjects.reduce((clients, project) => {
+  if (!clients.has(project.clientId)) clients.set(project.clientId, {
+    id: project.clientId,
+    sectorId: project.sectorId,
+    sector: project.sector,
+    name: project.client,
+    classification: project.classification,
+    dataResidency: project.dataResidency,
+    clientLead: project.owner,
+    kearneyLead: "Maya Rao",
+    origin: "Seed fixture",
+  });
+  return clients;
+}, new Map<string, WorkspaceClient>()).values());
 
 export const workspaceCollaborators: readonly WorkspaceCollaborator[] = [
   ...workspaceProjects.map((project) => ({
@@ -477,6 +491,8 @@ export function createSessionClient(draft: SessionClientDraft, existingClients: 
 export function createSessionProject(draft: SessionProjectDraft, clients: readonly WorkspaceClient[] = workspaceClients, existingProjects: readonly WorkspaceProject[] = workspaceProjects): WorkspaceProject {
   const client = clients.find((item) => item.id === draft.clientId);
   if (!client) throw new Error(`Client '${draft.clientId}' is unavailable; the project draft was not created.`);
+  const sector = requiredText(draft.sector?.trim() || client.sector, "Project tower");
+  const sectorId = slugify(draft.sectorId?.trim() || sector, "sector-draft");
   const name = requiredText(draft.name, "Project name");
   const codeNumber = existingProjects.reduce((highest, project) => {
     const match = /^P-(\d+)$/.exec(project.code);
@@ -505,8 +521,8 @@ export function createSessionProject(draft: SessionProjectDraft, clients: readon
   return {
     id,
     origin: "Browser-session draft",
-    sectorId: client.sectorId,
-    sector: client.sector,
+    sectorId,
+    sector,
     clientId: client.id,
     client: client.name,
     name,
