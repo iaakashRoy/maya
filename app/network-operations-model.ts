@@ -437,7 +437,7 @@ export const cargoLots: readonly CargoLot[] = Array.from({ length: 240 }, (_, in
     incoterm: (["FOB", "CIF", "DAP", "DDP"] as const)[index % 4],
     priority: index % 5 === 0 ? "Production critical" : index % 3 === 0 ? "Customer promise" : "Standard",
     orderCount: 2 + (index * 7) % 38,
-    customerProgram: ["AX-4 mobility", "GridCore industrial", "NovaDrive launch", "Service spares", "Energy storage"][index % 5],
+    customerProgram: ["Priority mobility", "Grid infrastructure", "Launch allocation", "Service spares", "Energy storage"][index % 5],
     control: index % 8 === 0 ? "Temperature monitored" : index % 11 === 0 ? "Hazard documentation" : "Standard secure handling",
   };
 });

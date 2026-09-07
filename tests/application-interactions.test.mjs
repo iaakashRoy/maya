@@ -84,14 +84,14 @@ test("data controls are mutation-aware and filter the graph", async () => {
     /setDetailMode\("runs"\)/,
     /value=\{entityType\}[^>]*onChange=\{\(event\) => setEntityType/,
     /value=\{confidenceFilter\}[^>]*onChange=\{\(event\) => setConfidenceFilter/,
-    /const visibleNodes = graphNodes\.filter/,
+    /const visibleNodes = scopedGraphNodes\.filter/,
     /const visibleEdges = edges\.filter/,
     /onClick=\{resetGraph\}/,
   ]) assert.match(source, contract);
 
   assert.match(source, /no source was read or written/i);
   assert.match(source, /no agent or credential was created/i);
-  assert.match(source, /Demand Sense","demand"/);
+  assert.match(source, /\[\s*"Demand Sense",\s*"demand"\s*\]/);
 });
 
 test("workflow routing enforces lifecycle gates and opens the project evidence graph", async () => {
@@ -197,7 +197,7 @@ test("rendered application surfaces stay concise and exclude the presentation op
   assert.match(views, /outcome="Material and cash flow" body="Inspect inventory/);
   assert.match(views, /outcome="Demand range and drivers" body="Compare order/);
   assert.match(views, /outcome="Supplier dependency and options" body="Inspect ownership/);
-  assert.match(data, />Knowledge graph<\/h1><p>Inspect entities, relationships, evidence lineage, and decision impact\.<\/p>/);
+  assert.match(data, />\s*Knowledge graph\s*<\/h1>\s*<p>\s*Inspect entities, relationships, evidence lineage, and decision\s+impact\.\s*<\/p>/);
   assert.match(optimizer, /Define the decision model, compare scenarios, and prepare a response for expert review\./);
   assert.match(optimizer, /OBJECTIVE MODEL/);
   assert.doesNotMatch(optimizer, /CONCEPT FORM/);

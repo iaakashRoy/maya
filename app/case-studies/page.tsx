@@ -1,0 +1,91 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { caseStudyProfiles, simulationDisclaimer } from "../case-study-model";
+import { projectApps, workspaceProjects } from "../workspace-model";
+
+export const metadata: Metadata = {
+  title: "tanjx Case Studies — Resilient Supply-Chain Decisions",
+  description: "Ten interactive, public-information-inspired supply-chain simulations showing how tanjx turns evidence and disruption signals into governed decisions.",
+};
+
+const appName = (id: string) => projectApps.find((app) => app.id === id)?.name ?? id;
+
+export default function CaseStudiesPage() {
+  return <main className="case-study-deck">
+    <header className="case-study-deck__topbar">
+      <Link className="case-study-deck__brand" href="/"><span>tanjx</span><small>Supply chain workspace</small></Link>
+      <nav aria-label="Case study navigation"><a href="#how-it-works">How it works</a><a href="#portfolio">10 cases</a><a href="#interpretation">Interpretation</a><a href="/tanjx-case-studies.html" target="_blank" rel="noreferrer">Presentation ↗</a><Link className="case-study-deck__workspace" href="/">Open workspace</Link></nav>
+    </header>
+
+    <section className="case-study-hero">
+      <p>CASE STUDY LIBRARY · 10 CLIENT SIMULATIONS</p>
+      <h1>See a disruption become<br />a defensible decision.</h1>
+      <div><p>Each case starts with a product promise, injects a compound crisis, traces its impact through project data, and produces a human-governed resilient response.</p><dl><div><dt>10</dt><dd>companies</dd></div><div><dt>60</dt><dd>data products</dd></div><div><dt>2,000</dt><dd>seeded draws per case</dd></div><div><dt>100%</dt><dd>metric provenance</dd></div></dl></div>
+      <aside><b>Simulation boundary</b><span>{simulationDisclaimer}</span></aside>
+    </section>
+
+    <section id="how-it-works" className="case-study-method">
+      <header><p>HOW TANJX WORKS</p><h2>One governed path from signal to action</h2></header>
+      <ol>
+        <li><span>01</span><b>Observe</b><p>Project data, IoT-shaped events, public context, and human inputs enter separate evidence classes.</p></li>
+        <li><span>02</span><b>Connect</b><p>The knowledge graph resolves product, supplier, material, facility, route, customer, policy, and claim dependencies.</p></li>
+        <li><span>03</span><b>Formulate</b><p>Agents translate the business decision into variables, objectives, hard constraints, scenarios, and methods.</p></li>
+        <li><span>04</span><b>Stress</b><p>Seeded simulation compares baseline, P50, P90, P95, worst case, CVaR, and minimum-regret alternatives.</p></li>
+        <li><span>05</span><b>Govern</b><p>Evidence Auditor and named human owners review the result before any operational release or write-back.</p></li>
+      </ol>
+    </section>
+
+    <section id="portfolio" className="case-study-portfolio">
+      <header><p>THE PORTFOLIO</p><h2>Ten products. Ten failure modes. Ten different decisions.</h2><span>Select a case to understand the operating problem, model, response, and evidence trail.</span></header>
+      <nav aria-label="Jump to a company">{caseStudyProfiles.map((profile, index) => <a key={profile.projectId} href={`#${profile.projectId}`}><span>{String(index + 1).padStart(2, "0")}</span>{profile.company}</a>)}</nav>
+    </section>
+
+    {caseStudyProfiles.map((profile, index) => {
+      const project = workspaceProjects.find((item) => item.id === profile.projectId)!;
+      return <article className="case-study" id={profile.projectId} key={profile.projectId}>
+        <header className="case-study__header">
+          <div><span>{String(index + 1).padStart(2, "0")}</span><p>{project.sector} · {project.code}</p><h2>{profile.company}</h2><h3>{profile.project}</h3></div>
+          <div className="case-study__header-actions"><a href={`/?view=company&project=${profile.projectId}&projectTab=overview`}>Open project →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=agents`}>Run in Playground →</a></div>
+        </header>
+
+        <section className="case-study__brief">
+          <div><small>PRODUCT PROMISE</small><b>{profile.product}</b><p>{project.problem}</p></div>
+          <div className="case-study__shock"><small>COMPOUND CRISIS</small><b>{profile.shock}</b><p>{profile.trigger}</p></div>
+          <div><small>DECISION TO MAKE</small><b>{profile.decision}</b><p>{project.outcome}</p></div>
+        </section>
+
+        <section className="case-study__result">
+          <div className="case-study__recommendation"><small>RESILIENT RESPONSE</small><h3>{profile.response}</h3><p>Minimum-regret candidate · stopped at {project.owner} human review · {profile.confidence}% modeled confidence</p></div>
+          <dl><div><dt>Baseline</dt><dd>{profile.baseline}</dd></div><div><dt>P50</dt><dd>{profile.p50}</dd></div><div><dt>P90</dt><dd>{profile.p90}</dd></div><div><dt>P95</dt><dd>{profile.p95}</dd></div><div><dt>Worst tested</dt><dd>{profile.worstCase}</dd></div><div><dt>Tail-risk value</dt><dd>{profile.cvar}</dd></div></dl>
+        </section>
+
+        <section className="case-study__workspace-map">
+          <div><small>MOUNTED APPS</small><ul>{profile.apps.map((app) => <li key={app}><span>{projectApps.find((item) => item.id === app)?.icon}</span>{appName(app)}</li>)}</ul></div>
+          <div><small>HARD CONSTRAINTS</small><ol>{profile.hardConstraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ol></div>
+          <div><small>METHOD STACK</small><p>{profile.methods.join(" · ")}</p><a href={`/?view=company&project=${profile.projectId}&projectTab=decisions`}>Inspect decision graph →</a></div>
+        </section>
+
+        <section className="case-study__data">
+          <header><div><small>PROJECT DATA</small><h3>Six governed data products</h3></div><a href={`/?view=company&project=${profile.projectId}&projectTab=data`}>Inspect data and graph →</a></header>
+          <div>{profile.datasets.map((item, dataIndex) => <article key={item.name}><span>{String(dataIndex + 1).padStart(2, "0")}</span><b>{item.name}</b><p>{item.source}</p><small>{item.grain}</small><footer><em>{item.rows} rows</em><em>{item.freshness}</em><strong>{item.quality}% quality</strong></footer></article>)}</div>
+        </section>
+
+        <section className="case-study__timeline">
+          <header><small>AGENT + HUMAN TRACE</small><h3>Forty-two simulated seconds from signal to review</h3></header>
+          <ol>{profile.timeline.map((event) => <li data-state={event.state} key={`${event.time}-${event.actor}`}><time>{event.time}</time><span><b>{event.actor}</b><p>{event.event}</p></span></li>)}</ol>
+        </section>
+
+        <footer className="case-study__evidence">
+          <div><small>PUBLIC CONTEXT</small><p>{profile.publicContext}</p><a href={profile.publicSource.url} target="_blank" rel="noreferrer">{profile.publicSource.label} ↗</a><span>{profile.publicSource.asOf}</span></div>
+          <div><small>INTERPRETATION BOUNDARY</small><p>{simulationDisclaimer}</p><span>No live feed, source system, solver, supplier commitment, or write-back was used.</span></div>
+        </footer>
+      </article>;
+    })}
+
+    <section id="interpretation" className="case-study-interpretation">
+      <header><p>INTERPRETATION GUIDE</p><h2>How to read a tanjx result</h2></header>
+      <div><article><b>Baseline</b><p>What the current plan produces when the selected disruption is applied.</p></article><article><b>P50</b><p>The median modeled outcome across the deterministic scenario set.</p></article><article><b>P90 / P95</b><p>Conservative service or outcome levels reached in 90% or 95% of modeled draws.</p></article><article><b>Worst tested</b><p>The lowest result among the explicitly modeled scenarios—not every possible future.</p></article><article><b>CVaR</b><p>The average consequence inside the modeled tail beyond the selected risk threshold.</p></article><article><b>Confidence</b><p>Evidence and model confidence, not a guarantee that the future will occur as modeled.</p></article></div>
+      <Link href="/">Start in the workspace →</Link>
+    </section>
+  </main>;
+}

@@ -1,28 +1,24 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import ts from "typescript";
+import { loadLinkedWorkspaceModel } from "./source-model-loader.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const asModuleUrl = (source) => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
-const transpile = (source) => ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 },
-}).outputText;
 
 async function loadWorkspaceModel() {
-  return import(asModuleUrl(transpile(await read("../app/workspace-model.ts"))));
+  return loadLinkedWorkspaceModel();
 }
 
 const clientDraft = {
-  name: "Apex Mobility",
-  sector: "Industrial Automation",
+  name: "Apple",
+  sector: "Consumer Electronics",
   classification: "Client confidential",
   dataResidency: "EU policy intent",
   clientLead: "Client Lead Fixture",
   providerLead: "tanjx Lead Fixture",
 };
 
-const projectDraft = (clientId, name = "Anode Shield") => ({
+const projectDraft = (clientId, name = "Launch Continuity") => ({
   clientId,
   name,
   problem: "Frame a new project decision without inheriting operational data.",
@@ -37,18 +33,18 @@ test("session client and project factories are collision-safe and preserve canon
   const firstClient = model.createSessionClient(clientDraft);
   const secondClient = model.createSessionClient(clientDraft, [...model.workspaceClients, firstClient]);
 
-  assert.equal(firstClient.id, "apex-mobility-2");
-  assert.equal(secondClient.id, "apex-mobility-3");
-  assert.equal(firstClient.sectorId, "industrial-automation");
+  assert.equal(firstClient.id, "apple-2");
+  assert.equal(secondClient.id, "apple-3");
+  assert.equal(firstClient.sectorId, "consumer-electronics");
   assert.equal(firstClient.origin, "Browser-session draft");
 
   const firstProject = model.createSessionProject(projectDraft(firstClient.id), [...model.workspaceClients, firstClient]);
   const secondProject = model.createSessionProject(projectDraft(firstClient.id), [...model.workspaceClients, firstClient], [...model.workspaceProjects, firstProject]);
 
-  assert.equal(firstProject.id, "anode-shield-2");
-  assert.equal(secondProject.id, "anode-shield-3");
-  assert.equal(firstProject.code, "P-012");
-  assert.equal(secondProject.code, "P-013");
+  assert.equal(firstProject.id, "launch-continuity");
+  assert.equal(secondProject.id, "launch-continuity-2");
+  assert.equal(firstProject.code, "P-011");
+  assert.equal(secondProject.code, "P-012");
   assert.equal(firstProject.clientId, firstClient.id);
   assert.equal(firstProject.client, firstClient.name);
   assert.equal(firstProject.sectorId, firstClient.sectorId);

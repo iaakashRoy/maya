@@ -53,10 +53,10 @@ export const regionalOperationsProfiles: Record<NetworkRegion, RegionalOperation
       { label: "Margin at risk", value: "$42M", detail: "Graphite + service exposure", percent: 27, tone: "critical" },
     ],
     suppliers: [
-      { name: "NeoGraph Materials", category: "Battery graphite", tier: "Tier 2", spend: "$84M", dependency: 92, risk: "critical", region: "East Asia" },
-      { name: "Hanwa Microdevices", category: "Power semiconductors", tier: "Tier 2", spend: "$112M", dependency: 81, risk: "watch", region: "Japan" },
-      { name: "Apex Castings", category: "Precision housings", tier: "Tier 1", spend: "$48M", dependency: 64, risk: "opportunity", region: "India" },
-      { name: "VietCore Components", category: "Machined castings", tier: "Tier 2", spend: "$36M", dependency: 53, risk: "healthy", region: "Vietnam" },
+      { name: "Synthetic graphite processor 01", category: "Battery graphite", tier: "Tier 2", spend: "$84M", dependency: 92, risk: "critical", region: "East Asia" },
+      { name: "Synthetic semiconductor source 02", category: "Power semiconductors", tier: "Tier 2", spend: "$112M", dependency: 81, risk: "watch", region: "Japan" },
+      { name: "Synthetic casting source 03", category: "Precision housings", tier: "Tier 1", spend: "$48M", dependency: 64, risk: "opportunity", region: "India" },
+      { name: "Synthetic component source 04", category: "Machined castings", tier: "Tier 2", spend: "$36M", dependency: 53, risk: "healthy", region: "Vietnam" },
     ],
   },
   Europe: {

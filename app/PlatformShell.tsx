@@ -225,7 +225,6 @@ const interactionStatus = (message: string): ActionOutcome["status"] => /\b(unav
 
 function snapshotForProject(project: WorkspaceProject): ScopeSnapshot {
   const base = scopeSnapshots.company;
-  if (project.id === "anode-shield") return base;
   const metrics: WorkspaceProject["metrics"] = project.metrics.length ? project.metrics : [
     { label: "Data contract", value: "Not configured", detail: "Complete the project Data workflow", tone: "watch", evidenceRef: `EV-${project.code}-SETUP-01` },
     { label: "Mapped observations", value: "0", detail: "No project observations are available", tone: "opportunity", evidenceRef: `EV-${project.code}-SETUP-02` },
@@ -248,7 +247,6 @@ function snapshotForProject(project: WorkspaceProject): ScopeSnapshot {
 }
 
 function caseForProject(project: WorkspaceProject, base: DecisionCase): DecisionCase {
-  if (project.id === "anode-shield") return base;
   const projectNumber = Number(project.code.replace("P-", ""));
   const lifecycle = [
     { stage: "Detect", status: "In analysis" },
@@ -1091,6 +1089,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
             <p>Workspace</p>
             <button data-action-id="nav.workspace" className={`scope-nav ${scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
             <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><NavigationIcon name="world" /><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
+            <button data-action-id="nav.case-studies" className="scope-nav" type="button" aria-label="Open case study library" title="Case study library" onClick={() => window.location.assign("/case-studies")}><span className="case-study-nav-icon" aria-hidden="true">10</span><div><b>Case studies</b><small>Problems, models, and outcomes</small></div><i>›</i></button>
           </section>
           <section className="nav-section sidebar-projects">
             <div className="sidebar-section-heading"><p>Project path</p><span>{sidebarPathGroups.reduce((count, group) => count + group.projects.length, 0)} shown</span></div>

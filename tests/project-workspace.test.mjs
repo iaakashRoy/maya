@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
+import { linkedActivityUrl, linkedWorkspaceUrl, loadLinkedWorkspaceModel } from "./source-model-loader.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -12,39 +13,33 @@ const transpile = (source) => ts.transpileModule(source, {
 }).outputText;
 
 async function loadWorkspaceModel() {
-  const source = await read("../app/workspace-model.ts");
-  return import(asModuleUrl(transpile(source)));
+  return loadLinkedWorkspaceModel();
 }
 
 async function loadNavigation() {
-  const [navigationSource, platformSource, workspaceSource] = await Promise.all([
+  const [navigationSource, platformSource, workspaceUrl] = await Promise.all([
     read("../app/navigation.ts"),
     read("../app/platform-model.ts"),
-    read("../app/workspace-model.ts"),
+    linkedWorkspaceUrl(),
   ]);
   const linkedSource = navigationSource
     .replace('"./platform-model"', JSON.stringify(asModuleUrl(transpile(platformSource))))
-    .replace('"./workspace-model"', JSON.stringify(asModuleUrl(transpile(workspaceSource))));
+    .replace('"./workspace-model"', JSON.stringify(workspaceUrl));
   return import(asModuleUrl(transpile(linkedSource)));
 }
 
 async function loadActivityModel() {
-  const [activitySource, workspaceSource] = await Promise.all([
-    read("../app/project-activity-model.ts"),
-    read("../app/workspace-model.ts"),
-  ]);
-  const workspaceUrl = asModuleUrl(transpile(workspaceSource));
-  return import(asModuleUrl(transpile(activitySource.replace('"./workspace-model"', JSON.stringify(workspaceUrl)))));
+  return import(await linkedActivityUrl());
 }
 
 test("ten clients and their cross-tower projects are isolated, evidence-aware, and mounted to distinct app contracts", async () => {
   const model = await loadWorkspaceModel();
   const { workspaceProjects, projectApps, evidenceFor, decisionsFor, graphNodesFor, datasetsFor } = model;
 
-  assert.equal(workspaceProjects.length, 11);
+  assert.equal(workspaceProjects.length, 10);
   assert.equal(new Set(workspaceProjects.map((project) => project.sectorId)).size, 10);
   assert.equal(new Set(workspaceProjects.map((project) => project.clientId)).size, 10);
-  assert.equal(workspaceProjects.filter((project) => project.clientId === "apex-mobility").length, 2);
+  assert.ok(workspaceProjects.every((project) => workspaceProjects.filter((candidate) => candidate.clientId === project.clientId).length === 1));
   assert.equal(projectApps.length, 10);
   assert.equal(new Set(projectApps.map((app) => app.accent)).size, 10);
   assert.equal(new Set(projectApps.map((app) => app.archetype)).size, 10);
@@ -63,25 +58,21 @@ test("ten clients and their cross-tower projects are isolated, evidence-aware, a
       assert.equal(receipt.projectId, project.id);
       assert.notEqual(receipt.displayedValue, "Not found", `${project.code} ${decision.id} evidence resolves`);
     }
-    if (project.id === "anode-shield") {
-      assert.match(decisions, /800V drive-unit launch/);
-    } else {
-      assert.match(decisions, new RegExp(project.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    }
+    assert.match(decisions, new RegExp(project.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.ok(graphNodesFor(project).every((node) => evidenceFor(project, node.evidenceRef).projectId === project.id));
     assert.ok(datasetsFor(project).every((dataset) => dataset.id.startsWith(project.code)));
   }
 
-  const helix = workspaceProjects.find((project) => project.id === "cold-chain-promise");
-  const crossProjectLookup = evidenceFor(helix, "EV-001-01");
-  assert.equal(crossProjectLookup.projectId, helix.id);
+  const beverage = workspaceProjects.find((project) => project.id === "cocacola-water-to-shelf");
+  const crossProjectLookup = evidenceFor(beverage, "EV-001-01");
+  assert.equal(crossProjectLookup.projectId, beverage.id);
   assert.equal(crossProjectLookup.displayedValue, "Not found");
   assert.equal(crossProjectLookup.confidence, 0);
   assert.match(crossProjectLookup.formula, /no foreign or fallback claim was substituted/i);
-  assert.match(crossProjectLookup.access, /Helixora Therapeutics/);
-  assert.doesNotMatch(crossProjectLookup.access, /Apex Mobility/);
+  assert.match(crossProjectLookup.access, /Coca-Cola/);
+  assert.doesNotMatch(crossProjectLookup.access, /Apple/);
 
-  const generated = model.fixtureEvidenceFor(helix, { id: "EV-TEST", claim: "Fixture review state", displayedValue: "1", source: "Test fixture", formula: "Static test" });
+  const generated = model.fixtureEvidenceFor(beverage, { id: "EV-TEST", claim: "Fixture review state", displayedValue: "1", source: "Test fixture", formula: "Static test" });
   assert.equal(generated.reviewer, "Unreviewed fixture");
 });
 
@@ -220,15 +211,15 @@ test("a valid explicit project is authoritative and returns canonical ancestry",
     view: "company",
     sector: "wrong-sector",
     client: "wrong-client",
-    project: "lithium-cell-provenance",
+    project: "tsmc-fab-recovery",
   });
 
   assert.equal(result.view, "company");
   assert.equal(result.scope, "company");
-  assert.equal(result.projectId, "lithium-cell-provenance");
-  assert.equal(result.sectorId, "critical-minerals");
-  assert.equal(result.clientId, "terrametals");
-  assert.equal(result.caseId, "CASE-007-01");
+  assert.equal(result.projectId, "tsmc-fab-recovery");
+  assert.equal(result.sectorId, "semiconductor-foundry");
+  assert.equal(result.clientId, "tsmc");
+  assert.equal(result.caseId, "CASE-008-01");
 });
 
 test("unresolvable explicit hierarchy fails closed to the Workspace root", async () => {
@@ -258,12 +249,12 @@ test("Operations World scope is authoritative even when project parameters are s
     const result = resolveNavigation({
       view,
       scope: "company",
-      sector: "mobility-ev",
-      client: "apex-mobility",
-      project: "anode-shield",
+      sector: "consumer-electronics",
+      client: "apple",
+      project: "apple-launch-continuity",
       projectTab: "data",
       projectApp: "minerals",
-      case: "CASE-1042",
+      case: "CASE-001-01",
     });
 
     assert.equal(result.view, view);
@@ -291,20 +282,20 @@ test("project-only capabilities require a resolvable project and canonicalize va
     assert.equal(result.projectApp, null);
   }
 
-  const decision = resolveNavigation({ view: "case", project: "cold-chain-promise" });
+  const decision = resolveNavigation({ view: "case", project: "cocacola-water-to-shelf" });
   assert.equal(decision.view, "case");
   assert.equal(decision.scope, "company");
-  assert.equal(decision.projectId, "cold-chain-promise");
-  assert.equal(decision.sectorId, "life-sciences");
-  assert.equal(decision.clientId, "helixora");
+  assert.equal(decision.projectId, "cocacola-water-to-shelf");
+  assert.equal(decision.sectorId, "beverage-bottling");
+  assert.equal(decision.clientId, "coca-cola");
   assert.equal(decision.caseId, "CASE-002-01");
 
-  const graph = resolveNavigation({ view: "graph", project: "cold-chain-promise" });
+  const graph = resolveNavigation({ view: "graph", project: "cocacola-water-to-shelf" });
   assert.equal(graph.view, "company");
   assert.equal(graph.projectTab, "graph");
-  assert.equal(graph.projectId, "cold-chain-promise");
+  assert.equal(graph.projectId, "cocacola-water-to-shelf");
 
-  const legacyTeam = resolveNavigation({ view: "company", project: "cold-chain-promise", projectTab: "team" });
+  const legacyTeam = resolveNavigation({ view: "company", project: "cocacola-water-to-shelf", projectTab: "team" });
   assert.equal(legacyTeam.view, "company");
   assert.equal(legacyTeam.projectTab, "overview");
 });
@@ -345,33 +336,33 @@ test("a session-created project has zero resources and explicit project membersh
   assert.ok(memberships.every((membership) => membership.projectId === project.id && membership.origin === "Browser-session draft"));
   assert.equal(model.hasProjectAccess(project.id, collaborators[0].id, "decisions.approve", memberships), true);
   assert.equal(model.hasProjectAccess(project.id, collaborators[1].id, "decisions.approve", memberships), false);
-  assert.equal(model.hasProjectAccess("anode-shield", collaborators[0].id, "project.view", memberships), false);
+  assert.equal(model.hasProjectAccess("apple-launch-continuity", collaborators[0].id, "project.view", memberships), false);
 });
 
-test("project cases are canonical, including generated deep links and the Anode exception", async () => {
+test("project cases are canonical, including generated deep links and stale-case correction", async () => {
   const { resolveNavigation } = await loadNavigation();
 
   const generated = resolveNavigation({ view: "case", case: "CASE-006-01" });
   assert.equal(generated.scope, "company");
-  assert.equal(generated.projectId, "copper-rare-earth");
+  assert.equal(generated.projectId, "byd-global-localization");
   assert.equal(generated.caseId, "CASE-006-01");
 
-  const canonicalized = resolveNavigation({ view: "company", project: "omnichannel-peak", case: "CASE-1042" });
+  const canonicalized = resolveNavigation({ view: "company", project: "pfizer-medicine-continuity", case: "CASE-001-01" });
   assert.equal(canonicalized.caseId, "CASE-010-01");
 
-  const anode = resolveNavigation({ view: "company", project: "anode-shield", case: "CASE-001-01" });
-  assert.equal(anode.caseId, "CASE-1042");
+  const apple = resolveNavigation({ view: "company", project: "apple-launch-continuity", case: "CASE-010-01" });
+  assert.equal(apple.caseId, "CASE-001-01");
 });
 
 test("projectApp requires the company apps tab and a mounted specialist studio", async () => {
   const { resolveNavigation } = await loadNavigation();
-  const mounted = { view: "company", project: "lithium-cell-provenance", projectTab: "apps", projectApp: "minerals" };
+  const mounted = { view: "company", project: "tesla-closed-loop-battery", projectTab: "apps", projectApp: "minerals" };
 
   assert.equal(resolveNavigation(mounted).projectApp, "minerals");
   assert.equal(resolveNavigation({ ...mounted, view: "risk", scope: "company" }).projectApp, null);
   assert.equal(resolveNavigation({ ...mounted, projectTab: "overview" }).projectApp, null);
   assert.equal(resolveNavigation({ ...mounted, projectApp: "risk" }).projectApp, null);
-  assert.equal(resolveNavigation({ ...mounted, project: "cold-chain-promise" }).projectApp, null);
+  assert.equal(resolveNavigation({ ...mounted, project: "cocacola-water-to-shelf" }).projectApp, null);
 });
 
 test("restored application routes fail closed to Data until the project has an L0 contract", async () => {
@@ -411,7 +402,7 @@ test("restored application routes fail closed to Data until the project has an L
 test("session and app-run deep links are project scoped and canonical for their visible surface", async () => {
   const [navigation, activity, workspace] = await Promise.all([loadNavigation(), loadActivityModel(), loadWorkspaceModel()]);
   const state = activity.seedProjectActivity(workspace.workspaceProjects);
-  const base = { project: "anode-shield" };
+  const base = { project: "apple-launch-continuity" };
 
   const agentRoutes = [
     navigation.resolveNavigation({ ...base, view: "company", projectTab: "agents", session: "SES-P001-023" }, workspace.workspaceProjects, state),

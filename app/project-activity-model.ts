@@ -8,6 +8,7 @@ import {
   type ProjectAppId,
   type WorkspaceProject,
 } from "./workspace-model";
+import { caseStudyProfileFor } from "./case-study-model";
 
 /** Backward-compatible export for activity and UI consumers; the contract rule lives in the workspace model. */
 export const projectHasDataContract = hasProjectDataContract;
@@ -195,27 +196,28 @@ function fingerprintFor(projectId: string, appId: ProjectAppId, inputs: readonly
   return `FP-${hash.toString(16).toUpperCase().padStart(8, "0")}`;
 }
 
-const resultFor = (project: WorkspaceProject): ProjectWorkResult => ({
-  headline: project.id === "anode-shield" ? "Service-protection candidate ready for human review" : `${project.outcome} - candidate ready for review`,
-  recommendation: project.id === "anode-shield"
-    ? "Reserve 480 t of qualified alternate capacity and rebalance 64 t of regional inventory while holding projected launch service at 95.1%."
-    : `Use the mounted project apps to review ${project.metrics[0]?.label.toLowerCase() ?? "the primary exposure"} before any operational release.`,
-  metrics: project.id === "anode-shield"
-    ? [{ label: "Alternate capacity", value: "480 t" }, { label: "Inventory rebalance", value: "64 t" }, { label: "Projected service", value: "95.1%" }]
-    : project.metrics.slice(0, 3).map((metric) => ({ label: metric.label, value: metric.value })),
-  evidenceRefs: project.id === "anode-shield"
-    ? ["EV-001-D2A", "EV-001-D2B", "EV-001-02", "EV-001-D3A"]
-    : project.metrics.slice(0, 4).map((metric) => metric.evidenceRef),
-  reviewGate: project.id === "anode-shield" ? "3 named human approvals required" : `Approval required from ${project.owner}`,
-  claimBoundary: "Deterministic synthetic replay only; no LLM, external source, solver, write-back, or reinforcement-learning update ran.",
-});
+const resultFor = (project: WorkspaceProject): ProjectWorkResult => {
+  const profile = caseStudyProfileFor(project);
+  return {
+    headline: `${project.client} resilient response ready for human review`,
+    recommendation: profile?.response ?? `Use the mounted project apps to review ${project.metrics[0]?.label.toLowerCase() ?? "the primary exposure"} before any operational release.`,
+    metrics: [
+      { label: "Baseline", value: project.simulation?.baseline ?? project.metrics[0]?.value ?? "Pending" },
+      { label: "P95 resilient", value: project.simulation?.p95 ?? project.metrics[1]?.value ?? "Pending" },
+      { label: "Tail-risk value", value: project.simulation?.cvar ?? project.metrics[3]?.value ?? "Pending" },
+    ],
+    evidenceRefs: project.metrics.slice(0, 4).map((metric) => metric.evidenceRef),
+    reviewGate: `Approval required from ${project.owner} after ${profile?.hardConstraints.length ?? 0} hard constraints pass`,
+    claimBoundary: project.simulation?.disclaimer ?? "Deterministic synthetic replay only; no external source, solver, write-back, or reinforcement-learning update ran.",
+  };
+};
 
 function runInputsFor(project: WorkspaceProject, appId: ProjectAppId): readonly AppRunInput[] {
-  const serviceValue = project.id === "anode-shield" ? "95" : "93";
+  const serviceValue = project.simulation?.p95.match(/[\d.]+/)?.[0] ?? "93";
   return [
     { key: "service_floor", label: "Service floor", value: serviceValue, unit: "%", editable: true, kind: "number", min: 0, max: 100, step: 0.1 },
     { key: "planning_horizon", label: "Planning horizon", value: "12", unit: "weeks", editable: true, kind: "number", min: 1, max: 104, step: 1 },
-    { key: "scenario", label: "Scenario", value: appId === "risk" ? "P90 disruption" : "Balanced response", unit: "", editable: true, kind: "choice", options: ["Balanced response", "P90 disruption", "Protect service", "Protect cash"] },
+    { key: "scenario", label: "Scenario", value: appId === "risk" ? "Compound crisis" : "Resilient response", unit: "", editable: true, kind: "choice", options: ["Resilient response", "Compound crisis", "Protect service", "Minimum regret"] },
     { key: "project_snapshot", label: "Evidence snapshot", value: `${project.code}-SNAPSHOT-01`, unit: "", editable: false, evidenceRef: project.metrics[0]?.evidenceRef },
   ];
 }
@@ -249,22 +251,18 @@ function runFor(project: WorkspaceProject, appId: ProjectAppId, sessionId: strin
 
 function detailedMessages(project: WorkspaceProject, session: ProjectWorkSession, optimizerRunId: string, riskRunId?: string, supplierRunId?: string): readonly SessionMessage[] {
   const token = projectToken(project);
-  const messages = project.id === "anode-shield" ? [
-    { role: "user", author: "Asha Rao", kind: "Prompt", body: "Protect the 800V launch. Show the evidence, test qualified alternatives, and stop before any supplier or inventory commitment.", evidenceRefs: [], appRunRefs: [] },
-    { role: "agent", author: "Project Orchestrator", kind: "Response", body: "Scope locked to Apex Mobility / Anode Shield. I will coordinate evidence, supplier, risk, and OR specialists and stop at the human gate.", evidenceRefs: [], appRunRefs: [] },
-    { role: "agent", author: "Evidence Auditor", kind: "Activity", body: "Read the graphite allocation, product structure, qualification, order, and movement fixtures. The primary refining-path dependency is 92%.", evidenceRefs: ["EV-001-03"], appRunRefs: [] },
-    { role: "agent", author: "Supplier Cartographer", kind: "Activity", body: "SupplierGraph found 480 t of qualified alternate capacity after fixture yield and reservation limits.", evidenceRefs: ["EV-001-D2A"], appRunRefs: supplierRunId ? [supplierRunId] : [] },
-    { role: "agent", author: "Risk Sentinel", kind: "Activity", body: "RiskRadar replayed the P90 disruption envelope and retained $42.0M of exposed launch value as a synthetic scenario input.", evidenceRefs: ["EV-001-01"], appRunRefs: riskRunId ? [riskRunId] : [] },
-    { role: "user", author: "Asha Rao", kind: "Steering", body: "Keep projected service at or above 95% and forbid unqualified sources.", evidenceRefs: [], appRunRefs: [] },
-    { role: "agent", author: "OR Formulator", kind: "Activity", body: "Added the 95% service floor and qualification as hard constraints; selected M-06, M-20, and M-23 for the auditable model draft.", evidenceRefs: ["EV-001-02", "EV-001-D2A"], appRunRefs: [] },
-    { role: "agent", author: "Solver Operator", kind: "Activity", body: "Network Optimizer replayed the deterministic candidate: reserve 480 t and rebalance 64 t. No solver ran and no optimality claim is made.", evidenceRefs: ["EV-001-D2A", "EV-001-D2B"], appRunRefs: [optimizerRunId] },
-    { role: "agent", author: "Evidence Auditor", kind: "Result", body: "Candidate verified against the visible fixture: projected service 95.1%; three named approvals remain. The package is ready for human review, not release.", evidenceRefs: ["EV-001-02", "EV-001-D3A"], appRunRefs: [optimizerRunId] },
-  ] as const : [
-    { role: "user", author: project.owner, kind: "Prompt", body: `Review ${project.problem.toLowerCase()} and prepare a traceable response.`, evidenceRefs: [], appRunRefs: [] },
-    { role: "agent", author: "Project Orchestrator", kind: "Response", body: `Project boundary locked to ${project.client} / ${project.name}.`, evidenceRefs: [], appRunRefs: [] },
-    { role: "agent", author: "Evidence Auditor", kind: "Activity", body: `Read ${project.counts.observations} synthetic observations and checked the declared project evidence.`, evidenceRefs: project.metrics.slice(0, 2).map((metric) => metric.evidenceRef), appRunRefs: [] },
-    { role: "agent", author: "OR Formulator", kind: "Activity", body: `Prepared a deterministic formulation draft using ${project.methodCodes.slice(0, 4).join(", ")}.`, evidenceRefs: [], appRunRefs: [optimizerRunId] },
-    { role: "agent", author: "Project Orchestrator", kind: "Result", body: `${project.outcome}. Candidate stopped at the named human review gate.`, evidenceRefs: project.metrics.slice(0, 3).map((metric) => metric.evidenceRef), appRunRefs: [optimizerRunId] },
+  const profile = caseStudyProfileFor(project);
+  const constraints = profile?.hardConstraints ?? [];
+  const messages = [
+    { role: "user", author: project.owner, kind: "Prompt", body: `Stress-test ${project.name}. Use project evidence, show tail risk, preserve hard constraints, and stop before operational release.`, evidenceRefs: [], appRunRefs: [] },
+    { role: "agent", author: "Project Orchestrator", kind: "Response", body: `Boundary locked to ${project.client} / ${project.name}. Simulation clock ${project.simulation?.clock ?? "fixed"}; scenario ${project.simulation?.scenarioId ?? "project fixture"}.`, evidenceRefs: [], appRunRefs: [] },
+    { role: "agent", author: "Geopolitical Sentinel", kind: "Activity", body: `Activated compound branch: ${profile?.shock ?? project.simulation?.scenario ?? "project disruption"}. Trigger: ${profile?.trigger ?? project.simulation?.trigger ?? "fixture event"}`, evidenceRefs: [project.metrics[0]?.evidenceRef].filter(Boolean), appRunRefs: riskRunId ? [riskRunId] : [] },
+    { role: "agent", author: "Evidence Auditor", kind: "Activity", body: `Read ${project.counts.observations} synthetic observations across ${profile?.datasets.length ?? 0} governed data products. Public context remains separate from operational fixtures.`, evidenceRefs: project.metrics.slice(0, 2).map((metric) => metric.evidenceRef), appRunRefs: [] },
+    { role: "agent", author: "Supplier Cartographer", kind: "Activity", body: `Traversed ${project.counts.relationships} project-only relationships and identified the scenario propagation path into ${project.metrics[1]?.label.toLowerCase()}.`, evidenceRefs: [project.metrics[2]?.evidenceRef].filter(Boolean), appRunRefs: supplierRunId ? [supplierRunId] : [] },
+    { role: "user", author: project.owner, kind: "Steering", body: `Treat ${constraints.slice(0, 2).join(" and ") || "quality and service"} as hard constraints. Optimize for minimum regret, not average cost.`, evidenceRefs: [], appRunRefs: [] },
+    { role: "agent", author: "OR Formulator", kind: "Activity", body: `Versioned the decision model with ${project.methodCodes.join(", ")}; evaluated baseline, P50, P90, P95, worst case, and CVaR across 2,000 seeded draws.`, evidenceRefs: project.metrics.slice(0, 3).map((metric) => metric.evidenceRef), appRunRefs: [] },
+    { role: "agent", author: "Solver Operator", kind: "Activity", body: `Replayed the deterministic candidate: ${profile?.response ?? project.outcome} Result ${project.simulation?.p95 ?? project.metrics[1]?.value}; ${project.simulation?.cvar ?? project.metrics[3]?.value}.`, evidenceRefs: project.metrics.slice(1, 4).map((metric) => metric.evidenceRef), appRunRefs: [optimizerRunId] },
+    { role: "agent", author: "Evidence Auditor", kind: "Result", body: `Compared baseline ${project.simulation?.baseline ?? "not supplied"} with resilient state ${project.simulation?.resilient ?? "not supplied"}. Confidence ${project.simulation?.confidence ?? 75}%. Candidate is reviewable, not released.`, evidenceRefs: project.metrics.map((metric) => metric.evidenceRef), appRunRefs: [optimizerRunId] },
   ] as const;
   return messages.map((message, index) => ({
     ...message,
@@ -442,7 +440,7 @@ function fixtureForProject(project: WorkspaceProject) {
   const token = projectToken(project);
   const primaryId = `SES-${token}-024`;
   const primary: ProjectWorkSession = {
-    id: primaryId, projectId: project.id, entryPoint: "Agent", title: project.id === "anode-shield" ? "Protect the 800V launch" : `${project.name} response`, objective: project.problem,
+    id: primaryId, projectId: project.id, entryPoint: "Agent", title: `${project.name} response`, objective: project.problem,
     status: "Awaiting review", startedAt: "04 Sep 2026 - 14:08 IST", updatedAt: "04 Sep 2026 - 15:02 IST", leadAgentId: "orchestrator", participantAgentIds: expertAgents.map((agent) => agent.id), appIds: [...project.mountedAppIds], finalResult: resultFor(project), origin: "Synthetic fixture",
   };
   const previous: readonly ProjectWorkSession[] = [

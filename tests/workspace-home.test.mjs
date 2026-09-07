@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
+import { loadLinkedWorkspaceModel } from "./source-model-loader.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const source = await read("../app/WorkspaceHome.tsx");
@@ -11,13 +12,10 @@ const transpile = (moduleSource) => ts.transpileModule(moduleSource, {
 }).outputText;
 
 async function loadPortfolioFixture() {
-  const [portfolioSource, workspaceSource] = await Promise.all([
-    read("../app/workspace-portfolio-model.ts"),
-    read("../app/workspace-model.ts"),
-  ]);
+  const portfolioSource = await read("../app/workspace-portfolio-model.ts");
   const [portfolio, workspace] = await Promise.all([
     import(asModuleUrl(transpile(portfolioSource))),
-    import(asModuleUrl(transpile(workspaceSource))),
+    loadLinkedWorkspaceModel(),
   ]);
   return { portfolio, workspace };
 }
@@ -84,15 +82,11 @@ test("workspace portfolio derives tower clients from projects without duplicate 
     assert.equal(placements[0].client.id, project.clientId, `${project.code} appeared under the wrong client`);
   }
 
-  const criticalMinerals = towers.find((tower) => tower.id === "critical-minerals");
-  const mobility = towers.find((tower) => tower.id === "mobility-ev");
-  assert.ok(criticalMinerals);
-  assert.ok(mobility);
-  const criticalApex = criticalMinerals.clients.find((client) => client.id === "apex-mobility");
-  const mobilityApex = mobility.clients.find((client) => client.id === "apex-mobility");
-  assert.ok(criticalApex);
-  assert.ok(mobilityApex);
-  assert.deepEqual(criticalApex.projects.map((project) => project.code), ["P-011"]);
-  assert.deepEqual(mobilityApex.projects.map((project) => project.code), ["P-001"]);
+  const electronics = towers.find((tower) => tower.id === "consumer-electronics");
+  const pharmaceuticals = towers.find((tower) => tower.id === "pharmaceuticals");
+  assert.ok(electronics);
+  assert.ok(pharmaceuticals);
+  assert.deepEqual(electronics.clients.find((client) => client.id === "apple").projects.map((project) => project.code), ["P-001"]);
+  assert.deepEqual(pharmaceuticals.clients.find((client) => client.id === "pfizer").projects.map((project) => project.code), ["P-010"]);
   assert.equal(new Set(towers.flatMap((tower) => tower.clients.map((client) => client.id))).size, 10);
 });

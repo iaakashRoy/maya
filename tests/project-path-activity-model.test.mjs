@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
+import { linkedActivityUrl, linkedWorkspaceUrl } from "./source-model-loader.mjs";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const asModuleUrl = (source) => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
@@ -10,18 +11,16 @@ const transpile = (source) => ts.transpileModule(source, {
 }).outputText;
 
 async function loadModels() {
-  const [workspaceSource, pathSource, activitySource] = await Promise.all([
-    read("../app/workspace-model.ts"),
+  const [workspaceUrl, pathSource, activityUrl] = await Promise.all([
+    linkedWorkspaceUrl(),
     read("../app/project-path-model.ts"),
-    read("../app/project-activity-model.ts"),
+    linkedActivityUrl(),
   ]);
-  const workspaceUrl = asModuleUrl(transpile(workspaceSource));
   const linkedPathSource = pathSource.replace('"./workspace-model"', JSON.stringify(workspaceUrl));
-  const linkedActivitySource = activitySource.replace('"./workspace-model"', JSON.stringify(workspaceUrl));
   return {
     workspace: await import(workspaceUrl),
     path: await import(asModuleUrl(transpile(linkedPathSource))),
-    activity: await import(asModuleUrl(transpile(linkedActivitySource))),
+    activity: await import(activityUrl),
   };
 }
 
@@ -250,7 +249,7 @@ test("app reruns append immutable lineage and never rewrite the selected source 
     projectId: project.id,
     runId: parent.id,
     key: "service_floor",
-    value: "97",
+    value: "99",
   });
   assert.deepEqual(edited.appRuns.find((run) => run.id === parent.id), parentSnapshot);
 
@@ -274,12 +273,12 @@ test("app reruns append immutable lineage and never rewrite the selected source 
   assert.equal(child.traceId, `${parent.traceId}-R01`);
   assert.equal(child.origin, "Browser session");
   assert.equal(child.sessionId, activeSessionId);
-  assert.equal(child.inputs.find((input) => input.key === "service_floor").value, "97");
-  assert.equal(parent.inputs.find((input) => input.key === "service_floor").value, "95");
-  assert.deepEqual(child.changeSet, [{ key: "service_floor", before: "95", after: "97" }]);
+  assert.equal(child.inputs.find((input) => input.key === "service_floor").value, "99");
+  assert.equal(parent.inputs.find((input) => input.key === "service_floor").value, "97.4");
+  assert.deepEqual(child.changeSet, [{ key: "service_floor", before: "97.4", after: "99" }]);
   assert.notEqual(child.inputFingerprint, parent.inputFingerprint);
   assert.notDeepEqual(child.outputs, parent.outputs);
-  assert.match(child.summary, /service floor 95% -> 97%/);
+  assert.match(child.summary, /service floor 97.4% -> 99%/);
   assert.equal(rerun.selectedRunByProjectApp[`${project.id}:optimizer`], child.id);
   assert.equal(activity.appRunsFor(rerun, project.id, "optimizer")[0].id, child.id);
   assert.ok(rerun.sessions.find((session) => session.id === activeSessionId).appIds.includes("optimizer"));
@@ -310,7 +309,7 @@ test("app reruns append immutable lineage and never rewrite the selected source 
   assert.deepEqual(rerunChild.appRuns.find((run) => run.id === child.id), childSnapshot);
   assert.equal(grandchild.id, `${child.id}-R02`);
   assert.equal(grandchild.parentRunId, child.id);
-  assert.equal(grandchild.inputs.find((input) => input.key === "service_floor").value, "97");
+  assert.equal(grandchild.inputs.find((input) => input.key === "service_floor").value, "99");
   assert.equal(grandchild.inputs.find((input) => input.key === "planning_horizon").value, "16");
   assert.deepEqual(grandchild.changeSet, [{ key: "planning_horizon", before: "12", after: "16" }]);
 });

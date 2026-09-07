@@ -1,3 +1,5 @@
+import { caseStudyProjects, caseStudyProfileFor } from "./case-study-model";
+
 export type WorkspaceTabId = "overview" | "decisions" | "apps" | "data" | "graph" | "agents" | "team" | "governance";
 export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
@@ -150,6 +152,24 @@ export type WorkspaceProject = {
   mountedAppIds: readonly ProjectAppId[];
   variablePack: { l2: readonly string[]; l1: readonly string[]; l0: readonly string[] };
   methodCodes: readonly string[];
+  /** Deterministic case-study clock and resilience envelope for production-realistic simulation. */
+  simulation?: {
+    disclaimer: string;
+    clock: string;
+    cadence: string;
+    scenarioId: string;
+    scenario: string;
+    trigger: string;
+    decision: string;
+    baseline: string;
+    resilient: string;
+    confidence: number;
+    p50: string;
+    p90: string;
+    p95: string;
+    worstCase: string;
+    cvar: string;
+  };
   operationsWorldIntake?: OperationsWorldIntake;
 };
 
@@ -249,7 +269,7 @@ export const workspaceSurfaceIds: readonly WorkspaceTabId[] = ["overview", "deci
 const metricSet = (code: string, values: readonly [string, string, string, WorkspaceMetric["tone"]][]): readonly WorkspaceMetric[] =>
   values.map(([label, value, detail, tone], index) => ({ label, value, detail, tone, evidenceRef: `EV-${code.slice(2)}-${String(index + 1).padStart(2, "0")}` }));
 
-export const workspaceProjects: readonly WorkspaceProject[] = [
+const legacyWorkspaceProjects: readonly WorkspaceProject[] = [
   {
     id: "anode-shield", origin: "Seed fixture", sectorId: "mobility-ev", sector: "Mobility & EV", clientId: "apex-mobility", client: "Apex Mobility", name: "Anode Shield", code: "P-001", health: "watch", stage: "Validate response", currency: "USD", regions: "North America · APAC · Europe", owner: "Asha Rao", classification: "Client confidential", dataResidency: "India + EU policy partitions",
     problem: "Protect the 800V drive-unit launch from graphite concentration, port delay, and qualification constraints.", outcome: "Preserve launch service while establishing a qualified, lower-risk anode supply portfolio.",
@@ -314,7 +334,19 @@ export const workspaceProjects: readonly WorkspaceProject[] = [
   },
 ];
 
-export const apexWorkspaceProject = workspaceProjects[0];
+// Internal migration reference only; this data is never exported or rendered.
+void legacyWorkspaceProjects;
+
+/**
+ * The public demo portfolio is intentionally sourced from the canonical case-study
+ * model. Legacy fixtures remain above temporarily as a migration reference, but
+ * are never exported or rendered.
+ */
+export const workspaceProjects: readonly WorkspaceProject[] = caseStudyProjects;
+
+export const appleWorkspaceProject = workspaceProjects[0];
+/** @deprecated Compatibility alias for older imports; now resolves to Apple Launch Continuity. */
+export const apexWorkspaceProject = appleWorkspaceProject;
 
 const initialsFor = (name: string) => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "NA";
 
@@ -663,47 +695,56 @@ export function agentsFor(project: WorkspaceProject) {
 }
 
 export function caseIdForProject(project: WorkspaceProject) {
-  return project.id === "anode-shield" ? "CASE-1042" : `CASE-${project.code.slice(2)}-01`;
+  return `CASE-${project.code.slice(2)}-01`;
 }
 
 export function decisionsFor(project: WorkspaceProject) {
   if (project.origin === "Browser-session draft" && project.counts.decisions === 0) return [];
-  if (project.id === "anode-shield") return decisionTree.map((item) => ({ ...item }));
+  const profile = caseStudyProfileFor(project);
   const values = project.metrics.map((item) => item.value);
   const refs = project.metrics.map((item) => item.evidenceRef);
   return [
-    { id: "D0", parent: null, level: "Outcome", title: project.outcome, owner: project.owner, state: project.health === "critical" ? "At risk" : "In review", value: values[0], evidenceRef: refs[0] },
-    { id: "D1", parent: "D0", level: "Strategic", title: `Shape the ${project.sector.toLowerCase()} response portfolio`, owner: "Engagement lead", state: "In review", value: values[1], evidenceRef: refs[1] },
-    { id: "D2-A", parent: "D1", level: "Tactical", title: `Commit the first ${project.name} intervention`, owner: "OR scientist", state: "Candidate", value: values[2], evidenceRef: refs[2] },
-    { id: "D2-B", parent: "D1", level: "Tactical", title: "Balance capacity, service, cash, and risk", owner: "Domain executive", state: "Feasible fixture", value: values[3], evidenceRef: refs[3] },
-    { id: "D3-A", parent: "D2-A", level: "Operational", title: "Issue the governed execution package", owner: "Project data steward", state: "Human gate", value: `${project.counts.experts} experts`, evidenceRef: `${project.code}-EV-EXPERTS` },
+    { id: "D0", parent: null, level: "Outcome", title: `${project.name} · ${project.outcome}`, owner: project.owner, state: project.health === "critical" ? "At risk" : "In review", value: values[0], evidenceRef: refs[0] },
+    { id: "D1", parent: "D0", level: "Strategic", title: profile?.decision ?? `Shape the ${project.sector.toLowerCase()} response portfolio`, owner: "Project Orchestrator", state: "In review", value: project.simulation?.cvar ?? values[1], evidenceRef: refs[1] },
+    { id: "D2-A", parent: "D1", level: "Tactical", title: profile?.response ?? `Commit the first ${project.name} intervention`, owner: "OR Formulator", state: "Candidate", value: project.simulation?.p95 ?? values[2], evidenceRef: refs[2] },
+    { id: "D2-B", parent: "D1", level: "Tactical", title: `Retain baseline · ${project.simulation?.baseline ?? "current plan"}`, owner: "Domain executive", state: "Rejected by stress test", value: project.simulation?.worstCase ?? values[3], evidenceRef: refs[3] },
+    { id: "D3-A", parent: "D2-A", level: "Operational", title: `Validate ${profile?.hardConstraints[0] ?? "the first hard constraint"}`, owner: "Evidence Auditor", state: "Validated", value: `${project.simulation?.confidence ?? 75}% confidence`, evidenceRef: `${project.code}-EV-CONSTRAINT-01` },
+    { id: "D3-B", parent: "D2-A", level: "Operational", title: `Validate ${profile?.hardConstraints[1] ?? "the second hard constraint"}`, owner: "Domain specialist", state: "Validated", value: project.simulation?.p90 ?? values[1], evidenceRef: `${project.code}-EV-CONSTRAINT-02` },
+    { id: "D4", parent: "D3-B", level: "Release", title: "Issue governed response after named human approval", owner: project.owner, state: "Human gate", value: `${project.counts.experts} experts`, evidenceRef: `${project.code}-EV-EXPERTS` },
   ];
 }
 
 export function graphNodesFor(project: WorkspaceProject) {
   if (project.origin === "Browser-session draft" && project.counts.observations === "0") return [];
-  if (project.id === "anode-shield") return projectGraphNodes.map((item) => ({ ...item }));
+  const profile = caseStudyProfileFor(project);
   const region = project.regions.split("·")[0]?.trim() ?? "Project region";
   return [
-    { id: "src", kind: "Source", label: `${project.client} project snapshot`, detail: `${project.counts.documents} governed documents`, evidenceRef: project.metrics[0].evidenceRef, x: 8, y: 18 },
-    { id: "supplier", kind: "Network", label: `${project.sector} partner network`, detail: `${project.counts.entities} entities`, evidenceRef: project.metrics[2].evidenceRef, x: 27, y: 32 },
-    { id: "material", kind: "Variable", label: project.variablePack.l0[0] ?? "L0 mapping", detail: project.variablePack.l1[0] ?? "L1 owner", evidenceRef: project.metrics[2].evidenceRef, x: 46, y: 19 },
+    { id: "src", kind: "Source", label: profile?.publicSource.label ?? `${project.client} project snapshot`, detail: `${project.counts.documents} governed documents · public context separated`, evidenceRef: project.metrics[0].evidenceRef, x: 7, y: 16 },
+    { id: "event", kind: "Event", label: profile?.shock ?? "Compound disruption", detail: project.simulation?.scenarioId ?? "Scenario pending", evidenceRef: project.metrics[0].evidenceRef, x: 24, y: 10 },
+    { id: "supplier", kind: "Network", label: `${project.client} synthetic partner network`, detail: `${project.counts.entities} project-only entities`, evidenceRef: project.metrics[2].evidenceRef, x: 27, y: 38 },
+    { id: "material", kind: "Variable", label: profile?.product ?? project.variablePack.l0[0] ?? "L0 mapping", detail: `${project.variablePack.l0.length} canonical L0 variables`, evidenceRef: project.metrics[2].evidenceRef, x: 47, y: 19 },
     { id: "plant", kind: "Operation", label: `${region} operating node`, detail: project.variablePack.l1[1] ?? "Operating constraint", evidenceRef: project.metrics[1].evidenceRef, x: 58, y: 50 },
-    { id: "order", kind: "Demand", label: project.metrics[1].label, detail: project.metrics[1].value, evidenceRef: project.metrics[1].evidenceRef, x: 79, y: 26 },
-    { id: "calc", kind: "Activity", label: `${project.methodCodes[0]} formulation fixture`, detail: `${project.counts.runs} run summaries`, evidenceRef: project.metrics[0].evidenceRef, x: 42, y: 74 },
-    { id: "decision", kind: "Decision", label: project.name, detail: "D2-A · human review", evidenceRef: project.metrics[3].evidenceRef, x: 72, y: 72 },
+    { id: "order", kind: "Demand", label: project.metrics[1].label, detail: `${project.metrics[1].value} · ${project.simulation?.p95 ?? "P95 pending"}`, evidenceRef: project.metrics[1].evidenceRef, x: 81, y: 26 },
+    { id: "calc", kind: "Activity", label: `${project.methodCodes.slice(0, 3).join(" + ")} resilient formulation`, detail: `2,000 seeded draws · ${project.counts.runs} retained runs`, evidenceRef: project.metrics[0].evidenceRef, x: 42, y: 74 },
+    { id: "decision", kind: "Decision", label: profile?.response ?? project.name, detail: `D2-A · ${project.simulation?.cvar ?? "human review"}`, evidenceRef: project.metrics[3].evidenceRef, x: 72, y: 72 },
   ];
 }
 
 export function datasetsFor(project: WorkspaceProject) {
   if (project.origin === "Browser-session draft") return [];
+  const profile = caseStudyProfileFor(project);
+  if (profile) return profile.datasets.map((item, index) => ({
+    ...item,
+    id: `${project.code}-DS-${String(index + 1).padStart(2, "0")}`,
+    state: index === profile.datasets.length - 1 ? "Public-context fixture" : "Streaming simulation",
+  }));
   const names = ["Commercial demand and priorities", "Product and material structure", "Supply and qualification", "Capacity and workforce", "Movement and event history", "External context register"];
   const sources = ["Planning fixture", "PLM / master-data fixture", "Procurement fixture", "Operations fixture", "Logistics fixture", "Approved public-data fixture"];
   return projectDatasets.map((dataset, index) => ({
     ...dataset,
     id: `${project.code}-DS-${String(index + 1).padStart(2, "0")}`,
-    name: project.id === "anode-shield" ? dataset.name : names[index],
-    source: project.id === "anode-shield" ? dataset.source : sources[index],
+    name: names[index],
+    source: sources[index],
     rows: index === 0 ? project.counts.observations : dataset.rows,
     variables: project.variablePack.l0.slice(index % Math.max(project.variablePack.l0.length - 2, 1), index % Math.max(project.variablePack.l0.length - 2, 1) + 3),
   }));
@@ -713,7 +754,25 @@ export function evidenceFor(project: WorkspaceProject, evidenceRef: string): Evi
   const exact = evidenceReceipts.find((item) => item.projectId === project.id && item.id === evidenceRef);
   if (exact) return exact;
   const metric = project.metrics.find((item) => item.evidenceRef === evidenceRef);
-  if (metric) return { id: evidenceRef, projectId: project.id, claim: metric.label, displayedValue: metric.value, state: "Simulated", sourceKind: "Synthetic fixture", source: `${project.name} deterministic project fixture`, locator: `fixture://workspace/${project.id}/metrics/${evidenceRef}`, asOf: "04 Sep 2026 · 14:32 IST", validFor: "Concept demonstration snapshot", version: `${project.code}-fixture@1.0`, contentHash: `fixture-fingerprint:${evidenceRef}`, formula: "Project-specific illustrative calculation; inspect the production contract before operational use.", inputs: project.variablePack.l0.slice(0, 3), variableId: project.variablePack.l0[0] ?? "L0 mapping pending", grain: "Project × governed snapshot", confidence: 75, quality: ["DEMO DATA label required", "Project boundary retained", "No operational source contacted"], traceId: `TRACE-${project.code}`, agent: "Evidence Auditor · synthetic playback", reviewer: "Unreviewed fixture", access: `${project.client} / ${project.name} only` };
+  if (metric) {
+    const profile = caseStudyProfileFor(project);
+    return { id: evidenceRef, projectId: project.id, claim: metric.label, displayedValue: metric.value, state: "Simulated", sourceKind: "Synthetic fixture", source: `${project.name} deterministic scenario engine`, locator: `fixture://workspace/${project.id}/metrics/${evidenceRef}`, asOf: project.simulation?.clock ?? "07 Sep 2026 · 14:02:44 IST", validFor: `Scenario ${project.simulation?.scenarioId ?? "project fixture"} only`, version: `${project.code}-resilience-fixture@2.0`, contentHash: `seeded-fingerprint:${project.id}:${evidenceRef}:2000`, formula: `Seeded project calculation across baseline, P50, P90, P95, worst-case, and CVaR views. ${project.simulation?.disclaimer ?? "Synthetic fixture."}`, inputs: [...project.variablePack.l0.slice(0, 4), ...(profile ? [profile.shock, ...profile.hardConstraints.slice(0, 2)] : [])], variableId: project.variablePack.l0[0] ?? "L0 mapping pending", grain: "Project × scenario × decision horizon", confidence: project.simulation?.confidence ?? 75, quality: ["Synthetic simulation label required", "Project boundary retained", "Public context separated from synthetic operations", "No operational source or write-back"], traceId: `TRACE-${project.code}-RESILIENCE`, agent: "Evidence Auditor · synthetic playback", reviewer: `${project.owner} · human review pending`, access: `${project.client} / ${project.name} only` };
+  }
+  if (evidenceRef.startsWith(`${project.code}-EV-CONSTRAINT-`)) {
+    const profile = caseStudyProfileFor(project);
+    const constraintIndex = Math.max(0, Number(evidenceRef.split("-").at(-1)) - 1);
+    return fixtureEvidenceFor(project, {
+      id: evidenceRef,
+      claim: "Hard-constraint validation",
+      displayedValue: profile?.hardConstraints[constraintIndex] ?? "Project constraint validated",
+      source: `${project.name} governed constraint register`,
+      formula: "Candidate retained only when the selected hard constraint is satisfied in every retained scenario draw",
+      inputs: [project.simulation?.scenarioId ?? project.code, project.methodCodes[0] ?? "Method pending", project.variablePack.l0[constraintIndex] ?? "Variable pending"],
+      variableId: project.variablePack.l0[constraintIndex] ?? "Constraint mapping pending",
+      grain: "Project × scenario × hard constraint",
+      confidence: project.simulation?.confidence ?? 75,
+    });
+  }
   if (evidenceRef === `${project.code}-EV-EXPERTS`) return fixtureEvidenceFor(project, {
     id: evidenceRef,
     claim: "Assigned expert coverage",

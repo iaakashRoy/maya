@@ -33,6 +33,16 @@ const identityPalette = [
 ] as const;
 
 const sectorVisuals: Record<string, { symbol: string; color: string }> = {
+  "consumer-electronics": { symbol: "\u2318", color: "#2563eb" },
+  "beverage-bottling": { symbol: "\u25C9", color: "#dc2626" },
+  "luxury-fashion": { symbol: "\u25C8", color: "#7c3aed" },
+  "automotive-industrial": { symbol: "\u27F2", color: "#475569" },
+  "ev-energy-storage": { symbol: "\u26A1", color: "#16a34a" },
+  "global-nev-manufacturing": { symbol: "\u25CE", color: "#0f766e" },
+  "food-confectionery": { symbol: "\u2739", color: "#92400e" },
+  "semiconductor-foundry": { symbol: "\u25A6", color: "#0891b2" },
+  "aerospace-defense": { symbol: "\u2708", color: "#1d4ed8" },
+  "pharmaceuticals": { symbol: "\u271A", color: "#be123c" },
   "aerospace": { symbol: "✈", color: "#3567b0" },
   "energy-grid": { symbol: "ϟ", color: "#c77b0a" },
   "food-agriculture": { symbol: "✿", color: "#4d913f" },
@@ -46,6 +56,16 @@ const sectorVisuals: Record<string, { symbol: string; color: string }> = {
 };
 
 const clientVisuals: Record<string, { monogram: string; color: string }> = {
+  "apple": { monogram: "AP", color: "#111827" },
+  "coca-cola": { monogram: "CC", color: "#e41e2b" },
+  "gucci": { monogram: "GG", color: "#0f5132" },
+  "tata-motors": { monogram: "TM", color: "#1e5aa8" },
+  "tesla": { monogram: "TS", color: "#cc0000" },
+  "byd": { monogram: "BY", color: "#d71920" },
+  "hershey": { monogram: "HS", color: "#4b1f2a" },
+  "tsmc": { monogram: "TC", color: "#d81e05" },
+  "airbus": { monogram: "AB", color: "#005b9f" },
+  "pfizer": { monogram: "PF", color: "#0067b1" },
   "apex-mobility": { monogram: "AM", color: "#6548c8" },
   "helixora": { monogram: "HX", color: "#c13f60" },
   "orion-silicon": { monogram: "OS", color: "#187b86" },

@@ -29,10 +29,11 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Clients and projects/);
   assert.match(html, /Onboard client/);
   assert.match(html, /Create project/);
-  assert.match(html, /Apex Mobility/);
-  assert.match(html, /Anode Shield/);
-  assert.match(html, /Helixora Therapeutics/);
-  assert.match(html, /Cold Chain Promise/);
+  assert.match(html, /Apple/);
+  assert.match(html, /Launch Continuity/);
+  assert.match(html, /Coca-Cola/);
+  assert.match(html, /Water-to-Shelf Availability/);
+  assert.match(html, /Case studies/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
   assert.match(html, /aria-label="Open tanjx workspace"/);
   assert.match(html, /Supply chain workspace/);
@@ -43,6 +44,22 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /class="[^"]*__font_geist_/);
   assert.doesNotMatch(html, /project-binding-strip|APPLICATION OPERATING MODEL|Project data and sources|GLOBAL NETWORK RADAR/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
+});
+
+test("case-study library explains and deep-links all ten simulations", async () => {
+  const response = await render("/case-studies");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /See a disruption become/);
+  assert.match(html, /Public-information-inspired simulation/);
+  for (const company of ["Apple", "Coca-Cola", "Gucci", "Tata Motors", "Tesla", "BYD", "Hershey", "TSMC", "Airbus", "Pfizer"]) {
+    assert.match(html, new RegExp(company));
+  }
+  assert.match(html, /tanjx-case-studies\.html/);
+  assert.match(html, /Open project/);
+  assert.match(html, /Inspect data and graph/);
+  assert.match(html, /Inspect decision graph/);
+  assert.match(html, /Run in Playground/);
 });
 
 test("Operations World renders authoritative Global and Regional scopes", async () => {
@@ -92,69 +109,70 @@ test("project-only capabilities fail closed to Workspace without a valid project
 });
 
 test("server-renders the selected sector, client, project, data tab, and specialist studio", async () => {
-  const projectResponse = await render("/?view=company&scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise&projectTab=data");
+  const projectResponse = await render("/?view=company&scope=company&sector=pharmaceuticals&client=pfizer&project=pfizer-medicine-continuity&projectTab=data");
   assert.equal(projectResponse.status, 200);
   const projectHtml = await projectResponse.text();
   assert.match(projectHtml, /class="project-os"/);
-  assert.match(projectHtml, /Cold Chain Promise/);
-  assert.match(projectHtml, /Helixora Therapeutics/);
+  assert.match(projectHtml, /Critical Medicine Continuity/);
+  assert.match(projectHtml, /Pfizer/);
   assert.match(projectHtml, /data-action-id="workspace\.tab\.data"[^>]*class="active"/);
   assert.match(projectHtml, />Data</);
   assert.doesNotMatch(projectHtml, /Data &amp; graph/);
   assert.match(projectHtml, /Search files, tables, PDFs, variables, evidence, connectors, and graph entities/);
   assert.match(projectHtml, /filename metadata only/i);
   assert.match(projectHtml, /Source integration requests/);
-  assert.match(projectHtml, /Restricted clinical supply/);
+  assert.match(projectHtml, /Simulation/);
   assert.doesNotMatch(projectHtml, /class="workspace-home"/);
 
-  const studioResponse = await render("/?view=company&scope=company&sector=critical-minerals&client=terrametals&project=lithium-cell-provenance&projectTab=apps&projectApp=minerals");
+  const studioResponse = await render("/?view=company&scope=company&sector=ev-energy-storage&client=tesla&project=tesla-closed-loop-battery&projectTab=apps&projectApp=minerals");
   assert.equal(studioResponse.status, 200);
   const studioHtml = await studioResponse.text();
   assert.match(studioHtml, /class="project-os studio-mode"/);
-  assert.match(studioHtml, /Lithium-to-Cell Provenance/);
-  assert.match(studioHtml, /TerraMetals Alliance/);
+  assert.match(studioHtml, /Closed-Loop Battery Scale/);
+  assert.match(studioHtml, /Tesla/);
   assert.match(studioHtml, /Mineral Atlas/);
   assert.match(studioHtml, /RESERVE[\s\S]*?REFINERY[\s\S]*?PRODUCT/);
   assert.doesNotMatch(studioHtml, /class="project-section-bar"/);
   assert.match(studioHtml, /Runs, reports, and reruns/);
-  assert.match(studioHtml, /APP-P007-MA-019/);
+  assert.match(studioHtml, /APP-P005-MA-019/);
 });
 
 test("server-renders project-bound Decision and Review deep links", async () => {
-  const projectPath = "sector=mobility-ev&client=apex-mobility&project=anode-shield";
-  const decisionResponse = await render(`/?view=case&scope=company&case=CASE-1042&${projectPath}`);
+  const projectPath = "sector=consumer-electronics&client=apple&project=apple-launch-continuity";
+  const decisionResponse = await render(`/?view=case&scope=company&case=CASE-001-01&${projectPath}`);
   assert.equal(decisionResponse.status, 200);
   const decisionHtml = await decisionResponse.text();
   assert.match(decisionHtml, /class="project-context-bar"/);
-  assert.match(decisionHtml, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
-  assert.match(decisionHtml, /DECISION[\s\S]{0,80}CASE-1042/);
-  assert.match(decisionHtml, /Secure alternate graphite volume/);
+  assert.match(decisionHtml, /Apple(?:<!-- -->)? \/ (?:<!-- -->)?Launch Continuity/);
+  assert.match(decisionHtml, /DECISION[\s\S]{0,80}CASE-001-01/);
+  assert.match(decisionHtml, /Keep priority launch markets/);
   assert.match(decisionHtml, /What each application contributes/);
-  assert.match(decisionHtml, /Balanced response/);
+  assert.match(decisionHtml, /protect service|balance value|limit exposure/);
   assert.match(decisionHtml, /Review decision/);
   assert.doesNotMatch(decisionHtml, />Case Workspace<|>Action Room</);
 
-  const reviewResponse = await render(`/?view=action&scope=company&case=CASE-1042&${projectPath}`);
+  const reviewResponse = await render(`/?view=action&scope=company&case=CASE-001-01&${projectPath}`);
   assert.equal(reviewResponse.status, 200);
   const reviewHtml = await reviewResponse.text();
   assert.match(reviewHtml, /class="project-context-bar"/);
-  assert.match(reviewHtml, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
-  assert.match(reviewHtml, /CONTROLLED EXECUTION[\s\S]{0,80}CASE-1042/);
+  assert.match(reviewHtml, /Apple(?:<!-- -->)? \/ (?:<!-- -->)?Launch Continuity/);
+  assert.match(reviewHtml, /CONTROLLED EXECUTION[\s\S]{0,80}CASE-001-01/);
   assert.match(reviewHtml, /Decision authority/);
-  assert.match(reviewHtml, /Approve recommendation/);
+  assert.match(reviewHtml, /Release gate blocked/);
+  assert.match(reviewHtml, /Approval unavailable/);
   assert.doesNotMatch(reviewHtml, />Action Room</);
 });
 
 test("Review renders an explicit lifecycle gate before approval", async () => {
-  const blockedResponse = await render("/?view=action&scope=company&case=CASE-002-01&sector=life-sciences&client=helixora&project=cold-chain-promise");
+  const blockedResponse = await render("/?view=action&scope=company&case=CASE-002-01&sector=beverage-bottling&client=coca-cola&project=cocacola-water-to-shelf");
   assert.equal(blockedResponse.status, 200);
   const blockedHtml = await blockedResponse.text();
-  assert.match(blockedHtml, /Cold Chain Promise/);
+  assert.match(blockedHtml, /Water-to-Shelf Availability/);
   assert.match(blockedHtml, /Release gate blocked/);
   assert.match(blockedHtml, /Blocked until the case completes Validate and enters Approve/);
   assert.match(blockedHtml, /Approval unavailable/);
 
-  const readyResponse = await render("/?view=action&scope=company&case=CASE-1042&sector=mobility-ev&client=apex-mobility&project=anode-shield");
+  const readyResponse = await render("/?view=action&scope=company&case=CASE-004-01&sector=automotive-industrial&client=tata-motors&project=tata-vehicle-continuity");
   assert.equal(readyResponse.status, 200);
   const readyHtml = await readyResponse.text();
   assert.match(readyHtml, /Ready for the named human approver/);
@@ -172,11 +190,11 @@ test("each decision app exposes a project-bound, decision-specific operating mod
   ];
 
   for (const [view, name, decisionFocus, distinctiveSurface] of applicationRoutes) {
-    const response = await render(`/?view=${view}&scope=company&case=CASE-1042&sector=mobility-ev&client=apex-mobility&project=anode-shield`);
+    const response = await render(`/?view=${view}&scope=company&case=CASE-001-01&sector=consumer-electronics&client=apple&project=apple-launch-continuity`);
     assert.equal(response.status, 200, `${name} should render`);
     const html = await response.text();
     assert.match(html, /class="project-context-bar"/);
-    assert.match(html, /Apex Mobility(?:<!-- -->)? \/ (?:<!-- -->)?Anode Shield/);
+    assert.match(html, /Apple(?:<!-- -->)? \/ (?:<!-- -->)?Launch Continuity/);
     assert.match(html, new RegExp(`data-app-theme="${view}"`));
     assert.match(html, new RegExp(`<h1[^>]*>${name}<\\/h1>`));
     assert.match(html, /ACTIVE DECISION/);
@@ -193,7 +211,7 @@ test("each decision app exposes a project-bound, decision-specific operating mod
 });
 
 test("project tabs remain on project section routes and disappear from application surfaces", async () => {
-  const projectPath = "scope=company&sector=life-sciences&client=helixora&project=cold-chain-promise";
+  const projectPath = "scope=company&sector=beverage-bottling&client=coca-cola&project=cocacola-water-to-shelf";
   const routes = [
     [`/?view=decisions&${projectPath}`, "Branch, challenge, and merge"],
     [`/?view=company&projectTab=apps&${projectPath}`, "mounted applications"],
@@ -207,18 +225,18 @@ test("project tabs remain on project section routes and disappear from applicati
     assert.equal(response.status, 200, `${path} should render`);
     const html = await response.text();
     assert.match(html, /class="project-os(?: [^"]+)?"/);
-    assert.doesNotMatch(html, /<h1>(?:Playground|Cold Chain Promise)<\/h1>/);
+    assert.doesNotMatch(html, /<h1>(?:Playground|Water-to-Shelf Availability)<\/h1>/);
     const projectPage = !path.includes("view=agents");
     if (projectPage) {
       assert.match(html, /class="project-section-bar"/);
-      assert.match(html, /aria-label="Project state: Simulate release"/);
+      assert.match(html, /aria-label="Project state: Rebalance bottling network"/);
       assert.match(html, />Data</);
       assert.doesNotMatch(html, />Data &amp; graph</);
     } else {
       assert.doesNotMatch(html, /class="project-section-bar"/);
       assert.doesNotMatch(html, /aria-label="Project state:/);
     }
-    assert.match(html, /Helixora Therapeutics/);
+    assert.match(html, /Coca-Cola/);
     assert.ok(html.includes(expected), `${path} should render ${expected}`);
     if (path.includes("view=agents")) {
       assert.match(html, /class="project-os playground-app-mode/);
