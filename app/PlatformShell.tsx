@@ -114,9 +114,9 @@ const capabilityForProjectView = (target: ViewId): ProjectCapability | null => {
 
 const routeParameterKeys = ["case", "sector", "client", "project", "projectTab", "projectApp", "session", "run"] as const;
 
-type TanjxHistoryState = { tanjxReturn?: { surface: "project"; projectId: string; tab: WorkspaceTabId } };
+type TanjnxHistoryState = { tanjnxReturn?: { surface: "project"; projectId: string; tab: WorkspaceTabId } };
 
-function commitNavigationUrl(url: URL, replace = false, state: TanjxHistoryState = {}) {
+function commitNavigationUrl(url: URL, replace = false, state: TanjnxHistoryState = {}) {
   const next = `${url.pathname}${url.search}${url.hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (next === current) return false;
@@ -144,7 +144,7 @@ function canonicalNavigationUrl(current: string, navigation: ReturnType<typeof r
   return url;
 }
 
-const preferenceEvent = "tanjx:workspace-preference";
+const preferenceEvent = "tanjnx:workspace-preference";
 const subscribeToPreferences = (notify: () => void) => {
   window.addEventListener("storage", notify);
   window.addEventListener(preferenceEvent, notify);
@@ -154,15 +154,15 @@ const subscribeToPreferences = (notify: () => void) => {
   };
 };
 const getPathModePreference = (): ProjectPathMode => {
-  try { return window.sessionStorage.getItem("tanjx.projectPathMode") === "tower" ? "tower" : "client"; }
+  try { return window.sessionStorage.getItem("tanjnx.projectPathMode") === "tower" ? "tower" : "client"; }
   catch { return "client"; }
 };
 const getRailPreference = () => {
-  try { return window.sessionStorage.getItem("tanjx.railCollapsed") === "true"; }
+  try { return window.sessionStorage.getItem("tanjnx.railCollapsed") === "true"; }
   catch { return false; }
 };
 const getThemePreference = (): "light" | "dark" => {
-  try { return window.localStorage.getItem("tanjx.workspaceTheme") === "dark" ? "dark" : "light"; }
+  try { return window.localStorage.getItem("tanjnx.workspaceTheme") === "dark" ? "dark" : "light"; }
   catch { return "light"; }
 };
 const setPreference = (key: string, value: string) => {
@@ -178,19 +178,19 @@ const setPersistentPreference = (key: string, value: string) => {
 
 function useProjectPathModePreference() {
   const value = useSyncExternalStore(subscribeToPreferences, getPathModePreference, () => "client" as const);
-  const update = useCallback((next: ProjectPathMode) => setPreference("tanjx.projectPathMode", next), []);
+  const update = useCallback((next: ProjectPathMode) => setPreference("tanjnx.projectPathMode", next), []);
   return [value, update] as const;
 }
 
 function useRailCollapsedPreference() {
   const value = useSyncExternalStore(subscribeToPreferences, getRailPreference, () => false);
-  const update = useCallback((next: boolean) => setPreference("tanjx.railCollapsed", String(next)), []);
+  const update = useCallback((next: boolean) => setPreference("tanjnx.railCollapsed", String(next)), []);
   return [value, update] as const;
 }
 
 function useWorkspaceThemePreference() {
   const value = useSyncExternalStore(subscribeToPreferences, getThemePreference, () => "light" as const);
-  const update = useCallback((next: "light" | "dark") => setPersistentPreference("tanjx.workspaceTheme", next), []);
+  const update = useCallback((next: "light" | "dark") => setPersistentPreference("tanjnx.workspaceTheme", next), []);
   return [value, update] as const;
 }
 
@@ -536,16 +536,16 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   };
 
   const projectSurfaceTransition = () => {
-    const current = window.history.state as TanjxHistoryState | null;
-    const currentReturn = current?.tanjxReturn?.surface === "project" && current.tanjxReturn.projectId === activeProject.id ? current : null;
+    const current = window.history.state as TanjnxHistoryState | null;
+    const currentReturn = current?.tanjnxReturn?.surface === "project" && current.tanjnxReturn.projectId === activeProject.id ? current : null;
     const alreadyOnProjectSurface = scope === "company" && Boolean(resolvedProject) && (view !== "company" || activeProjectApp !== null || activeProjectTab === "agents");
     return {
-      historyState: currentReturn ?? (alreadyOnProjectSurface ? {} : { tanjxReturn: { surface: "project" as const, projectId: activeProject.id, tab: activeProjectTab } }),
+      historyState: currentReturn ?? (alreadyOnProjectSurface ? {} : { tanjnxReturn: { surface: "project" as const, projectId: activeProject.id, tab: activeProjectTab } }),
       replace: alreadyOnProjectSurface,
     };
   };
 
-  const pushNavigation = (nextView: ViewId, nextScope: ScopeId, nextCaseId: string, historyState: TanjxHistoryState = {}, replace = false) => {
+  const pushNavigation = (nextView: ViewId, nextScope: ScopeId, nextCaseId: string, historyState: TanjnxHistoryState = {}, replace = false) => {
     const url = new URL(window.location.href);
     url.searchParams.set("view", nextView);
     url.searchParams.set("scope", nextScope);
@@ -622,12 +622,12 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
   };
 
   const returnFromProjectApp = () => {
-    const historyState = window.history.state as TanjxHistoryState | null;
-    if (historyState?.tanjxReturn?.surface === "project" && historyState.tanjxReturn.projectId === activeProject.id && window.history.length > 1) {
+    const historyState = window.history.state as TanjnxHistoryState | null;
+    if (historyState?.tanjnxReturn?.surface === "project" && historyState.tanjnxReturn.projectId === activeProject.id && window.history.length > 1) {
       window.history.back();
       return;
     }
-    openProjectTab(historyState?.tanjxReturn?.tab ?? (activeProjectTab === "agents" ? "overview" : activeProjectTab), true);
+    openProjectTab(historyState?.tanjnxReturn?.tab ?? (activeProjectTab === "agents" ? "overview" : activeProjectTab), true);
   };
 
   const openProjectSession = (sessionId: string) => {
@@ -691,7 +691,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     setOutcome(null);
   };
 
-  const go = (next: ViewId, navigationOptions: { historyState?: TanjxHistoryState; replace?: boolean } = {}) => {
+  const go = (next: ViewId, navigationOptions: { historyState?: TanjnxHistoryState; replace?: boolean } = {}) => {
     if (next === "company") {
       if (!resolvedProject) openWorkspaceHome();
       else {
@@ -927,11 +927,11 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       const project = createSessionProject(draft, clientCatalog, projectCatalog);
       const client = clientCatalog.find((item) => item.id === project.clientId);
       const clientCollaborator = collaboratorCatalog.find((item) => item.affiliation === "Client" && item.clientId === project.clientId && item.name === client?.clientLead);
-      const tanjxCollaborator = collaboratorCatalog.find((item) => item.id === signedInCollaboratorId && item.affiliation === "tanjx")
-        ?? collaboratorCatalog.find((item) => item.affiliation === "tanjx" && item.name === client?.providerLead)
-        ?? collaboratorCatalog.find((item) => item.affiliation === "tanjx");
-      if (!clientCollaborator || !tanjxCollaborator) throw new Error("Client and tanjx collaborator profiles are required before a project can be created.");
-      const memberships = createSessionProjectMemberships(project, clientCollaborator, tanjxCollaborator);
+      const tanjnxCollaborator = collaboratorCatalog.find((item) => item.id === signedInCollaboratorId && item.affiliation === "tanjnx")
+        ?? collaboratorCatalog.find((item) => item.affiliation === "tanjnx" && item.name === client?.providerLead)
+        ?? collaboratorCatalog.find((item) => item.affiliation === "tanjnx");
+      if (!clientCollaborator || !tanjnxCollaborator) throw new Error("Client and tanjnx collaborator profiles are required before a project can be created.");
+      const memberships = createSessionProjectMemberships(project, clientCollaborator, tanjnxCollaborator);
       const nextCatalog = [...projectCatalog, project];
       const nextMemberships = [...membershipCatalog, ...memberships];
       setProjectCatalog(nextCatalog);
@@ -1102,14 +1102,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     <div className={`platform-shell theme-${workspaceTheme} ${railCollapsed ? "rail-collapsed" : ""}`} data-theme={workspaceTheme}>
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside ref={mobileRailRef} className={`side-rail ${mobileOpen ? "open" : ""}`} inert={drawerMode && !mobileOpen ? true : undefined} aria-hidden={drawerMode && !mobileOpen ? true : undefined} role={drawerMode ? "dialog" : undefined} aria-modal={drawerMode && mobileOpen ? true : undefined} aria-label={drawerMode ? "Project navigation" : undefined} tabIndex={drawerMode ? -1 : undefined}>
-        <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open tanjx workspace"><BrandMark /><div><b>tanjx</b><small>Supply chain workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
+        <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open tanjnx workspace"><BrandMark /><div><b>tanjnx</b><small>Supply chain workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
         <div className="rail-quick-actions" aria-label="Workspace setup and navigation controls">
           <button data-action-id="nav.onboard-client" type="button" aria-label="Onboard a new client" title="Onboard a new client" onClick={() => startOnboarding("client")}><NavigationIcon name="client-add" /><b>New client</b></button>
           <button data-action-id="nav.new-project" type="button" aria-label="Create a new project" title="Create a new project" onClick={() => startOnboarding("project")}><NavigationIcon name="project-add" /><b>New project</b></button>
-          <button data-action-id="nav.collapse" type="button" aria-expanded={drawerMode ? mobileOpen : !railCollapsed} aria-controls="tanjx-primary-navigation" onClick={toggleRailDensity} title={drawerMode ? "Close navigation" : railCollapsed ? "Expand navigation" : "Collapse navigation"} aria-label={drawerMode ? "Close project navigation" : railCollapsed ? "Expand project navigation" : "Collapse project navigation"}><NavigationIcon name={drawerMode ? "close" : railCollapsed ? "expand" : "collapse"} /><b>{drawerMode ? "Close" : railCollapsed ? "Expand" : "Collapse"}</b></button>
+          <button data-action-id="nav.collapse" type="button" aria-expanded={drawerMode ? mobileOpen : !railCollapsed} aria-controls="tanjnx-primary-navigation" onClick={toggleRailDensity} title={drawerMode ? "Close navigation" : railCollapsed ? "Expand navigation" : "Collapse navigation"} aria-label={drawerMode ? "Close project navigation" : railCollapsed ? "Expand project navigation" : "Collapse project navigation"}><NavigationIcon name={drawerMode ? "close" : railCollapsed ? "expand" : "collapse"} /><b>{drawerMode ? "Close" : railCollapsed ? "Expand" : "Collapse"}</b></button>
         </div>
 
-        <nav id="tanjx-primary-navigation" aria-label="Main navigation">
+        <nav id="tanjnx-primary-navigation" aria-label="Main navigation">
           <section className="nav-section workspace-primary-nav">
             <p>Workspace</p>
             <button data-action-id="nav.workspace" className={`scope-nav ${view === "company" && scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
@@ -1155,16 +1155,16 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       <div className="main-shell">
         <div className="shell-chrome">
           <header className="topbar">
-          <button className="menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="tanjx-primary-navigation" onClick={() => setMobileOpen(true)}>☰</button>
+          <button className="menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="tanjnx-primary-navigation" onClick={() => setMobileOpen(true)}>☰</button>
           <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b aria-current="page">{segment.label}</b> : <span className="breadcrumb-label">{segment.label}</span>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}{view === "variables" && <><i>/</i><b>Variables &amp; Methods</b></>}</nav>
           <div className="topbar-actions">
             <button className="search-trigger" type="button" onClick={() => setSearchOpen(true)}><span>⌕</span><b>Search workspace</b><kbd>⌘ K</kbd></button>
             <button data-action-id="theme.toggle" className="topbar-icon theme-toggle" type="button" aria-label={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} title={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} aria-pressed={workspaceTheme === "dark"} onClick={() => setWorkspaceTheme(workspaceTheme === "light" ? "dark" : "light")}><span aria-hidden="true">{workspaceTheme === "light" ? "◐" : "☀"}</span></button>
             <button className="topbar-icon" type="button" aria-label="Open notifications" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}>◌<em>{notificationItems.length}</em></button>
-            <button ref={profileButtonRef} data-action-id="profile.toggle" className="user-button" type="button" aria-label={`Open account menu for ${signedInCollaborator?.name ?? "Aakash Roy"}`} title={`Account · ${signedInCollaborator?.name ?? "Aakash Roy"}`} aria-expanded={profileOpen} aria-controls="tanjx-profile-panel" onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}><span>{signedInCollaborator?.initials ?? "AR"}</span><div><b>{signedInCollaborator?.name ?? "Aakash Roy"}</b><small>{signedInCollaborator?.role ?? "Super Admin"}</small></div></button>
+            <button ref={profileButtonRef} data-action-id="profile.toggle" className="user-button" type="button" aria-label={`Open account menu for ${signedInCollaborator?.name ?? "Aakash Roy"}`} title={`Account · ${signedInCollaborator?.name ?? "Aakash Roy"}`} aria-expanded={profileOpen} aria-controls="tanjnx-profile-panel" onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}><span>{signedInCollaborator?.initials ?? "AR"}</span><div><b>{signedInCollaborator?.name ?? "Aakash Roy"}</b><small>{signedInCollaborator?.role ?? "Super Admin"}</small></div></button>
           </div>
           {notificationsOpen && <aside className="notification-panel"><header><div><p className="kicker">ACTIVITY</p><h2>Recent project work</h2></div><button data-action-id="notifications.close" type="button" onClick={() => setNotificationsOpen(false)}>×</button></header>{notificationItems.map((item) => <button data-action-id={`notifications.open.${item.caseId}.${item.tone}`} type="button" key={`${item.caseId}-${item.tone}`} onClick={() => "projectId" in item && item.projectId ? openProject(item.projectId) : openCase(item.caseId)}><i className={`tone-${item.tone}`} /><span><b>{item.title}</b><small>{item.detail}</small></span><em>›</em></button>)}</aside>}
-          {profileOpen && <aside ref={profilePanelRef} id="tanjx-profile-panel" className="profile-panel" aria-label="User menu"><header><span>{signedInCollaborator?.initials ?? "AR"}</span><div><b>{signedInCollaborator?.name ?? "Aakash Roy"}</b><small>{signedInCollaborator?.role ?? "Super Admin"}</small></div></header><button data-action-id="profile.open-workspace" type="button" onClick={() => { setProfileOpen(false); if (canViewActiveProject) openProject(activeProject.id); else openWorkspaceHome(); }}><b>{canViewActiveProject ? "Open active project" : "Open workspace"}</b><small>{canViewActiveProject ? `${activeProject.client} · ${activeProject.name}` : `${accessibleProjects.length} accessible projects`}</small><i>›</i></button><button data-action-id="profile.open-receipts" type="button" disabled={!outcomeLedger.length} onClick={() => { setProfileOpen(false); setOutcome(outcomeLedger[0] ?? null); }}><b>Session receipts</b><small>{outcomeLedger.length ? `${outcomeLedger.length} browser-session receipts` : "No receipts recorded yet"}</small><i>›</i></button><button data-action-id="profile.decision-rights" type="button" onClick={() => { setProfileOpen(false); completeAction("Project rights opened", signedInProjectMembership && canViewActiveProject ? `${signedInCollaborator?.name ?? "Signed-in collaborator"} is ${signedInProjectMembership.projectRole} in ${activeProject.name} with ${signedInProjectMembership.capabilities.length} declared session capabilities.` : "Select an accessible project to inspect the signed-in collaborator's project-scoped rights.", canViewActiveProject ? signedInProjectMembership?.id ?? "RIGHTS-NO-PROJECT" : "RIGHTS-NO-PROJECT", "Saved"); }}><b>Project rights</b><small>{canViewActiveProject ? signedInProjectMembership?.projectRole ?? "No project membership" : "Select an accessible project"}</small><i>›</i></button><button data-action-id="profile.signout" type="button" onClick={() => { setProfileOpen(false); completeAction("Sign out unavailable", "Authentication is not configured for this workspace. No session was ended.", "AUTH-FUTURE", "Blocked"); }}><b>Sign out</b><small>Not configured</small><i>!</i></button></aside>}
+          {profileOpen && <aside ref={profilePanelRef} id="tanjnx-profile-panel" className="profile-panel" aria-label="User menu"><header><span>{signedInCollaborator?.initials ?? "AR"}</span><div><b>{signedInCollaborator?.name ?? "Aakash Roy"}</b><small>{signedInCollaborator?.role ?? "Super Admin"}</small></div></header><button data-action-id="profile.open-workspace" type="button" onClick={() => { setProfileOpen(false); if (canViewActiveProject) openProject(activeProject.id); else openWorkspaceHome(); }}><b>{canViewActiveProject ? "Open active project" : "Open workspace"}</b><small>{canViewActiveProject ? `${activeProject.client} · ${activeProject.name}` : `${accessibleProjects.length} accessible projects`}</small><i>›</i></button><button data-action-id="profile.open-receipts" type="button" disabled={!outcomeLedger.length} onClick={() => { setProfileOpen(false); setOutcome(outcomeLedger[0] ?? null); }}><b>Session receipts</b><small>{outcomeLedger.length ? `${outcomeLedger.length} browser-session receipts` : "No receipts recorded yet"}</small><i>›</i></button><button data-action-id="profile.decision-rights" type="button" onClick={() => { setProfileOpen(false); completeAction("Project rights opened", signedInProjectMembership && canViewActiveProject ? `${signedInCollaborator?.name ?? "Signed-in collaborator"} is ${signedInProjectMembership.projectRole} in ${activeProject.name} with ${signedInProjectMembership.capabilities.length} declared session capabilities.` : "Select an accessible project to inspect the signed-in collaborator's project-scoped rights.", canViewActiveProject ? signedInProjectMembership?.id ?? "RIGHTS-NO-PROJECT" : "RIGHTS-NO-PROJECT", "Saved"); }}><b>Project rights</b><small>{canViewActiveProject ? signedInProjectMembership?.projectRole ?? "No project membership" : "Select an accessible project"}</small><i>›</i></button><button data-action-id="profile.signout" type="button" onClick={() => { setProfileOpen(false); completeAction("Sign out unavailable", "Authentication is not configured for this workspace. No session was ended.", "AUTH-FUTURE", "Blocked"); }}><b>Sign out</b><small>Not configured</small><i>!</i></button></aside>}
           </header>
 
           {canViewActiveProject && <section className="project-context-stack" aria-label="Current project work context">
@@ -1241,7 +1241,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           ) : <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />}
         </main>
 
-        <footer className="app-footer"><span>tanjx · Supply chain workspace</span><span>{view === "variables" ? "Variables & Methods / Canonical registry" : canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : resolvedProject && scope === "company" ? "Project access required" : scope === "company" ? `${accessibleProjects.length} projects` : `Operations World / ${scope === "global" ? "Global" : operationsRegion}`}</span></footer>
+        <footer className="app-footer"><span>tanjnx · Supply chain workspace</span><span>{view === "variables" ? "Variables & Methods / Canonical registry" : canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : resolvedProject && scope === "company" ? "Project access required" : scope === "company" ? `${accessibleProjects.length} projects` : `Operations World / ${scope === "global" ? "Global" : operationsRegion}`}</span></footer>
       </div>
 
       {canViewActiveProject && <WorkIdentityInspector
@@ -1258,7 +1258,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         onReceipt={(title, detail, artifact) => completeAction(title, detail, artifact, "Saved", `${activeProject.client} / ${activeProject.name}`)}
       />}
 
-      {searchOpen && <div className="overlay" role="presentation" data-modal-root><button className="overlay-dismiss" type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} /><section ref={searchDialogRef} className="search-dialog" role="dialog" aria-modal="true" aria-label="Search tanjx workspace" tabIndex={-1}><div className="search-input"><span>⌕</span><input ref={searchRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search projects, clients, and project capabilities…" /><kbd>ESC</kbd></div><div className="search-context"><span>{searchResults.length} results</span><b>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : scope === "company" ? "Workspace" : `Operations World / ${scope === "region" ? operationsRegion : snapshot.shortLabel}`}</b></div><div className="search-results">{searchResults.map((result, index) => <button data-action-id={`search.open.${result.id}.${result.projectId ?? result.caseId ?? index}`} type="button" key={`${result.id}-${result.caseId ?? result.projectId ?? index}`} onClick={() => result.projectId ? openProject(result.projectId) : result.caseId ? openCase(result.caseId) : result.id === "company" ? openWorkspaceHome() : applications.some((app) => app.id === result.id) ? openMountedProjectApp(result.id as ProjectAppId) : go(result.id)}><span>{result.group}</span><div><b>{result.label}</b><small>{result.detail}</small></div><i>›</i></button>)}</div></section></div>}
+      {searchOpen && <div className="overlay" role="presentation" data-modal-root><button className="overlay-dismiss" type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} /><section ref={searchDialogRef} className="search-dialog" role="dialog" aria-modal="true" aria-label="Search tanjnx workspace" tabIndex={-1}><div className="search-input"><span>⌕</span><input ref={searchRef} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search projects, clients, and project capabilities…" /><kbd>ESC</kbd></div><div className="search-context"><span>{searchResults.length} results</span><b>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : scope === "company" ? "Workspace" : `Operations World / ${scope === "region" ? operationsRegion : snapshot.shortLabel}`}</b></div><div className="search-results">{searchResults.map((result, index) => <button data-action-id={`search.open.${result.id}.${result.projectId ?? result.caseId ?? index}`} type="button" key={`${result.id}-${result.caseId ?? result.projectId ?? index}`} onClick={() => result.projectId ? openProject(result.projectId) : result.caseId ? openCase(result.caseId) : result.id === "company" ? openWorkspaceHome() : applications.some((app) => app.id === result.id) ? openMountedProjectApp(result.id as ProjectAppId) : go(result.id)}><span>{result.group}</span><div><b>{result.label}</b><small>{result.detail}</small></div><i>›</i></button>)}</div></section></div>}
       <WorkspaceOnboarding open={onboardingMode !== null} mode={onboardingMode ?? "client"} step={onboardingStep} clients={accessibleClients} clientDraft={clientDraft} projectDraft={projectDraft} onModeChange={(mode) => startOnboarding(mode)} onStepChange={setOnboardingStep} onClientDraftChange={setClientDraft} onProjectDraftChange={setProjectDraft} onClose={() => setOnboardingMode(null)} onSubmitClient={saveClientDraft} onSubmitProject={saveProjectDraft} />
       {outcome && <div className="action-outcome-overlay" role="presentation" data-modal-root><button data-action-id="outcome.dismiss" className="action-outcome-scrim" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)} /><aside ref={outcomeDialogRef} className="action-outcome" role="dialog" aria-modal="true" aria-label="Action receipt" tabIndex={-1}><header><span className={`outcome-state state-${outcome.status.toLowerCase()}`}>{outcome.status}</span><button data-action-id="outcome.close" type="button" aria-label="Close action receipt" onClick={() => setOutcome(null)}>×</button></header><p>ACTION RECEIPT · {outcome.id}</p><h2>{outcome.title}</h2><span>{outcome.detail}</span><dl><div><dt>Artifact</dt><dd>{outcome.artifact}</dd></div><div><dt>Recorded context</dt><dd>{outcome.context}</dd></div><div><dt>Recorded</dt><dd>{outcome.timestamp}</dd></div><div><dt>Execution boundary</dt><dd>Browser-session concept</dd></div></dl><section className="session-receipt-ledger"><header><b>SESSION RECEIPT LEDGER</b><span>{outcomeLedger.length} retained · browser memory only</span></header>{outcomeLedger.slice(0, 5).map((entry) => <button data-action-id={`outcome.open.${entry.id}`} type="button" key={entry.id} onClick={() => setOutcome(entry)} className={entry.id === outcome.id ? "active" : ""}><span>{entry.status}</span><b>{entry.title}</b><small>{entry.artifact}</small></button>)}</section><button data-action-id="outcome.done" className="primary-dark-action" type="button" onClick={() => setOutcome(null)}>Done</button></aside></div>}
       {toast && <div className="toast" role="status" aria-live="polite"><DotIcon /><span>{toast}</span></div>}

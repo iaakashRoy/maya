@@ -109,16 +109,16 @@ export default function WorkspaceOnboarding({
 
           {mode === "client" && safeStep === 2 && <>
             <p className="kicker">03 · COLLABORATION INTENT</p>
-            <h3>Name one client lead and one tanjx lead</h3>
+            <h3>Name one client lead and one tanjnx lead</h3>
             <label>Client lead<input required value={clientDraft.clientLead} onChange={(event) => updateClient({ clientLead: event.target.value })} placeholder="Client project owner" /></label>
-            <label>tanjx lead<input required value={clientDraft.providerLead} onChange={(event) => updateClient({ providerLead: event.target.value })} placeholder="tanjx engagement lead" /></label>
+            <label>tanjnx lead<input required value={clientDraft.providerLead} onChange={(event) => updateClient({ providerLead: event.target.value })} placeholder="tanjnx engagement lead" /></label>
             <p>Names become synthetic collaborator metadata. No account, invitation, directory membership, calendar status, or production access is created.</p>
           </>}
 
           {mode === "client" && safeStep === 3 && <>
             <p className="kicker">04 · REVIEW SESSION DRAFT</p>
             <h3>{clientDraft.name}</h3>
-            <dl className="builder-review"><div><dt>Sector</dt><dd>{clientDraft.sector}</dd></div><div><dt>Classification</dt><dd>{clientDraft.classification}</dd></div><div><dt>Residency intent</dt><dd>{clientDraft.dataResidency}</dd></div><div><dt>Client lead</dt><dd>{clientDraft.clientLead}</dd></div><div><dt>tanjx lead</dt><dd>{clientDraft.providerLead}</dd></div><div><dt>Persistence</dt><dd>Current browser session only</dd></div></dl>
+            <dl className="builder-review"><div><dt>Sector</dt><dd>{clientDraft.sector}</dd></div><div><dt>Classification</dt><dd>{clientDraft.classification}</dd></div><div><dt>Residency intent</dt><dd>{clientDraft.dataResidency}</dd></div><div><dt>Client lead</dt><dd>{clientDraft.clientLead}</dd></div><div><dt>tanjnx lead</dt><dd>{clientDraft.providerLead}</dd></div><div><dt>Persistence</dt><dd>Current browser session only</dd></div></dl>
             <aside><b>NO PROVISIONING</b><p>Saving adds a client draft to browser memory. No tenant, directory group, invitation, storage boundary, project, or source connection is created.</p></aside>
           </>}
 

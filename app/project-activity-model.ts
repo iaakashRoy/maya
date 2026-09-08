@@ -330,9 +330,9 @@ const memberWorkFor = (project: WorkspaceProject, projectRole: string, collabora
   const metric = project.metrics[index % project.metrics.length] ?? project.metrics[0];
   const work: Readonly<Record<string, readonly [string, string, SessionActivity["state"]]>> = {
     "Client owner": ["Review the decision package", `${collaboratorName} reviewed the ${project.name} recommendation, ${metric?.label.toLowerCase() ?? "project outcome"}, and named release conditions; approval remains a synthetic human gate.`, "Review"],
-    "tanjx engagement lead": ["Steer the expert workstream", `${collaboratorName} reconciled the client brief, specialist challenge, value narrative, and next-review agenda for ${project.client}.`, "Complete"],
-    "tanjx OR scientist": ["Review formulation fitness", `${collaboratorName} checked objective, decision variables, constraints, method ${project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "mapping"}, and claim language.`, "Complete"],
-    "tanjx data steward": ["Review data and lineage contract", `${collaboratorName} checked project isolation, ${project.counts.observations} fixture observations, variable mappings, and evidence references before merge.`, "Complete"],
+    "tanjnx engagement lead": ["Steer the expert workstream", `${collaboratorName} reconciled the client brief, specialist challenge, value narrative, and next-review agenda for ${project.client}.`, "Complete"],
+    "tanjnx OR scientist": ["Review formulation fitness", `${collaboratorName} checked objective, decision variables, constraints, method ${project.methodCodes[index % Math.max(project.methodCodes.length, 1)] ?? "mapping"}, and claim language.`, "Complete"],
+    "tanjnx data steward": ["Review data and lineage contract", `${collaboratorName} checked project isolation, ${project.counts.observations} fixture observations, variable mappings, and evidence references before merge.`, "Complete"],
   };
   return work[projectRole] ?? ["Contribute to project review", `${collaboratorName} recorded a project-specific review note for ${project.name}.`, "Complete"];
 };
@@ -370,7 +370,7 @@ function activitiesFor(project: WorkspaceProject, sessionId: string, runs: reado
     if (!collaborator) return [];
     const [title, detail, state] = memberWorkFor(project, membership.projectRole, collaborator.name, index);
     const primary = {
-      type: membership.projectRole === "Client owner" ? "human-gate" as const : membership.projectRole === "tanjx data steward" ? "validation" as const : "steering" as const,
+      type: membership.projectRole === "Client owner" ? "human-gate" as const : membership.projectRole === "tanjnx data steward" ? "validation" as const : "steering" as const,
       actor: collaborator.name,
       title,
       detail,
@@ -601,7 +601,7 @@ function forkSessionState(state: ProjectActivityState, source: ProjectWorkSessio
   };
   const message = nextMessage(state, fork, {
     role: "system",
-    author: "tanjx",
+    author: "tanjnx",
     kind: "Activity",
     body: `Continued from ${source.id}. The closed source session remains immutable; new steering and replays will be recorded under ${id}.`,
     evidenceRefs: [],
@@ -776,7 +776,7 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
     const writable = mutableSessionState(state, action.projectId, action.sessionId);
     if (!writable) return state;
     const { state: nextState, session } = writable;
-    const message = nextMessage(nextState, session, { role: "system", author: "tanjx", kind: "Activity", body: "Session stopped by a human collaborator. No operational release or write-back occurred.", evidenceRefs: [], appRunRefs: [] });
+    const message = nextMessage(nextState, session, { role: "system", author: "tanjnx", kind: "Activity", body: "Session stopped by a human collaborator. No operational release or write-back occurred.", evidenceRefs: [], appRunRefs: [] });
     const activity = nextActivity(nextState, session, { type: "human-gate", actor: "Asha Rao", title: "Session cancelled", detail: "Stopped before operational release", state: "Stopped", evidenceRefs: [] });
     return {
       ...nextState,
@@ -812,7 +812,7 @@ export function projectActivityReducer(state: ProjectActivityState, action: Proj
       };
       const opening = nextMessage(state, session, {
         role: "system",
-        author: "tanjx",
+        author: "tanjnx",
         kind: "Activity",
         body: `Application session ${session.id} created inside ${action.project.client} / ${action.project.name}.`,
         evidenceRefs: [],

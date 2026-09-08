@@ -15,7 +15,7 @@ const clientDraft = {
   classification: "Client confidential",
   dataResidency: "EU policy intent",
   clientLead: "Client Lead Fixture",
-  providerLead: "tanjx Lead Fixture",
+  providerLead: "tanjnx Lead Fixture",
 };
 
 const projectDraft = (clientId, name = "Launch Continuity") => ({
@@ -52,7 +52,7 @@ test("session client and project factories are collision-safe and preserve canon
 
   const collaborators = model.createSessionCollaborators(firstClient);
   const memberships = model.createSessionProjectMemberships(firstProject, collaborators[0], collaborators[1]);
-  assert.deepEqual(collaborators.map((item) => item.affiliation), ["Client", "tanjx"]);
+  assert.deepEqual(collaborators.map((item) => item.affiliation), ["Client", "tanjnx"]);
   assert.deepEqual(collaborators.map((item) => item.clientId), [firstClient.id, undefined]);
   assert.ok(collaborators.every((item) => item.profileOrigin === "Browser-session draft"));
   assert.equal(memberships.length, 2);
@@ -78,7 +78,7 @@ test("a browser-created project starts with zero resources and two collaborator 
   assert.deepEqual(model.agentsFor(project), []);
   assert.ok(project.metrics.every((metric) => /Draft|0/.test(metric.value)));
   assert.equal(memberships.length, 2);
-  assert.deepEqual(memberships.map((membership) => membership.projectRole), ["Client owner", "tanjx engagement lead"]);
+  assert.deepEqual(memberships.map((membership) => membership.projectRole), ["Client owner", "tanjnx engagement lead"]);
   assert.ok(memberships.every((membership) => membership.projectId === project.id));
   assert.ok(memberships.every((membership) => membership.origin === "Browser-session draft"));
 
@@ -90,17 +90,17 @@ test("a browser-created project starts with zero resources and two collaborator 
   );
 });
 
-test("client and tanjx collaborators receive explicit project memberships that fail closed", async () => {
+test("client and tanjnx collaborators receive explicit project memberships that fail closed", async () => {
   const model = await loadWorkspaceModel();
   const project = model.workspaceProjects[1];
   const memberships = model.membershipsForProject(project.id);
   const projectCollaborators = memberships.map((membership) => model.workspaceCollaborators.find((collaborator) => collaborator.id === membership.collaboratorId));
 
   assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "Client" && collaborator.organization === project.client));
-  assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "tanjx" && collaborator.organization === "Supply Chain Workspace"));
+  assert.ok(projectCollaborators.some((collaborator) => collaborator?.affiliation === "tanjnx" && collaborator.organization === "Supply Chain Workspace"));
 
   const clientOwner = memberships.find((membership) => membership.projectRole === "Client owner");
-  const orScientist = memberships.find((membership) => membership.projectRole === "tanjx OR scientist");
+  const orScientist = memberships.find((membership) => membership.projectRole === "tanjnx OR scientist");
   assert.equal(model.hasProjectAccess(project.id, clientOwner.collaboratorId, "decisions.approve"), true);
   assert.equal(model.hasProjectAccess(project.id, orScientist.collaboratorId, "decisions.draft"), true);
   assert.equal(model.hasProjectAccess(project.id, orScientist.collaboratorId, "decisions.approve"), false);
@@ -122,8 +122,8 @@ test("IoT connector templates and project drafts remain catalog-only, project-sc
   assert.ok(model.connectorTemplates.every((template) => template.catalogState === "Catalog only"));
   assert.ok(model.connectorTemplates.every((template) => !Object.hasOwn(template, "status")));
 
-  const first = model.createConnectorDraft(project, "opc-ua-edge", "tanjx Data Steward");
-  const second = model.createConnectorDraft(project, "opc-ua-edge", "tanjx Data Steward", [first]);
+  const first = model.createConnectorDraft(project, "opc-ua-edge", "tanjnx Data Steward");
+  const second = model.createConnectorDraft(project, "opc-ua-edge", "tanjnx Data Steward", [first]);
   assert.equal(first.state, "Draft request");
   assert.equal(first.policyReviewState, "Not requested");
   assert.equal(first.endpointState, "Not supplied");
@@ -189,7 +189,7 @@ test("the signed-in portfolio identity has explicit grants for every seeded proj
 
   assert.equal(identity?.name, "Aakash Roy");
   assert.equal(identity?.role, "Super Admin");
-  assert.equal(identity?.affiliation, "tanjx");
+  assert.equal(identity?.affiliation, "tanjnx");
   assert.equal(identity?.clientId, undefined);
   for (const project of model.workspaceProjects) {
     assert.equal(model.hasProjectAccess(project.id, model.signedInCollaboratorId, "project.view"), true, project.id);

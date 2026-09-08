@@ -4,9 +4,9 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { statisticalRowsFor, type StatisticalTableProfile } from "../statistical-model";
 import type { WorkspaceProject } from "../workspace-model";
 
-const tableThemeEvent = "tanjx:table-theme";
+const tableThemeEvent = "tanjnx:table-theme";
 const subscribeToTheme = (notify: () => void) => { window.addEventListener("storage", notify); window.addEventListener(tableThemeEvent, notify); return () => { window.removeEventListener("storage", notify); window.removeEventListener(tableThemeEvent, notify); }; };
-const getTheme = (): "light" | "dark" => window.localStorage.getItem("tanjx.workspaceTheme") === "dark" ? "dark" : "light";
+const getTheme = (): "light" | "dark" => window.localStorage.getItem("tanjnx.workspaceTheme") === "dark" ? "dark" : "light";
 
 export default function TableExplorerClient({ project, table }: { project: WorkspaceProject; table: StatisticalTableProfile }) {
   const [query, setQuery] = useState("");
@@ -25,11 +25,11 @@ export default function TableExplorerClient({ project, table }: { project: Works
   return <main className={`table-explorer-page theme-${theme}`}>
     <header className="table-explorer-header">
       <div><a href={`/?view=company&project=${encodeURIComponent(project.id)}&projectTab=data`}>&larr; Data</a><span>{project.client} / {project.name}</span></div>
-      <strong>tanjx <small>Supply chain workspace</small></strong>
+      <strong>tanjnx <small>Supply chain workspace</small></strong>
     </header>
     <section className="table-explorer-title">
       <div><p>GOVERNED PROJECT TABLE · {table.tableNodeId}</p><h1>{table.name}</h1><span>{table.source} · {table.grain} · refreshed {table.freshness}</span></div>
-      <div className="table-explorer-actions"><button type="button" onClick={() => { const next = theme === "light" ? "dark" : "light"; window.localStorage.setItem("tanjx.workspaceTheme", next); window.dispatchEvent(new Event(tableThemeEvent)); }}>{theme === "light" ? "Dark mode" : "Light mode"}</button><button type="button" onClick={() => window.print()}>Export view</button><button type="button" onClick={() => window.close()}>Close tab</button></div>
+      <div className="table-explorer-actions"><button type="button" onClick={() => { const next = theme === "light" ? "dark" : "light"; window.localStorage.setItem("tanjnx.workspaceTheme", next); window.dispatchEvent(new Event(tableThemeEvent)); }}>{theme === "light" ? "Dark mode" : "Light mode"}</button><button type="button" onClick={() => window.print()}>Export view</button><button type="button" onClick={() => window.close()}>Close tab</button></div>
     </section>
     <section className="table-profile-cards" aria-label="Table statistical summary">
       <article><span>Registered rows</span><b>{table.rows}</b><small>Project-isolated synthetic records</small></article>

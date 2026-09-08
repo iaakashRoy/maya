@@ -5,7 +5,7 @@ export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
 export type ProjectAppId = "risk" | "optimizer" | "statistics" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
 export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
-export type CollaboratorAffiliation = "Client" | "tanjx";
+export type CollaboratorAffiliation = "Client" | "tanjnx";
 export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
 
 export type WorkspaceClient = {
@@ -22,7 +22,7 @@ export type WorkspaceClient = {
 
 export type WorkspaceCollaborator = {
   id: string;
-  /** Canonical client binding for client identities; omitted for tanjx identities. */
+  /** Canonical client binding for client identities; omitted for tanjnx identities. */
   clientId?: string;
   name: string;
   initials: string;
@@ -36,7 +36,7 @@ export type ProjectMembership = {
   id: string;
   projectId: string;
   collaboratorId: string;
-  projectRole: "Client owner" | "tanjx engagement lead" | "tanjx OR scientist" | "tanjx data steward" | "Contributor" | "Viewer";
+  projectRole: "Client owner" | "tanjnx engagement lead" | "tanjnx OR scientist" | "tanjnx data steward" | "Contributor" | "Viewer";
   capabilities: readonly ProjectCapability[];
   origin: WorkspaceOrigin;
 };
@@ -376,24 +376,24 @@ export const workspaceCollaborators: readonly WorkspaceCollaborator[] = [
     organization: project.client,
     profileOrigin: "Seed fixture" as const,
   })),
-  { id: "tanjx-engagement", name: "Aakash Roy", initials: "AR", role: "Super Admin", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
-  { id: "tanjx-or-scientist", name: "tanjx OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
-  { id: "tanjx-data-steward", name: "tanjx Data Steward", initials: "DS", role: "Data contracts and lineage", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
+  { id: "tanjnx-engagement", name: "Aakash Roy", initials: "AR", role: "Super Admin", affiliation: "tanjnx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
+  { id: "tanjnx-or-scientist", name: "tanjnx OR Scientist", initials: "OR", role: "Formulation and validation", affiliation: "tanjnx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
+  { id: "tanjnx-data-steward", name: "tanjnx Data Steward", initials: "DS", role: "Data contracts and lineage", affiliation: "tanjnx", organization: "Supply Chain Workspace", profileOrigin: "Seed fixture" },
 ];
 
 /** Explicit browser-session identity represented by the shell's Aakash Roy profile. */
-export const signedInCollaboratorId = "tanjx-engagement";
+export const signedInCollaboratorId = "tanjnx-engagement";
 
 const clientOwnerCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "decisions.approve", "agents.run", "team.manage"];
-const tanjxLeadCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "agents.run", "agents.create", "team.manage"];
-const tanjxOrCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "apps.view", "decisions.view", "decisions.draft", "agents.run", "agents.create"];
-const tanjxDataCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "decisions.view"];
+const tanjnxLeadCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "connectors.request", "apps.view", "apps.mount", "decisions.view", "decisions.draft", "agents.run", "agents.create", "team.manage"];
+const tanjnxOrCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "apps.view", "decisions.view", "decisions.draft", "agents.run", "agents.create"];
+const tanjnxDataCapabilities: readonly ProjectCapability[] = ["project.view", "data.view", "data.stage", "connectors.request", "apps.view", "decisions.view"];
 
 export const projectMemberships: readonly ProjectMembership[] = workspaceProjects.flatMap((project) => [
   { id: `${project.id}:client-owner`, projectId: project.id, collaboratorId: `${project.id}-client-owner`, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:tanjx-engagement`, projectId: project.id, collaboratorId: "tanjx-engagement", projectRole: "tanjx engagement lead", capabilities: tanjxLeadCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:tanjx-or-scientist`, projectId: project.id, collaboratorId: "tanjx-or-scientist", projectRole: "tanjx OR scientist", capabilities: tanjxOrCapabilities, origin: "Seed fixture" },
-  { id: `${project.id}:tanjx-data-steward`, projectId: project.id, collaboratorId: "tanjx-data-steward", projectRole: "tanjx data steward", capabilities: tanjxDataCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjnx-engagement`, projectId: project.id, collaboratorId: "tanjnx-engagement", projectRole: "tanjnx engagement lead", capabilities: tanjnxLeadCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjnx-or-scientist`, projectId: project.id, collaboratorId: "tanjnx-or-scientist", projectRole: "tanjnx OR scientist", capabilities: tanjnxOrCapabilities, origin: "Seed fixture" },
+  { id: `${project.id}:tanjnx-data-steward`, projectId: project.id, collaboratorId: "tanjnx-data-steward", projectRole: "tanjnx data steward", capabilities: tanjnxDataCapabilities, origin: "Seed fixture" },
 ]);
 
 export const connectorTemplates: readonly ConnectorTemplate[] = [
@@ -525,7 +525,7 @@ export function createSessionClient(draft: SessionClientDraft, existingClients: 
     classification: requiredText(draft.classification, "Classification"),
     dataResidency: requiredText(draft.dataResidency, "Data-residency intent"),
     clientLead: requiredText(draft.clientLead, "Client lead"),
-    providerLead: requiredText(draft.providerLead, "tanjx lead"),
+    providerLead: requiredText(draft.providerLead, "tanjnx lead"),
     origin: "Browser-session draft",
   };
 }
@@ -591,28 +591,28 @@ export function createSessionCollaborators(client: WorkspaceClient, existingColl
   const existingIds = new Set(existingCollaborators.map((collaborator) => collaborator.id));
   const clientId = collisionSafeId(`${client.id}-client-lead`, existingIds);
   existingIds.add(clientId);
-  const tanjxId = collisionSafeId(`${client.id}-tanjx-lead`, existingIds);
-  const existingTanjxLead = existingCollaborators.find((collaborator) => collaborator.affiliation === "tanjx"
+  const tanjnxId = collisionSafeId(`${client.id}-tanjnx-lead`, existingIds);
+  const existingTanjnxLead = existingCollaborators.find((collaborator) => collaborator.affiliation === "tanjnx"
     && collaborator.clientId === undefined
     && collaborator.name.trim().toLowerCase() === client.providerLead.trim().toLowerCase());
   return [
     { id: clientId, clientId: client.id, name: client.clientLead, initials: initialsFor(client.clientLead), role: "Client relationship lead", affiliation: "Client", organization: client.name, profileOrigin: "Browser-session draft" },
-    existingTanjxLead ?? { id: tanjxId, name: client.providerLead, initials: initialsFor(client.providerLead), role: "tanjx engagement lead", affiliation: "tanjx", organization: "Supply Chain Workspace", profileOrigin: "Browser-session draft" },
+    existingTanjnxLead ?? { id: tanjnxId, name: client.providerLead, initials: initialsFor(client.providerLead), role: "tanjnx engagement lead", affiliation: "tanjnx", organization: "Supply Chain Workspace", profileOrigin: "Browser-session draft" },
   ];
 }
 
-export function createSessionProjectMemberships(project: WorkspaceProject, clientCollaborator: WorkspaceCollaborator, tanjxCollaborator: WorkspaceCollaborator): readonly ProjectMembership[] {
+export function createSessionProjectMemberships(project: WorkspaceProject, clientCollaborator: WorkspaceCollaborator, tanjnxCollaborator: WorkspaceCollaborator): readonly ProjectMembership[] {
   if (clientCollaborator.affiliation !== "Client" || clientCollaborator.clientId !== project.clientId) {
     throw new Error(`Client collaborator '${clientCollaborator.id}' is not bound to canonical client '${project.clientId}'; no project membership was created.`);
   }
-  if (tanjxCollaborator.affiliation !== "tanjx" || tanjxCollaborator.clientId !== undefined) {
-    throw new Error(`tanjx collaborator '${tanjxCollaborator.id}' has an invalid client binding; no project membership was created.`);
+  if (tanjnxCollaborator.affiliation !== "tanjnx" || tanjnxCollaborator.clientId !== undefined) {
+    throw new Error(`tanjnx collaborator '${tanjnxCollaborator.id}' has an invalid client binding; no project membership was created.`);
   }
   const clientId = requiredText(clientCollaborator.id, "Client collaborator");
-  const tanjxId = requiredText(tanjxCollaborator.id, "tanjx collaborator");
+  const tanjnxId = requiredText(tanjnxCollaborator.id, "tanjnx collaborator");
   return [
     { id: `${project.id}:${clientId}`, projectId: project.id, collaboratorId: clientId, projectRole: "Client owner", capabilities: clientOwnerCapabilities, origin: "Browser-session draft" },
-    { id: `${project.id}:${tanjxId}`, projectId: project.id, collaboratorId: tanjxId, projectRole: "tanjx engagement lead", capabilities: tanjxLeadCapabilities, origin: "Browser-session draft" },
+    { id: `${project.id}:${tanjnxId}`, projectId: project.id, collaboratorId: tanjnxId, projectRole: "tanjnx engagement lead", capabilities: tanjnxLeadCapabilities, origin: "Browser-session draft" },
   ];
 }
 

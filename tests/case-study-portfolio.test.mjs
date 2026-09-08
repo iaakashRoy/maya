@@ -43,10 +43,11 @@ test("the canonical portfolio contains ten complete public-context simulations",
   assert.equal(new Set(fingerprints).size, 10, "every client and project has a distinct data and network fingerprint");
 });
 
-test("global graph, statistical analysis, and full-table query surfaces are wired", async () => {
-  const [scope, globalGraph, studios, statistics, tablePage] = await Promise.all([
+test("global and project relationships, statistical analysis, and full-table query surfaces are wired", async () => {
+  const [scope, globalGraph, projectGraph, studios, statistics, tablePage] = await Promise.all([
     read("../app/ScopeDashboard.tsx"),
     read("../app/GlobalKnowledgeGraph.tsx"),
+    read("../app/ProjectSupplyChainExplorer.tsx"),
     read("../app/ProjectAppStudios.tsx"),
     read("../app/statistical-model.ts"),
     read("../app/table/TableExplorerClient.tsx"),
@@ -68,7 +69,14 @@ test("global graph, statistical analysis, and full-table query surfaces are wire
   assert.match(globalGraph, /Volume \/ value/);
   assert.match(globalGraph, /Dependency share/);
   assert.match(globalGraph, /global-graph-tooltip/);
-  assert.doesNotMatch(globalGraph, /projectIndex % 5/);
+  assert.match(globalGraph, /ResizeObserver/);
+  assert.match(globalGraph, /sectorSpan/);
+  assert.doesNotMatch(globalGraph, /clusterCenters/);
+  assert.match(projectGraph, /selectedEdgeId/);
+  assert.match(projectGraph, /supply-network\.edge\.\$\{edge\.id\}/);
+  assert.match(projectGraph, /SELECTED RELATIONSHIP/);
+  assert.match(projectGraph, /Trace relationship/);
+  assert.match(projectGraph, /edgeReceipt/);
   assert.match(studios, /StatisticalStudio/);
   assert.match(studios, /MARKOV STATE MODEL/);
   assert.match(statistics, /statisticalProfilesFor/);
@@ -112,7 +120,7 @@ test("every case variable follows a selected taxonomy ancestry", async () => {
 test("embedded and standalone case-study guides expose project-deep links and simulation boundaries", async () => {
   const [page, deck] = await Promise.all([
     read("../app/case-studies/page.tsx"),
-    read("../public/tanjx-case-studies.html"),
+    read("../public/tanjnx-case-studies.html"),
   ]);
   assert.match(page, /simulationDisclaimer/);
   assert.match(page, /projectTab=agents/);

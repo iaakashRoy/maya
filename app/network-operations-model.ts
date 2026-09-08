@@ -204,7 +204,7 @@ const contacts: readonly OperationalContact[] = [
   ["contact-11", "Mateo Cruz — synthetic", "Supplier recovery lead", "Americas", "UTC-05:00", "Monitoring"],
   ["contact-12", "Lin Zhao — synthetic", "Electronics category lead", "APAC", "UTC+08:00", "Available"],
 ].map(([id, name, role, shift, timezone, availability], index) => ({
-  id, name, role, shift, timezone, availability: availability as OperationalContact["availability"], channel: `TANJX-DEMO-${String(index + 21).padStart(3, "0")}`,
+  id, name, role, shift, timezone, availability: availability as OperationalContact["availability"], channel: `TANJNX-DEMO-${String(index + 21).padStart(3, "0")}`,
 }));
 
 type LocationSeed = readonly [string, string, string, string, NetworkRegion, NetworkLocation["kind"], number, number, string, boolean];

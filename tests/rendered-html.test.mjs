@@ -20,7 +20,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>tanjx — Supply Chain Workspace/);
+  assert.match(html, /<title>tanjnx — Supply Chain Workspace/);
   assert.match(html, /data-action-id="nav\.workspace"[^>]*class="scope-nav active"/);
   assert.match(html, /data-action-id="nav\.operations-world"/);
   assert.match(html, /<h1>Workspace<\/h1>/);
@@ -35,7 +35,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Water-to-Shelf Availability/);
   assert.match(html, /Case studies/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
-  assert.match(html, /aria-label="Open tanjx workspace"/);
+  assert.match(html, /aria-label="Open tanjnx workspace"/);
   assert.match(html, /Supply chain workspace/);
   assert.match(html, /Aakash Roy/);
   assert.match(html, /Super Admin/);
@@ -55,7 +55,7 @@ test("case-study library explains and deep-links all ten simulations", async () 
   for (const company of ["Apple", "Coca-Cola", "Gucci", "Tata Motors", "Tesla", "BYD", "Hershey", "TSMC", "Airbus", "Pfizer"]) {
     assert.match(html, new RegExp(company));
   }
-  assert.match(html, /tanjx-case-studies\.html/);
+  assert.match(html, /tanjnx-case-studies\.html/);
   assert.match(html, /Open project/);
   assert.match(html, /Inspect data and graph/);
   assert.match(html, /Inspect decision graph/);
@@ -276,7 +276,7 @@ test("project tabs remain on project section routes and disappear from applicati
   assert.equal(legacyTeamResponse.status, 200);
   const legacyTeamHtml = await legacyTeamResponse.text();
   assert.match(legacyTeamHtml, /Knowledge footprint/);
-  assert.doesNotMatch(legacyTeamHtml, /Client and (?:Kearney|tanjx) access/);
+  assert.doesNotMatch(legacyTeamHtml, /Client and (?:Kearney|tanjnx) access/);
 });
 
 test("ships the two-root IA, onboarding, project accountability, ten apps, and wrapped project tabs", async () => {

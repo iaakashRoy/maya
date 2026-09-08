@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type CSSProperties } from "react";
-import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainNetwork, type SupplyChainNode } from "./case-study-model";
+import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainEdge, type SupplyChainNetwork, type SupplyChainNode } from "./case-study-model";
 import { statisticalProfileForNode } from "./statistical-model";
 import { fixtureEvidenceFor, type EvidenceReceipt, type WorkspaceProject } from "./workspace-model";
 
@@ -28,12 +28,14 @@ type DenseGraphProps = {
   nodes: readonly SupplyChainNode[];
   tracedNodeIds: ReadonlySet<string>;
   selectedNodeId: string;
+  selectedEdgeId: string;
   onSelect: (nodeId: string) => void;
+  onSelectEdge: (edgeId: string) => void;
 };
 
 const assetKey = (assetType: string) => assetType.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-function DenseSupplyNetworkGraph({ network, nodes, tracedNodeIds, selectedNodeId, onSelect }: DenseGraphProps) {
+function DenseSupplyNetworkGraph({ network, nodes, tracedNodeIds, selectedNodeId, selectedEdgeId, onSelect, onSelectEdge }: DenseGraphProps) {
   const [zoom, setZoom] = useState(.9);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [focusMode, setFocusMode] = useState(true);
@@ -96,13 +98,16 @@ function DenseSupplyNetworkGraph({ network, nodes, tracedNodeIds, selectedNodeId
           const angle = -Math.PI / 2 + (index / network.stages.length) * Math.PI * 2;
           return <span className="dense-network-stage-label" key={stage.id} style={{ left: 500 + Math.cos(angle) * 334, top: 360 + Math.sin(angle) * 334 }}><b>{String(stage.sequence).padStart(2, "0")}</b>{stage.label}</span>;
         })}
-        <div className="dense-network-edges" aria-hidden="true">{edges.map((edge) => {
+        <div className="dense-network-edges">{edges.map((edge) => {
           const from = points.get(edge.from)!;
           const to = points.get(edge.to)!;
           const length = Math.hypot(to.x - from.x, to.y - from.y);
           const angle = Math.atan2(to.y - from.y, to.x - from.x);
           const active = tracedNodeIds.has(edge.from) && tracedNodeIds.has(edge.to);
-          return <span className={`${active ? "active" : ""} ${focusMode && !active ? "muted" : ""}`} data-risk={riskLabel(edge.riskScore).toLowerCase()} key={edge.id} style={{ left: from.x, top: from.y, width: length, transform: `rotate(${angle}rad)` }} />;
+          const selected = edge.id === selectedEdgeId;
+          const fromNode = network.nodes.find((node) => node.id === edge.from);
+          const toNode = network.nodes.find((node) => node.id === edge.to);
+          return <button data-action-id={`supply-network.edge.${edge.id}`} type="button" className={`${active ? "active" : ""} ${selected ? "selected" : ""} ${focusMode && !active && !selected ? "muted" : ""}`} data-risk={riskLabel(edge.riskScore).toLowerCase()} key={edge.id} style={{ left: from.x, top: from.y, width: length, transform: `rotate(${angle}rad)` }} title={`${fromNode?.label ?? edge.from} to ${toNode?.label ?? edge.to} | ${edge.relationship} | ${edge.mode} | risk ${edge.riskScore}`} aria-label={`Inspect relationship from ${fromNode?.label ?? edge.from} to ${toNode?.label ?? edge.to}`} onClick={() => onSelectEdge(edge.id)} />;
         })}</div>
         {nodes.map((node) => {
           const point = points.get(node.id)!;
@@ -127,8 +132,12 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
   const [severityFilter, setSeverityFilter] = useState("all");
   const [traceDirection, setTraceDirection] = useState<TraceDirection>("both");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [selectedEdgeId, setSelectedEdgeId] = useState("");
 
   const selectedNode = network?.nodes.find((node) => node.id === selectedNodeId) ?? network?.nodes[0];
+  const selectedEdge = network?.edges.find((edge) => edge.id === selectedEdgeId);
+  const selectedEdgeFrom = selectedEdge ? network?.nodes.find((node) => node.id === selectedEdge.from) : undefined;
+  const selectedEdgeTo = selectedEdge ? network?.nodes.find((node) => node.id === selectedEdge.to) : undefined;
   const selectedTable = selectedNode ? statisticalProfileForNode(project, selectedNode.id) : undefined;
   const selectedCheckpoint = network?.checkpoints.find((checkpoint) => checkpoint.id === selectedCheckpointId) ?? network?.checkpoints[0];
   const normalizedQuery = query.trim().toLowerCase();
@@ -199,6 +208,21 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
     grain: "Project x stage x checkpoint x simulation tick",
     confidence: profile.confidence,
   });
+  const edgeReceipt = (edge: SupplyChainEdge) => {
+    const from = network.nodes.find((node) => node.id === edge.from);
+    const to = network.nodes.find((node) => node.id === edge.to);
+    return fixtureEvidenceFor(project, {
+      id: edge.evidenceRef,
+      claim: `${from?.label ?? edge.from} to ${to?.label ?? edge.to} relationship`,
+      displayedValue: `${edge.volume} · ${edge.value} · ${edge.share}% path share`,
+      source: `${profile.project} synthetic relationship register`,
+      formula: `Directed ${edge.relationship} path using ${edge.mode}; lead time ${edge.leadTime} days and modeled risk ${edge.riskScore}. No carrier, supplier, client, or external network was queried.`,
+      inputs: [edge.id, edge.from, edge.to, profile.shock, ...project.variablePack.l0.slice(0, 3)],
+      variableId: project.variablePack.l0[1] ?? project.variablePack.l0[0] ?? "Project network relationship",
+      grain: "Project x source node x target node x simulation tick",
+      confidence: Math.min(from?.confidence ?? profile.confidence, to?.confidence ?? profile.confidence),
+    });
+  };
 
   return <section className="supply-network-explorer" aria-label={`${project.client} multilevel supply chain`}>
     <header className="supply-network-commandbar">
@@ -227,7 +251,7 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
     </div>
 
     {view === "graph" ? <div className="supply-network-graph-view">
-      <DenseSupplyNetworkGraph network={network} nodes={visibleNodes} tracedNodeIds={tracedNodeIds} selectedNodeId={selectedNode?.id ?? ""} onSelect={onSelectNode} />
+      <DenseSupplyNetworkGraph network={network} nodes={visibleNodes} tracedNodeIds={tracedNodeIds} selectedNodeId={selectedNode?.id ?? ""} selectedEdgeId={selectedEdgeId} onSelect={(nodeId) => { setSelectedEdgeId(""); onSelectNode(nodeId); }} onSelectEdge={setSelectedEdgeId} />
       <div className="supply-stage-scroll" aria-label="Scrollable supply chain levels">
         <div className="supply-stage-grid" style={{ "--stage-count": visibleStages.length } as CSSProperties}>
           {visibleStages.map((stage) => {
@@ -247,11 +271,17 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
           })}
         </div>
       </div>
-      {selectedNode && <aside className="supply-node-inspector">
+      {selectedEdge && selectedEdgeFrom && selectedEdgeTo ? <aside className="supply-node-inspector supply-edge-inspector">
+        <header><div><small>SELECTED RELATIONSHIP</small><h3>{selectedEdgeFrom.label} <span aria-hidden="true">&#8594;</span> {selectedEdgeTo.label}</h3><p>{selectedEdge.relationship} · {selectedEdge.mode}</p></div><strong data-risk={riskLabel(selectedEdge.riskScore).toLowerCase()}>{selectedEdge.riskScore}<small>{riskLabel(selectedEdge.riskScore)}</small></strong></header>
+        <section className="supply-edge-route"><button type="button" onClick={() => { setSelectedEdgeId(""); onSelectNode(selectedEdgeFrom.id); }}><small>FROM · {selectedEdgeFrom.assetType}</small><b>{selectedEdgeFrom.label}</b><span>{selectedEdgeFrom.country} · {selectedEdgeFrom.tier}</span></button><i aria-hidden="true">&#8594;</i><button type="button" onClick={() => { setSelectedEdgeId(""); onSelectNode(selectedEdgeTo.id); }}><small>TO · {selectedEdgeTo.assetType}</small><b>{selectedEdgeTo.label}</b><span>{selectedEdgeTo.country} · {selectedEdgeTo.tier}</span></button></section>
+        <dl><div><dt>Relationship</dt><dd>{selectedEdge.relationship}</dd></div><div><dt>Transport / mode</dt><dd>{selectedEdge.mode}</dd></div><div><dt>Volume</dt><dd>{selectedEdge.volume}</dd></div><div><dt>Annual value</dt><dd>{selectedEdge.value}</dd></div><div><dt>Path share</dt><dd>{selectedEdge.share}%</dd></div><div><dt>Lead time</dt><dd>{selectedEdge.leadTime} days</dd></div><div><dt>Risk score</dt><dd>{selectedEdge.riskScore} · {riskLabel(selectedEdge.riskScore)}</dd></div><div><dt>Evidence</dt><dd>{selectedEdge.evidenceRef}</dd></div></dl>
+        <section className="supply-node-steering"><small>TRACE &amp; STEER THIS PATH</small><div>{steeringActions.map((action) => <button data-action-id={`supply-network.edge.steer.${action}`} type="button" disabled={!canSteer} key={action} title={canSteer ? `${action}: ${selectedEdgeFrom.label} to ${selectedEdgeTo.label}` : "Start or select a Playground session to steer this trace."} onClick={() => onSteer(`${action} · ${selectedEdgeFrom.label} to ${selectedEdgeTo.label}`)}>{action}<span>+</span></button>)}</div></section>
+        <footer><span>Directed project path</span><button data-action-id={`supply-network.edge.evidence.${selectedEdge.id}`} type="button" onClick={() => onEvidence(edgeReceipt(selectedEdge))}>Trace relationship &#8599;</button></footer>
+      </aside> : selectedNode && <aside className="supply-node-inspector">
         <header><div><small>SELECTED NETWORK ENTITY</small><h3>{selectedNode.label}</h3><p>{selectedNode.role} · {selectedNode.country}</p></div><strong data-risk={riskLabel(selectedNode.riskScore).toLowerCase()}>{selectedNode.riskScore}<small>{riskLabel(selectedNode.riskScore)}</small></strong></header>
         <dl><div><dt>Tier</dt><dd>{selectedNode.tier}</dd></div><div><dt>Capacity</dt><dd>{selectedNode.capacity}</dd></div><div><dt>Throughput</dt><dd>{selectedNode.throughput}</dd></div><div><dt>Annual value</dt><dd>{selectedNode.annualValue}</dd></div><div><dt>Utilization</dt><dd>{selectedNode.utilization}%</dd></div><div><dt>Lead time</dt><dd>{selectedNode.leadTime} days</dd></div><div><dt>Path concentration</dt><dd>{selectedNode.concentration}%</dd></div><div><dt>Confidence</dt><dd>{selectedNode.confidence}%</dd></div></dl>
-        <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => onSelectNode(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>)}</section>
-        <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => onSelectNode(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
+        <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedEdgeId(edge.id)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d · inspect path</span></button>)}</section>
+        <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedEdgeId(edge.id)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value} · inspect path</span></button>)}</section>
         {selectedTable && <section className="supply-table-profile">
           <small>TABLE STATISTICAL PROFILE</small>
           <div className="supply-table-stats"><span><b>{selectedTable.rows}</b>rows</span><span><b>{selectedTable.quality}%</b>quality</span><span><b>{selectedTable.missingPercent}%</b>missing</span><span><b>{selectedTable.driftScore}</b>drift</span></div>

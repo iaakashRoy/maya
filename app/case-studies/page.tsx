@@ -4,8 +4,8 @@ import { caseStudyProfiles, simulationDisclaimer } from "../case-study-model";
 import { projectApps, workspaceProjects } from "../workspace-model";
 
 export const metadata: Metadata = {
-  title: "tanjx Case Studies — Resilient Supply-Chain Decisions",
-  description: "Ten interactive, public-information-inspired supply-chain simulations showing how tanjx turns evidence and disruption signals into governed decisions.",
+  title: "tanjnx Case Studies — Resilient Supply-Chain Decisions",
+  description: "Ten interactive, public-information-inspired supply-chain simulations showing how tanjnx turns evidence and disruption signals into governed decisions.",
 };
 
 const appName = (id: string) => projectApps.find((app) => app.id === id)?.name ?? id;
@@ -19,8 +19,8 @@ const portfolioDepth = caseStudyProfiles.reduce((total, profile) => ({
 export default function CaseStudiesPage() {
   return <main className="case-study-deck">
     <header className="case-study-deck__topbar">
-      <Link className="case-study-deck__brand" href="/"><span>tanjx</span><small>Supply chain workspace</small></Link>
-      <nav aria-label="Case study navigation"><a href="#how-it-works">How it works</a><a href="#portfolio">10 cases</a><a href="#interpretation">Interpretation</a><a href="/tanjx-case-studies.html" target="_blank" rel="noreferrer">Presentation ↗</a><Link className="case-study-deck__workspace" href="/">Open workspace</Link></nav>
+      <Link className="case-study-deck__brand" href="/"><span>tanjnx</span><small>Supply chain workspace</small></Link>
+      <nav aria-label="Case study navigation"><a href="#how-it-works">How it works</a><a href="#portfolio">10 cases</a><a href="#interpretation">Interpretation</a><a href="/tanjnx-case-studies.html" target="_blank" rel="noreferrer">Presentation ↗</a><Link className="case-study-deck__workspace" href="/">Open workspace</Link></nav>
     </header>
 
     <section className="case-study-hero">
@@ -31,7 +31,7 @@ export default function CaseStudiesPage() {
     </section>
 
     <section id="how-it-works" className="case-study-method">
-      <header><p>HOW TANJX WORKS</p><h2>One governed path from signal to action</h2></header>
+      <header><p>HOW TANJNX WORKS</p><h2>One governed path from signal to action</h2></header>
       <ol>
         <li><span>01</span><b>Observe</b><p>Project data, IoT-shaped events, public context, and human inputs enter separate evidence classes.</p></li>
         <li><span>02</span><b>Connect</b><p>The knowledge graph resolves product, supplier, material, facility, route, customer, policy, and claim dependencies.</p></li>
@@ -95,7 +95,7 @@ export default function CaseStudiesPage() {
     })}
 
     <section id="interpretation" className="case-study-interpretation">
-      <header><p>INTERPRETATION GUIDE</p><h2>How to read a tanjx result</h2></header>
+      <header><p>INTERPRETATION GUIDE</p><h2>How to read a tanjnx result</h2></header>
       <div><article><b>Baseline</b><p>What the current plan produces when the selected disruption is applied.</p></article><article><b>P50</b><p>The median modeled outcome across the deterministic scenario set.</p></article><article><b>P90 / P95</b><p>Conservative service or outcome levels reached in 90% or 95% of modeled draws.</p></article><article><b>Worst tested</b><p>The lowest result among the explicitly modeled scenarios—not every possible future.</p></article><article><b>CVaR</b><p>The average consequence inside the modeled tail beyond the selected risk threshold.</p></article><article><b>Confidence</b><p>Evidence and model confidence, not a guarantee that the future will occur as modeled.</p></article></div>
       <Link href="/">Start in the workspace →</Link>
     </section>

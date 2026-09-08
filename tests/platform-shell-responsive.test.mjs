@@ -44,8 +44,8 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.project-section-bar \{ height: auto; grid-template-columns: 1fr; \}/);
 
   assert.match(shell, /aria-label=\{`Open account menu for/);
-  assert.match(shell, /aria-controls="tanjx-profile-panel"/);
-  assert.match(shell, /ref=\{profilePanelRef\} id="tanjx-profile-panel"/);
+  assert.match(shell, /aria-controls="tanjnx-profile-panel"/);
+  assert.match(shell, /ref=\{profilePanelRef\} id="tanjnx-profile-panel"/);
   assert.match(shell, /setIdentitySelection\(null\)/);
   assert.match(css, /\.work-identity-inspector\s*\{[\s\S]*?top:\s*var\(--topbar-height\);[\s\S]*?width:\s*min\(430px, calc\(100vw - 12px\)\)/);
 });

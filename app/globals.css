@@ -423,7 +423,7 @@ td button { min-height: 28px; padding: 0 8px; background: transparent; border: 1
 }
 
 /* Multilevel supply network ---------------------------------------------
-   A compact dependency explorer adapted to tanjx's evidence-first model. */
+   A compact dependency explorer adapted to tanjnx's evidence-first model. */
 .project-data-workspace > .data-graph-commandbar { order: 0; }
 .project-data-workspace > .data-query-results { order: 1; }
 .project-data-workspace > .supply-network-explorer { order: 2; }
@@ -5774,7 +5774,7 @@ textarea:focus-visible,
 .theme-dark .workspace-onboarding nav button { color: #cbd5ce; background: var(--dark-surface-2); border-color: var(--dark-line); }
 .theme-dark .workspace-onboarding nav button.active { color: #111712; background: #d7ff38; }
 
-/* tanjx visual system ---------------------------------------------------------
+/* tanjnx visual system ---------------------------------------------------------
    One type scale, one page gutter, semantic app glyphs, and neutral dark mode. */
 :root {
   --workspace-gutter: clamp(16px, 1.6vw, 24px);
@@ -5818,9 +5818,9 @@ textarea:focus-visible,
 .platform-shell :is(.kicker, [class*="eyebrow"], [class*="-code"], [class*="-meta"] small) { font-size: var(--type-xs) !important; }
 .topbar, .statusbar, .project-context-stack { font-size: var(--type-md); }
 
-/* Compact code-native tanjx mark: exchange nodes sit on a tangent line. */
-.brand > .tanjx-mark,
-.tanjx-mark {
+/* Compact code-native tanjnx mark: exchange nodes sit on a tangent line. */
+.brand > .tanjnx-mark,
+.tanjnx-mark {
   position: relative;
   width: 36px;
   height: 36px;
@@ -5832,14 +5832,14 @@ textarea:focus-visible,
   border: 1px solid #b8db24;
   border-radius: 9px;
 }
-.tanjx-mark::before {
+.tanjnx-mark::before {
   content: "";
   position: absolute;
   inset: 8px;
   border: 2px solid currentColor;
   border-radius: 50%;
 }
-.tanjx-mark::after {
+.tanjnx-mark::after {
   content: "";
   position: absolute;
   left: 5px;
@@ -5850,7 +5850,7 @@ textarea:focus-visible,
   transform: rotate(-28deg);
   transform-origin: center;
 }
-.tanjx-mark > i {
+.tanjnx-mark > i {
   position: absolute;
   z-index: 1;
   width: 5px;
@@ -5859,8 +5859,8 @@ textarea:focus-visible,
   border: 1px solid #d7ff38;
   border-radius: 50%;
 }
-.tanjx-mark > i:first-child { left: 6px; top: 22px; }
-.tanjx-mark > i:last-child { right: 6px; top: 9px; }
+.tanjnx-mark > i:first-child { left: 6px; top: 22px; }
+.tanjnx-mark > i:last-child { right: 6px; top: 9px; }
 .brand > div { gap: 1px; }
 .brand b { font-size: 15px; font-weight: 760; letter-spacing: -.01em; }
 .brand small { color: #9ba6a0; font: 650 10px/1.25 var(--font-ui); letter-spacing: .01em; }
@@ -7827,3 +7827,113 @@ textarea:focus-visible,
 .global-graph-workbench { width:100%; grid-template-columns:minmax(0,1fr) minmax(260px,292px); overflow:hidden; }.global-graph-workbench.inspector-closed { grid-template-columns:minmax(0,1fr); }.global-canvas-shell { width:100%; }.global-canvas-shell canvas { max-width:100%; }
 .path-entity-mark.client-mark { border-radius:7px; }.path-entity-mark.client-mark::after { content:none !important; }.path-entity-mark.client-mark > svg { width:20px; height:20px; display:block; fill:currentColor; }.path-entity-mark.client-mark > .client-wordmark { z-index:1; max-width:28px; overflow:hidden; color:currentColor; font:800 6px/1 var(--font-ui); letter-spacing:-.05em; white-space:nowrap; }.path-entity-mark.client-mark-byd > .client-wordmark { font-size:7px; letter-spacing:-.08em; }.path-entity-mark.client-mark-gucci > .client-wordmark { font-family:Georgia,serif; font-size:5px; letter-spacing:.03em; }.path-entity-mark.client-mark-hershey > .client-wordmark { font-size:4px; letter-spacing:-.07em; }.path-entity-mark.client-mark-pfizer > .client-wordmark { font-size:5px; font-style:italic; letter-spacing:-.07em; }.path-entity-mark.client-mark-tsmc > .client-wordmark { font-size:6px; letter-spacing:-.08em; }.sidebar-path-root > button > .client-mark { box-shadow:none; }
 @media (max-width:1380px) and (min-width:721px) { .global-graph-workbench { grid-template-columns:minmax(0,1fr) 270px; }.global-graph-summary > div:last-child > span { min-width:76px; padding-inline:9px; } }
+
+/* Continuous relationship graph ------------------------------------------
+   The canvas and inspector share one bounded viewport. The radial layout in
+   GlobalKnowledgeGraph distributes every client through the same field, so
+   the network reads as one connected system instead of ten detached islands. */
+.global-graph-workbench {
+  height: clamp(640px, calc(100dvh - 206px), 920px);
+  min-height: 640px;
+  align-items: stretch;
+}
+.global-canvas-shell { height: 100%; min-height: 0; }
+.global-canvas-shell canvas { width: 100%; height: 100%; max-height: none; }
+.global-node-inspector { height: 100%; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.global-canvas-shell::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 0 42%, color-mix(in srgb, var(--global-graph-bg) 8%, transparent) 78%, color-mix(in srgb, var(--global-graph-bg) 32%, transparent) 100%);
+}
+
+/* Project graph relationships use a generous transparent hit target while
+   retaining a fine directed line. This keeps dense graphs readable and makes
+   every path keyboard, mouse, and touch inspectable. */
+.dense-network-edges { pointer-events: none; }
+.dense-network-edges > button {
+  position: absolute;
+  z-index: 2;
+  height: 12px;
+  margin: -6px 0 0;
+  padding: 0;
+  transform-origin: 0 50%;
+  opacity: .26;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.dense-network-edges > button::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 1px;
+  content: "";
+  background: #738178;
+}
+.dense-network-edges > button::after {
+  position: absolute;
+  right: 0;
+  top: 3px;
+  width: 5px;
+  height: 5px;
+  content: "";
+  background: #738178;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.dense-network-edges > button:hover,
+.dense-network-edges > button:focus-visible,
+.dense-network-edges > button.selected { z-index: 3; opacity: 1; outline: 0; }
+.dense-network-edges > button:hover::before,
+.dense-network-edges > button:focus-visible::before,
+.dense-network-edges > button.selected::before { top: 4px; height: 3px; background: #17231b; }
+.dense-network-edges > button:hover::after,
+.dense-network-edges > button:focus-visible::after,
+.dense-network-edges > button.selected::after { top: 2px; width: 7px; height: 7px; background: #17231b; }
+.dense-network-edges > button.active { opacity: .55; }
+.dense-network-edges > button[data-risk="high"]::before,
+.dense-network-edges > button[data-risk="high"]::after { background: #d9901d; }
+.dense-network-edges > button[data-risk="critical"]::before,
+.dense-network-edges > button[data-risk="critical"]::after { background: #dc5146; }
+.dense-network-edges > button.muted { opacity: .045; }
+.dense-network-edges > button.selected { filter: drop-shadow(0 0 3px rgba(23,35,27,.45)); }
+.supply-edge-inspector > header h3 span { color: #7e9715; }
+.supply-edge-route { padding: 9px !important; display: grid !important; grid-template-columns: minmax(0,1fr) 18px minmax(0,1fr); gap: 5px; align-items: center; }
+.supply-edge-route > i { color: #7e9715; font-style: normal; text-align: center; }
+.supply-edge-route > button { min-width: 0; min-height: 62px; padding: 8px !important; display: grid; gap: 3px; color: #233128; background: #f5f8f2; border: 1px solid #d5ddd5; text-align: left; cursor: pointer; }
+.supply-edge-route > button:hover { background: #edf5df; border-color: #b9cb7b; }
+.supply-edge-route > button :is(b,span) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.supply-edge-route > button small { color: #6a776f; font: 700 7px/1 var(--font-code); }
+.supply-edge-route > button b { font-size: 9px; }.supply-edge-route > button span { color: #6f7b74; font-size: 7px; }
+.theme-dark .dense-network-edges > button:hover::before,
+.theme-dark .dense-network-edges > button:focus-visible::before,
+.theme-dark .dense-network-edges > button.selected::before,
+.theme-dark .dense-network-edges > button:hover::after,
+.theme-dark .dense-network-edges > button:focus-visible::after,
+.theme-dark .dense-network-edges > button.selected::after { background: #eff5f1; }
+.theme-dark .supply-edge-route > button { color: #edf2ee; background: #202528; border-color: #3a4245; }
+.theme-dark .supply-edge-route > button:hover { background: #283123; border-color: #66783a; }
+.theme-dark .supply-edge-route > button :is(small,span) { color: #a4afa8; }
+
+/* Client identity always uses the brand's own mark color. */
+.path-entity-mark.client-mark,
+.theme-dark .path-entity-mark.client-mark {
+  color: var(--client-brand-color) !important;
+  background: #fff !important;
+  border-color: color-mix(in srgb, var(--client-brand-color) 48%, #d5dcd5) !important;
+  box-shadow: inset 0 -2px var(--client-brand-color) !important;
+}
+.path-entity-mark.client-mark > svg { fill: var(--client-brand-color) !important; }
+.path-entity-mark.client-mark > :is(.client-wordmark,b) { color: var(--client-brand-color) !important; }
+.path-entity-mark.client-mark-gucci { background: #111 !important; }
+.path-entity-mark.client-mark-gucci > .client-wordmark { color: #d8bc77 !important; }
+
+@media (max-width: 720px) {
+  .global-graph-workbench { height: auto; min-height: 0; }
+  .global-canvas-shell { height: 560px; }
+  .global-node-inspector { height: auto; max-height: 560px; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import WorldNetworkMap, { type MapSelectionContext } from "./WorldNetworkMap";
 import { getNetworkView, networkLocations, type MapLayer, type NetworkFrameId, type NetworkRegion } from "./network-operations-model";
 import { type ScopeSnapshot, type StatusTone } from "./platform-model";
@@ -171,6 +171,18 @@ export default function ScopeDashboard({ snapshot, projects, worldScope, region:
   const [currency, setCurrency] = useState(snapshot.currency);
   const [reconciled, setReconciled] = useState(false);
   const [operationsView, setOperationsView] = useState<"overview" | "knowledge">("overview");
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (window.location.hash === "#knowledge-graph") setOperationsView("knowledge");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+  const selectOperationsView = (next: "overview" | "knowledge") => {
+    setOperationsView(next);
+    const url = new URL(window.location.href);
+    url.hash = next === "knowledge" ? "knowledge-graph" : "";
+    window.history.replaceState(window.history.state, "", url);
+  };
   const activeSnapshot = worldScope === "region" ? { ...snapshot, ...regionalOperationsProfiles[selectedRegion] } : snapshot;
   const traceScopeId = worldScope === "region" ? `region-${selectedRegion.toLowerCase().replaceAll(" ", "-")}` : snapshot.id;
   const traceContext = `Operations World / ${activeSnapshot.shortLabel}`;
@@ -212,8 +224,8 @@ export default function ScopeDashboard({ snapshot, projects, worldScope, region:
       </section>
 
       <nav className="operations-view-tabs" aria-label="Operations World views">
-        <button data-action-id="operations.view.overview" className={operationsView === "overview" ? "active" : ""} type="button" aria-current={operationsView === "overview" ? "page" : undefined} onClick={() => setOperationsView("overview")}><span aria-hidden="true">◎</span><b>Network operations</b><small>Signals, movements, and cash</small></button>
-        <button data-action-id="operations.view.knowledge" className={operationsView === "knowledge" ? "active" : ""} type="button" aria-current={operationsView === "knowledge" ? "page" : undefined} onClick={() => setOperationsView("knowledge")}><span aria-hidden="true">⌘</span><b>Global knowledge graph</b><small>All clients, projects, tables, and dependencies</small></button>
+        <button data-action-id="operations.view.overview" className={operationsView === "overview" ? "active" : ""} type="button" aria-current={operationsView === "overview" ? "page" : undefined} onClick={() => selectOperationsView("overview")}><span aria-hidden="true">◎</span><b>Network operations</b><small>Signals, movements, and cash</small></button>
+        <button data-action-id="operations.view.knowledge" className={operationsView === "knowledge" ? "active" : ""} type="button" aria-current={operationsView === "knowledge" ? "page" : undefined} onClick={() => selectOperationsView("knowledge")}><span aria-hidden="true">⌘</span><b>Global knowledge graph</b><small>All clients, projects, tables, and dependencies</small></button>
       </nav>
 
       {operationsView === "knowledge" ? <GlobalKnowledgeGraph projects={projects} onOpenProject={onOpenProject} onTrace={onTrace} /> : <>

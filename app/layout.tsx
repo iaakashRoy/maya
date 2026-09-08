@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "tanjx is a supply chain workspace connecting network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
+  "tanjnx is a supply chain workspace connecting network intelligence, client projects, specialist applications, operations research, agents, collaboration, and traceable evidence.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -28,9 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const socialImage = `${protocol}://${host}/og-workspace.png`;
 
   return {
-    title: "tanjx — Supply Chain Workspace",
+    title: "tanjnx — Supply Chain Workspace",
     description,
-    applicationName: "tanjx",
+    applicationName: "tanjnx",
     category: "Supply-network workspace",
     robots: { index: false, follow: false },
     icons: {
@@ -39,20 +39,20 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       type: "website",
-      title: "tanjx — Supply Chain Workspace",
+      title: "tanjnx — Supply Chain Workspace",
       description,
       images: [
         {
           url: socialImage,
           width: 1731,
           height: 909,
-          alt: "tanjx workspace for supply-network operations and client projects",
+          alt: "tanjnx workspace for supply-network operations and client projects",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "tanjx — Supply Chain Workspace",
+      title: "tanjnx — Supply Chain Workspace",
       description,
       images: [socialImage],
     },

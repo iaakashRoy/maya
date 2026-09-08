@@ -44,11 +44,7 @@ const entityColors: Record<string, string> = {
 };
 
 const clientColors = ["#159db6", "#ef3d36", "#7c45e8", "#e18716", "#2f6fe4", "#23a46e", "#e35f95", "#8ca12e", "#a96b31", "#677b85"];
-const graphSize = { width: 1700, height: 1040 };
-const clusterCenters = [
-  { x: 850, y: 515 }, { x: 835, y: 175 }, { x: 1150, y: 225 }, { x: 1390, y: 445 }, { x: 1285, y: 760 },
-  { x: 990, y: 860 }, { x: 640, y: 850 }, { x: 355, y: 675 }, { x: 315, y: 350 }, { x: 555, y: 185 },
-];
+const initialViewport = { width: 1180, height: 760 };
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
 const hashUnit = (value: string) => {
@@ -75,10 +71,11 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
   const [graphMode, setGraphMode] = useState<GraphMode>("graph");
   const [colorMode, setColorMode] = useState<ColorMode>("entity");
   const [sizeMode, setSizeMode] = useState<SizeMode>("influence");
-  const [zoom, setZoom] = useState(.92);
-  const [pan, setPan] = useState({ x: 54, y: 34 });
+  const [zoom, setZoom] = useState(.96);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [showCrossLinks, setShowCrossLinks] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [viewport, setViewport] = useState(initialViewport);
   const [themeRevision, setThemeRevision] = useState(0);
   const [objective, setObjective] = useState("Service resilience");
   const [shock, setShock] = useState("Trade controls + conflict corridor");
@@ -90,27 +87,36 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
     const edges: GlobalEdge[] = [];
     const projectProfiles = projects.map((project) => ({ project, profile: caseStudyProfileFor(project) })).filter((item) => item.profile);
 
+    const center = { x: viewport.width / 2, y: viewport.height / 2 };
+    const projectCount = Math.max(1, projectProfiles.length);
+    const sectorSpan = Math.PI * 2 / projectCount;
+    const horizontalReach = Math.max(220, viewport.width / 2 - 34);
+    const verticalReach = Math.max(220, viewport.height / 2 - 34);
+
     projectProfiles.forEach(({ project, profile }, projectIndex) => {
       if (!profile) return;
-      const center = clusterCenters[projectIndex] ?? { x: 850, y: 515 };
       const stageIndex = new Map(profile.supplyChain.stages.map((stage, index) => [stage.id, index]));
       const satellites = new Map<string, number>();
+      const clientAngle = -Math.PI / 2 + projectIndex * sectorSpan;
 
       profile.supplyChain.nodes.forEach((node) => {
-        let x = center.x;
-        let y = center.y;
-        if (node.tier !== "Hub") {
-          const stage = stageIndex.get(node.stageId) ?? 0;
-          const stageAngle = -Math.PI / 2 + (stage / profile.supplyChain.stages.length) * Math.PI * 2;
-          const satellite = satellites.get(node.stageId) ?? 0;
-          satellites.set(node.stageId, satellite + 1);
-          const tierRadius = node.tier === "Primary" ? 45 : node.tier === "Alternate" ? 71 : node.tier === "Contingency" ? 94 : 112 + Math.floor(satellite / 12) * 18;
-          const spread = node.tier === "Sub-tier" ? ((satellite % 12) - 5.5) * .065 : (hashUnit(node.id) - .5) * .09;
-          const jitter = (hashUnit(`${node.id}:jitter`) - .5) * 13;
-          x = center.x + Math.cos(stageAngle + spread) * (tierRadius + jitter);
-          y = center.y + Math.sin(stageAngle + spread) * (tierRadius + jitter);
-        }
-        nodes.push({ id: `${project.id}:${node.id}`, project, node, x: clamp(x, 24, graphSize.width - 24), y: clamp(y, 24, graphSize.height - 24), clientIndex: projectIndex });
+        const stage = stageIndex.get(node.stageId) ?? 0;
+        const satellite = satellites.get(node.stageId) ?? 0;
+        satellites.set(node.stageId, satellite + 1);
+        const stageOffset = ((stage - (profile.supplyChain.stages.length - 1) / 2) / profile.supplyChain.stages.length) * sectorSpan * .72;
+        const fanOffset = node.tier === "Sub-tier"
+          ? ((satellite % 18) - 8.5) * sectorSpan * .026
+          : (hashUnit(node.id) - .5) * sectorSpan * .11;
+        const ring = node.tier === "Hub" ? .14
+          : node.tier === "Primary" ? .32
+            : node.tier === "Alternate" ? .49
+              : node.tier === "Contingency" ? .67
+                : Math.min(.94, .78 + Math.floor(satellite / 18) * .055 + hashUnit(`${node.id}:ring`) * .045);
+        const angle = clientAngle + stageOffset + fanOffset;
+        const radialJitter = node.tier === "Hub" ? 0 : (hashUnit(`${node.id}:jitter`) - .5) * .045;
+        const x = center.x + Math.cos(angle) * horizontalReach * (ring + radialJitter);
+        const y = center.y + Math.sin(angle) * verticalReach * (ring + radialJitter);
+        nodes.push({ id: `${project.id}:${node.id}`, project, node, x: clamp(x, 24, viewport.width - 24), y: clamp(y, 24, viewport.height - 24), clientIndex: projectIndex });
       });
 
       profile.supplyChain.edges.forEach((edge) => edges.push({
@@ -151,7 +157,7 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
       adjacency.get(edge.to)?.add(edge.from);
     });
     return { nodes, edges, degree, adjacency, nodeIndex: new Map(nodes.map((item) => [item.id, item])), edgeIndex: new Map(edges.map((item) => [item.id, item])) };
-  }, [projects]);
+  }, [projects, viewport.height, viewport.width]);
 
   const categories = useMemo(() => [...new Set(graph.nodes.map((item) => item.node.assetType))].sort(), [graph.nodes]);
   const visibleNodes = useMemo(() => graph.nodes.filter((item) =>
@@ -191,6 +197,22 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const shell = canvas?.parentElement;
+    if (!canvas || !shell) return;
+    const updateViewport = () => {
+      const rect = shell.getBoundingClientRect();
+      if (rect.width < 240 || rect.height < 320) return;
+      const next = { width: Math.round(rect.width), height: Math.round(rect.height) };
+      setViewport((current) => current.width === next.width && current.height === next.height ? current : next);
+    };
+    updateViewport();
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, [inspectorOpen]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -198,11 +220,11 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
     const background = styles.getPropertyValue("--global-graph-bg").trim() || "#f4efe4";
     const textColor = styles.getPropertyValue("--global-graph-text").trim() || "#17231b";
     const gridColor = styles.getPropertyValue("--global-graph-grid").trim() || "rgba(80,105,93,.18)";
-    context.clearRect(0, 0, graphSize.width, graphSize.height);
+    context.clearRect(0, 0, viewport.width, viewport.height);
     context.fillStyle = background;
-    context.fillRect(0, 0, graphSize.width, graphSize.height);
+    context.fillRect(0, 0, viewport.width, viewport.height);
     context.fillStyle = gridColor;
-    for (let x = 12; x < graphSize.width; x += 26) for (let y = 12; y < graphSize.height; y += 26) context.fillRect(x, y, 1.2, 1.2);
+    for (let x = 12; x < viewport.width; x += 26) for (let y = 12; y < viewport.height; y += 26) context.fillRect(x, y, 1.2, 1.2);
     context.save();
     context.translate(pan.x, pan.y);
     context.scale(zoom, zoom);
@@ -281,14 +303,14 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
       context.globalAlpha = 1;
     });
     context.restore();
-  }, [colorFor, focusEdge, focusId, focusNeighborhood, graph.nodeIndex, graphMode, hover, hoveredEdge?.id, matchesQuery, normalizedQuery, pan, radiusFor, selected?.id, selectedEdge, themeRevision, visibleEdges, visibleNodes, zoom]);
+  }, [colorFor, focusEdge, focusId, focusNeighborhood, graph.nodeIndex, graphMode, hover, hoveredEdge?.id, matchesQuery, normalizedQuery, pan, radiusFor, selected?.id, selectedEdge, themeRevision, viewport.height, viewport.width, visibleEdges, visibleNodes, zoom]);
 
   const pointFromEvent = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const screenX = (clientX - rect.left) * graphSize.width / rect.width;
-    const screenY = (clientY - rect.top) * graphSize.height / rect.height;
+    const screenX = (clientX - rect.left) * viewport.width / rect.width;
+    const screenY = (clientY - rect.top) * viewport.height / rect.height;
     return { rect, screenX, screenY, worldX: (screenX - pan.x) / zoom, worldY: (screenY - pan.y) / zoom };
   };
 
@@ -340,14 +362,14 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
     const maxX = Math.max(...visibleNodes.map((item) => item.x));
     const minY = Math.min(...visibleNodes.map((item) => item.y));
     const maxY = Math.max(...visibleNodes.map((item) => item.y));
-    const nextZoom = clamp(Math.min((graphSize.width - 120) / Math.max(1, maxX - minX), (graphSize.height - 120) / Math.max(1, maxY - minY)), .38, 1.45);
+    const nextZoom = clamp(Math.min((viewport.width - 84) / Math.max(1, maxX - minX), (viewport.height - 84) / Math.max(1, maxY - minY)), .38, 1.45);
     setZoom(nextZoom);
-    setPan({ x: graphSize.width / 2 - ((minX + maxX) / 2) * nextZoom, y: graphSize.height / 2 - ((minY + maxY) / 2) * nextZoom });
+    setPan({ x: viewport.width / 2 - ((minX + maxX) / 2) * nextZoom, y: viewport.height / 2 - ((minY + maxY) / 2) * nextZoom });
   };
   const centerNode = (item: GlobalNode) => {
     const nextZoom = 1.28;
     setZoom(nextZoom);
-    setPan({ x: graphSize.width / 2 - item.x * nextZoom, y: graphSize.height / 2 - item.y * nextZoom });
+    setPan({ x: viewport.width / 2 - item.x * nextZoom, y: viewport.height / 2 - item.y * nextZoom });
     setSelectedId(item.id);
     setSelectedEdgeId("");
   };
@@ -358,7 +380,7 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
     if (!from || !to) return;
     const nextZoom = 1.42;
     setZoom(nextZoom);
-    setPan({ x: graphSize.width / 2 - ((from.x + to.x) / 2) * nextZoom, y: graphSize.height / 2 - ((from.y + to.y) / 2) * nextZoom });
+    setPan({ x: viewport.width / 2 - ((from.x + to.x) / 2) * nextZoom, y: viewport.height / 2 - ((from.y + to.y) / 2) * nextZoom });
     setSelectedEdgeId(edge.id);
   };
 
@@ -399,8 +421,8 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
       <div className="global-canvas-shell">
         <canvas
           ref={canvasRef}
-          width={graphSize.width}
-          height={graphSize.height}
+          width={viewport.width}
+          height={viewport.height}
           onWheel={(event) => {
             event.preventDefault();
             const point = pointFromEvent(event.clientX, event.clientY);
@@ -413,7 +435,7 @@ export default function GlobalKnowledgeGraph({ projects, onOpenProject, onTrace 
           onPointerMove={(event) => {
             if (dragRef.current && (event.buttons & 1)) {
               const rect = event.currentTarget.getBoundingClientRect();
-              setPan({ x: dragRef.current.panX + (event.clientX - dragRef.current.x) * graphSize.width / rect.width, y: dragRef.current.panY + (event.clientY - dragRef.current.y) * graphSize.height / rect.height });
+              setPan({ x: dragRef.current.panX + (event.clientX - dragRef.current.x) * viewport.width / rect.width, y: dragRef.current.panY + (event.clientY - dragRef.current.y) * viewport.height / rect.height });
               setHover(null);
               return;
             }

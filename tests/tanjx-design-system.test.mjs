@@ -4,23 +4,27 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-test("tanjx branding replaces the former product and provider labels", async () => {
-  const [layout, shell, workspace, activity] = await Promise.all([
+test("tanjnx branding replaces the former product and provider labels", async () => {
+  const [layout, shell, workspace, activity, favicon] = await Promise.all([
     read("../app/layout.tsx"),
     read("../app/PlatformShell.tsx"),
     read("../app/workspace-model.ts"),
     read("../app/project-activity-model.ts"),
+    read("../public/favicon.svg"),
   ]);
   const productSurface = `${layout}\n${shell}\n${workspace}\n${activity}`;
 
-  assert.match(layout, /tanjx — Supply Chain Workspace/);
+  assert.match(layout, /tanjnx — Supply Chain Workspace/);
   assert.match(shell, /<BrandMark \/>/);
-  assert.match(shell, /<b>tanjx<\/b><small>Supply chain workspace<\/small>/);
+  assert.match(shell, /<b>tanjnx<\/b><small>Supply chain workspace<\/small>/);
   assert.match(shell, /Aakash Roy/);
   assert.match(workspace, /role: "Super Admin"/);
   assert.doesNotMatch(shell, /environment-badge/);
   assert.doesNotMatch(shell, /document\.title\s*=/, "route chrome must not race the server-rendered title during hydration");
   assert.doesNotMatch(productSurface, /Maya Workspace|Maya Rao|Kearney/);
+  assert.match(favicon, /aria-label="tanjnx"/);
+  assert.match(favicon, /fill="#d7ff38"/);
+  assert.match(favicon, /M12 43 52 21/);
 });
 
 test("every project app has a semantic icon and agents have stable differentiated colors", async () => {
@@ -55,6 +59,7 @@ test("every project app has a semantic icon and agents have stable differentiate
   assert.match(identity, /role="img" aria-label=\{`\$\{label\} client logo`\}/);
   assert.match(identity, /siAirbus, siApple, siCocacola, siTata, siTesla/);
   assert.match(identity, /<svg viewBox="0 0 24 24"/);
+  assert.match(identity, /--client-brand-color/);
   assert.match(shell, /<SectorMark sectorId=\{group\.id\}/);
   assert.match(shell, /<ClientMark clientId=\{group\.id\}/);
   for (const icon of ["client-add", "project-add", "workspace", "world", "variables"]) {
@@ -74,7 +79,7 @@ test("light mode gives maps and knowledge graphs a light spatial canvas", async 
 
 test("the workspace uses one type scale, one gutter contract, and neutral dark surfaces", async () => {
   const css = await read("../app/globals.css");
-  const contract = css.slice(css.lastIndexOf("tanjx visual system"));
+  const contract = css.slice(css.lastIndexOf("tanjnx visual system"));
 
   assert.match(contract, /--workspace-gutter:\s*clamp\(16px, 1\.6vw, 24px\)/);
   assert.match(contract, /\.workspace-home,[\s\S]*?\.scope-dashboard,[\s\S]*?\.application-session-surface,[\s\S]*?\.project-stage\s*\{\s*padding:\s*var\(--workspace-gutter\)\s*!important/);

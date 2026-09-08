@@ -62,7 +62,7 @@ type ClientVisual = { monogram: string; color: string; shape: string; icon?: { p
 const clientVisuals: Record<string, ClientVisual> = {
   "apple": { monogram: "A", color: `#${siApple.hex}`, shape: "apple", icon: siApple },
   "coca-cola": { monogram: "CC", color: `#${siCocacola.hex}`, shape: "coca-cola", icon: siCocacola },
-  "gucci": { monogram: "GG", color: "#0f5132", shape: "gucci", wordmark: "GUCCI" },
+  "gucci": { monogram: "GG", color: "#A78645", shape: "gucci", wordmark: "GUCCI" },
   "tata-motors": { monogram: "T", color: `#${siTata.hex}`, shape: "tata", icon: siTata },
   "tesla": { monogram: "T", color: `#${siTesla.hex}`, shape: "tesla", icon: siTesla },
   "byd": { monogram: "BYD", color: "#d71920", shape: "byd", wordmark: "BYD" },
@@ -104,7 +104,7 @@ export function clientColorFor(clientId: string) {
 }
 
 export function BrandMark() {
-  return <span className="tanjx-mark" aria-hidden="true"><i /><i /></span>;
+  return <span className="tanjnx-mark" aria-hidden="true"><i /><i /></span>;
 }
 
 export type NavigationIconName = "client-add" | "project-add" | "collapse" | "expand" | "close" | "workspace" | "world" | "variables";
@@ -120,7 +120,7 @@ export function SectorMark({ sectorId, label }: { sectorId: string; label: strin
 
 export function ClientMark({ clientId, label }: { clientId: string; label: string }) {
   const visual = clientVisuals[clientId] ?? { monogram: initialsFor(label), color: clientColorFor(clientId), shape: "generic" };
-  return <span className={`path-entity-mark client-mark client-mark-${visual.shape}`} style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} client`} role="img" aria-label={`${label} client logo`} data-client-mark={clientId}>{visual.icon ? <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={visual.icon.path} /></svg> : visual.wordmark ? <span className="client-wordmark" aria-hidden="true">{visual.wordmark}</span> : <b aria-hidden="true">{visual.monogram}</b>}</span>;
+  return <span className={`path-entity-mark client-mark client-mark-${visual.shape}`} style={{ "--entity-accent": visual.color, "--client-brand-color": visual.color } as CSSProperties} title={`${label} client`} role="img" aria-label={`${label} client logo`} data-client-mark={clientId}>{visual.icon ? <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={visual.icon.path} /></svg> : visual.wordmark ? <span className="client-wordmark" aria-hidden="true">{visual.wordmark}</span> : <b aria-hidden="true">{visual.monogram}</b>}</span>;
 }
 
 export function AppGlyph({ appId, label, className = "" }: { appId: AppGlyphId; label?: string; className?: string }) {
