@@ -52,10 +52,12 @@ test("every project app has a semantic icon and agents have stable differentiate
     assert.match(identity, new RegExp(`data-client-mark=\\{clientId\\}`));
     assert.match(identity, new RegExp(`\\"${client}\\": \\{ monogram:`));
   }
-  assert.match(identity, /role="img" aria-label=\{`\$\{label\} client mark`\}/);
+  assert.match(identity, /role="img" aria-label=\{`\$\{label\} client logo`\}/);
+  assert.match(identity, /siAirbus, siApple, siCocacola, siTata, siTesla/);
+  assert.match(identity, /<svg viewBox="0 0 24 24"/);
   assert.match(shell, /<SectorMark sectorId=\{group\.id\}/);
   assert.match(shell, /<ClientMark clientId=\{group\.id\}/);
-  for (const icon of ["client-add", "project-add", "workspace", "world"]) {
+  for (const icon of ["client-add", "project-add", "workspace", "world", "variables"]) {
     assert.match(shell, new RegExp(`NavigationIcon name="${icon}"`));
   }
 });

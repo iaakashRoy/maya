@@ -205,6 +205,16 @@ test("navigation requires an explicit project and never guesses a leaf from a cl
   assert.equal(matchedPair.projectId, "");
 });
 
+test("Variables is a workspace-level route that clears stale project context", async () => {
+  const { resolveNavigation } = await loadNavigation();
+  const result = resolveNavigation({ view: "variables", scope: "global", sector: "consumer-electronics", client: "apple", project: "apple-launch-continuity", projectTab: "data" });
+  assert.equal(result.view, "variables");
+  assert.equal(result.scope, "company");
+  assert.equal(result.projectId, "");
+  assert.equal(result.clientId, null);
+  assert.equal(result.sectorId, null);
+});
+
 test("a valid explicit project is authoritative and returns canonical ancestry", async () => {
   const { resolveNavigation } = await loadNavigation();
   const result = resolveNavigation({

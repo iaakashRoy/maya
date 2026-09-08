@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { siAirbus, siApple, siCocacola, siTata, siTesla } from "simple-icons";
 import type { ProjectAppId } from "./workspace-model";
 
 type AppGlyphId = ProjectAppId | "playground";
@@ -56,17 +57,19 @@ const sectorVisuals: Record<string, { symbol: string; color: string }> = {
   "retail-commerce": { symbol: "▤", color: "#b34c88" },
 };
 
-const clientVisuals: Record<string, { monogram: string; color: string; shape: string }> = {
-  "apple": { monogram: "A", color: "#111827", shape: "apple" },
-  "coca-cola": { monogram: "CC", color: "#e41e2b", shape: "coca-cola" },
-  "gucci": { monogram: "GG", color: "#0f5132", shape: "gucci" },
-  "tata-motors": { monogram: "T", color: "#1e5aa8", shape: "tata" },
-  "tesla": { monogram: "T", color: "#cc0000", shape: "tesla" },
-  "byd": { monogram: "BYD", color: "#d71920", shape: "byd" },
-  "hershey": { monogram: "H", color: "#4b1f2a", shape: "hershey" },
-  "tsmc": { monogram: "TC", color: "#d81e05", shape: "tsmc" },
-  "airbus": { monogram: "A", color: "#005b9f", shape: "airbus" },
-  "pfizer": { monogram: "P", color: "#0067b1", shape: "pfizer" },
+type ClientVisual = { monogram: string; color: string; shape: string; icon?: { path: string }; wordmark?: string };
+
+const clientVisuals: Record<string, ClientVisual> = {
+  "apple": { monogram: "A", color: `#${siApple.hex}`, shape: "apple", icon: siApple },
+  "coca-cola": { monogram: "CC", color: `#${siCocacola.hex}`, shape: "coca-cola", icon: siCocacola },
+  "gucci": { monogram: "GG", color: "#0f5132", shape: "gucci", wordmark: "GUCCI" },
+  "tata-motors": { monogram: "T", color: `#${siTata.hex}`, shape: "tata", icon: siTata },
+  "tesla": { monogram: "T", color: `#${siTesla.hex}`, shape: "tesla", icon: siTesla },
+  "byd": { monogram: "BYD", color: "#d71920", shape: "byd", wordmark: "BYD" },
+  "hershey": { monogram: "H", color: "#4b1f2a", shape: "hershey", wordmark: "HERSHEY" },
+  "tsmc": { monogram: "TC", color: "#d81e05", shape: "tsmc", wordmark: "tsmc" },
+  "airbus": { monogram: "A", color: `#${siAirbus.hex}`, shape: "airbus", icon: siAirbus },
+  "pfizer": { monogram: "P", color: "#0067b1", shape: "pfizer", wordmark: "Pfizer" },
   "apex-mobility": { monogram: "AM", color: "#6548c8", shape: "generic" },
   "helixora": { monogram: "HX", color: "#c13f60", shape: "generic" },
   "orion-silicon": { monogram: "OS", color: "#187b86", shape: "generic" },
@@ -104,7 +107,7 @@ export function BrandMark() {
   return <span className="tanjx-mark" aria-hidden="true"><i /><i /></span>;
 }
 
-export type NavigationIconName = "client-add" | "project-add" | "collapse" | "expand" | "close" | "workspace" | "world";
+export type NavigationIconName = "client-add" | "project-add" | "collapse" | "expand" | "close" | "workspace" | "world" | "variables";
 
 export function NavigationIcon({ name }: { name: NavigationIconName }) {
   return <span className={`navigation-icon navigation-icon-${name}`} aria-hidden="true" data-navigation-icon={name}><i /><em /></span>;
@@ -117,7 +120,7 @@ export function SectorMark({ sectorId, label }: { sectorId: string; label: strin
 
 export function ClientMark({ clientId, label }: { clientId: string; label: string }) {
   const visual = clientVisuals[clientId] ?? { monogram: initialsFor(label), color: clientColorFor(clientId), shape: "generic" };
-  return <span className={`path-entity-mark client-mark client-mark-${visual.shape}`} style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} client`} role="img" aria-label={`${label} client mark`} data-client-mark={clientId}><b>{visual.monogram}</b><i aria-hidden="true" /></span>;
+  return <span className={`path-entity-mark client-mark client-mark-${visual.shape}`} style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} client`} role="img" aria-label={`${label} client logo`} data-client-mark={clientId}>{visual.icon ? <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={visual.icon.path} /></svg> : visual.wordmark ? <span className="client-wordmark" aria-hidden="true">{visual.wordmark}</span> : <b aria-hidden="true">{visual.monogram}</b>}</span>;
 }
 
 export function AppGlyph({ appId, label, className = "" }: { appId: AppGlyphId; label?: string; className?: string }) {

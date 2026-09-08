@@ -85,6 +85,21 @@ test("Operations World renders authoritative Global and Regional scopes", async 
   assert.doesNotMatch(regionalHtml, /project-binding-strip|class="workspace-home"/);
 });
 
+test("Variables and Methods renders the searchable canonical workspace registry", async () => {
+  const response = await render("/?view=variables&scope=global&project=apple-launch-continuity");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /data-action-id="nav\.variables"[^>]*class="scope-nav active"/);
+  assert.match(html, /Variables &amp; Methods/);
+  assert.match(html, /481 L0 atomic variables/);
+  assert.match(html, /60 L1 groupings/);
+  assert.match(html, /35 L2 forces/);
+  assert.match(html, /30 analytical methods/);
+  assert.match(html, /Search code, variable, meaning, example, relationship, or method/);
+  assert.match(html, /Demand volume/);
+  assert.doesNotMatch(html, /class="project-context-stack"/);
+});
+
 test("project-only capabilities fail closed to Workspace without a valid project", async () => {
   const routes = [
     "/?view=risk&scope=company",

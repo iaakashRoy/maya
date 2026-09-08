@@ -62,6 +62,11 @@ test("global graph, statistical analysis, and full-table query surfaces are wire
   assert.match(globalGraph, /sizeMode/);
   assert.match(globalGraph, /onPointerMove/);
   assert.match(globalGraph, /onDoubleClick/);
+  assert.match(globalGraph, /const edgeAt/);
+  assert.match(globalGraph, /selectedEdgeId/);
+  assert.match(globalGraph, /RELATIONSHIP/);
+  assert.match(globalGraph, /Volume \/ value/);
+  assert.match(globalGraph, /Dependency share/);
   assert.match(globalGraph, /global-graph-tooltip/);
   assert.doesNotMatch(globalGraph, /projectIndex % 5/);
   assert.match(studios, /StatisticalStudio/);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import ApplicationViews from "./ApplicationViews";
 import DataOperations from "./DataOperations";
 import DecisionWorkspaces from "./DecisionWorkspaces";
@@ -59,6 +59,8 @@ import {
   type ViewId,
   type WorkflowViewId,
 } from "./platform-model";
+
+const VariablesCatalog = lazy(() => import("./VariablesCatalog"));
 
 const dataViews = [
   { id: "agents" as const, label: "Playground", icon: "PG", detail: "Project sessions and expert agents" },
@@ -493,6 +495,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       { id: "company", label: "Workspace", detail: "Sectors, clients, projects, and collaboration", group: "Navigation" },
       { id: "global", label: "Operations World · Global", detail: scopeSnapshots.global.context, group: "Navigation" },
       { id: "region", label: "Operations World · Regional", detail: regionalOperationsProfiles[operationsRegion].context, group: "Navigation" },
+      { id: "variables", label: "Variables & Methods", detail: "576 canonical variables and 30 analytical methods", group: "Navigation" },
       ...accessibleProjects.map((item) => ({ id: "company" as ViewId, projectId: item.id, label: `${item.client} · ${item.name}`, detail: `${item.sector} · ${item.problem}`, group: "Project" })),
       ...(scope === "company" && resolvedProject && activeProjectViewAccess?.allowed ? [
         ...workflowViews.filter((item) => hasProjectDecision || item.id === "decisions").map((item) => ({ id: item.id as ViewId, label: item.label, detail: `${activeProject.name} · ${hasProjectDecision ? item.detail : "Create the first decision brief"}`, group: "Project capability" })),
@@ -695,6 +698,28 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         setView("company");
         openProjectTab(activeProjectTab);
       }
+      return;
+    }
+    if (next === "variables") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", "variables");
+      url.searchParams.set("scope", "company");
+      routeParameterKeys.forEach((key) => url.searchParams.delete(key));
+      commitNavigationUrl(url, navigationOptions.replace ?? false, navigationOptions.historyState ?? {});
+      setView("variables");
+      setScope("company");
+      setActiveProjectId("");
+      setActiveProjectTab("overview");
+      setActiveProjectApp(null);
+      setActiveSessionId(null);
+      setActiveRunId(null);
+      setNetworkSelection(null);
+      setIdentitySelection(null);
+      setMobileOpen(false);
+      setSearchOpen(false);
+      setProfileOpen(false);
+      setOutcome(null);
+      window.setTimeout(() => document.querySelector<HTMLElement>("[data-page-heading]")?.focus(), 30);
       return;
     }
     const isProjectCapability = workflowViews.some((item) => item.id === next)
@@ -1087,8 +1112,9 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         <nav id="tanjx-primary-navigation" aria-label="Main navigation">
           <section className="nav-section workspace-primary-nav">
             <p>Workspace</p>
-            <button data-action-id="nav.workspace" className={`scope-nav ${scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
+            <button data-action-id="nav.workspace" className={`scope-nav ${view === "company" && scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
             <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><NavigationIcon name="world" /><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
+            <button data-action-id="nav.variables" className={`scope-nav ${view === "variables" ? "active" : ""}`} type="button" aria-label="Open Variables and Methods" title="Variables and Methods" onClick={() => go("variables")}><NavigationIcon name="variables" /><div><b>Variables</b><small>L0, L1, L2, and analytical methods</small></div><i>›</i></button>
             <button data-action-id="nav.case-studies" className="scope-nav" type="button" aria-label="Open case study library" title="Case study library" onClick={() => window.location.assign("/case-studies")}><span className="case-study-nav-icon" aria-hidden="true">10</span><div><b>Case studies</b><small>Problems, models, and outcomes</small></div><i>›</i></button>
           </section>
           <section className="nav-section sidebar-projects">
@@ -1130,7 +1156,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         <div className="shell-chrome">
           <header className="topbar">
           <button className="menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="tanjx-primary-navigation" onClick={() => setMobileOpen(true)}>☰</button>
-          <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b aria-current="page">{segment.label}</b> : <span className="breadcrumb-label">{segment.label}</span>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}</nav>
+          <nav className="breadcrumb" aria-label="Breadcrumb" title={resolvedProject ? `Workspace / ${projectPath.map((segment) => segment.label).join(" / ")}` : undefined}><button data-action-id="breadcrumb.workspace" type="button" onClick={openWorkspaceHome}>Workspace</button>{resolvedProject && activeProjectViewAccess?.allowed && projectPath.map((segment, index) => <span className="breadcrumb-segment" key={`${segment.kind}:${segment.id}`}><i>/</i>{index === projectPath.length - 1 ? <b aria-current="page">{segment.label}</b> : <span className="breadcrumb-label">{segment.label}</span>}</span>)}{resolvedProject && !activeProjectViewAccess?.allowed && <><i>/</i><b>Access required</b></>}{!resolvedProject && scope !== "company" && <><i>/</i><b>Operations World</b></>}{view === "variables" && <><i>/</i><b>Variables &amp; Methods</b></>}</nav>
           <div className="topbar-actions">
             <button className="search-trigger" type="button" onClick={() => setSearchOpen(true)}><span>⌕</span><b>Search workspace</b><kbd>⌘ K</kbd></button>
             <button data-action-id="theme.toggle" className="topbar-icon theme-toggle" type="button" aria-label={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} title={`Switch to ${workspaceTheme === "light" ? "dark" : "light"} mode`} aria-pressed={workspaceTheme === "dark"} onClick={() => setWorkspaceTheme(workspaceTheme === "light" ? "dark" : "light")}><span aria-hidden="true">{workspaceTheme === "light" ? "◐" : "☀"}</span></button>
@@ -1171,12 +1197,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
               return <button data-action-id={`workspace.tab.${item.id}`} type="button" aria-current={active ? "page" : undefined} className={active ? "active" : ""} key={item.id} onClick={() => openProjectTab(item.id)}><span>{item.label}</span>{count !== undefined && <em>{count}</em>}</button>;
             })}</nav>
             <aside className="project-section-state" aria-label={`Project state: ${activeProject.stage}`}><span><i className={`project-tone-${activeProject.health}`} />{activeProject.stage}</span><small>{activeProject.classification} · {activeProject.dataResidency}</small></aside>
-          </div> : !canViewActiveProject ? <div className="statusbar">{resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div> : null}
+          </div> : !canViewActiveProject ? <div className="statusbar">{view === "variables" ? <><span><i className="status-fixture" />Governed taxonomy</span><span>481 L0 atomic variables</span><span>60 L1 groupings · 35 L2 forces</span><span>30 analytical methods</span></> : resolvedProject && scope === "company" ? <><span><i className="status-fixture" />Access required</span><span>Project boundary enforced</span></> : scope === "company" ? <><span><i className="status-fixture" />Workspace</span><span>{accessibleClients.length} clients</span><span>{accessibleProjects.length} projects</span><span>{workspaceCollaboratorViews.length} collaborator profiles</span></> : <><span><i className="status-fixture" />Operations World</span><span>{scope === "global" ? "Global" : operationsRegion}</span><span>2,164 synthetic movements</span><span>Evidence-linked fixture</span></>}</div> : null}
         </div>
 
         <main className="main-content">
           {resolvedProject && scope === "company" && deniedProjectAccess ? (
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
+          ) : view === "variables" ? (
+            <VariablesCatalog />
           ) : view === "company" && resolvedProject ? (
             <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} initialSessionId={activeSessionId} initialRunId={activeRunId} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onAgentRosterChange={handleAgentRosterChange} onProjectSetupChange={handleProjectSetupChange} onTabChange={(tab) => openProjectTab(tab)} onStudioChange={openMountedProjectApp} onSessionChange={openProjectSession} onRunChange={openProjectRun} onOpenApp={openMountedProjectApp} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
           ) : view === "company" ? (
@@ -1213,7 +1241,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           ) : <WorkspaceHome projects={accessibleProjects} clients={accessibleClients} collaborators={workspaceCollaboratorViews} onOpenProject={(project) => openProject(project.id)} onOnboardClient={() => startOnboarding("client")} onCreateProject={(client) => startOnboarding("project", client?.id)} onOpenOperationsWorld={() => go("global")} />}
         </main>
 
-        <footer className="app-footer"><span>tanjx · Supply chain workspace</span><span>{canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : resolvedProject && scope === "company" ? "Project access required" : scope === "company" ? `${accessibleProjects.length} projects` : `Operations World / ${scope === "global" ? "Global" : operationsRegion}`}</span></footer>
+        <footer className="app-footer"><span>tanjx · Supply chain workspace</span><span>{view === "variables" ? "Variables & Methods / Canonical registry" : canViewActiveProject ? `${activeProject.client} / ${activeProject.name}` : resolvedProject && scope === "company" ? "Project access required" : scope === "company" ? `${accessibleProjects.length} projects` : `Operations World / ${scope === "global" ? "Global" : operationsRegion}`}</span></footer>
       </div>
 
       {canViewActiveProject && <WorkIdentityInspector
