@@ -20,15 +20,15 @@ test("the canonical portfolio contains ten complete public-context simulations",
     assert.ok(profile.hardConstraints.length >= 4, `${profile.company} hard constraints`);
     assert.ok(profile.timeline.length >= 5, `${profile.company} activity trail`);
     assert.equal(profile.supplyChain.stages.length, 8, `${profile.company} multilevel chain`);
-    assert.equal(profile.supplyChain.nodes.length, 24, `${profile.company} primary, alternate, and contingency nodes`);
-    assert.equal(profile.supplyChain.edges.length, 35, `${profile.company} typed dependencies`);
+    assert.equal(profile.supplyChain.nodes.length, 169, `${profile.company} hub, operating, alternate, contingency, and sub-tier nodes`);
+    assert.equal(profile.supplyChain.edges.length, 313, `${profile.company} typed multilevel dependencies`);
     assert.equal(profile.supplyChain.checkpoints.length, 16, `${profile.company} checkpoint register`);
     assert.equal(profile.supplyChain.signals.length, 16, `${profile.company} realtime-style signals`);
     const nodeIds = new Set(profile.supplyChain.nodes.map((node) => node.id));
     const stageIds = new Set(profile.supplyChain.stages.map((stage) => stage.id));
     for (const node of profile.supplyChain.nodes) {
-      assert.ok(stageIds.has(node.stageId), `${profile.company} node stage reference`);
-      assert.match(node.evidenceRef, /^P-\d{3}-EV-NET-/);
+      assert.ok(node.tier === "Hub" || stageIds.has(node.stageId), `${profile.company} node stage reference`);
+      assert.match(node.evidenceRef, /^P-\d{3}-EV-(?:NET|X)-/);
     }
     for (const edge of profile.supplyChain.edges) {
       assert.ok(nodeIds.has(edge.from), `${profile.company} edge source reference`);
@@ -86,7 +86,7 @@ test("embedded and standalone case-study guides expose project-deep links and si
   assert.match(deck, /ArrowRight/);
   assert.match(deck, /window\.print/);
   assert.match(deck, /GRAPH \+ CHOKEPOINTS/);
-  assert.match(deck, /910<\/b> portfolio network records/);
+  assert.match(deck, /5,140<\/b> portfolio network records/);
   for (const company of ["Apple", "Coca-Cola", "Gucci", "Tata Motors", "Tesla", "BYD", "Hershey", "TSMC", "Airbus", "Pfizer"]) {
     assert.match(deck, new RegExp(`company:\\s*["']${company.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`));
   }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainNode } from "./case-study-model";
+import { useRef, useState, type CSSProperties } from "react";
+import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainNetwork, type SupplyChainNode } from "./case-study-model";
 import { fixtureEvidenceFor, type EvidenceReceipt, type WorkspaceProject } from "./workspace-model";
 
 type ExplorerProps = {
@@ -15,6 +15,100 @@ type TraceDirection = "both" | "upstream" | "downstream";
 
 const riskLabel = (score: number) => score >= 82 ? "Critical" : score >= 68 ? "High" : score >= 52 ? "Moderate" : "Low";
 
+type DenseGraphProps = {
+  network: SupplyChainNetwork;
+  nodes: readonly SupplyChainNode[];
+  tracedNodeIds: ReadonlySet<string>;
+  selectedNodeId: string;
+  onSelect: (nodeId: string) => void;
+};
+
+const assetKey = (assetType: string) => assetType.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+function DenseSupplyNetworkGraph({ network, nodes, tracedNodeIds, selectedNodeId, onSelect }: DenseGraphProps) {
+  const [zoom, setZoom] = useState(.9);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [focusMode, setFocusMode] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
+  const drag = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const stageIndexById = new Map(network.stages.map((stage, index) => [stage.id, index]));
+  const satellitesByStage = new Map<string, number>();
+  const points = new Map<string, { x: number; y: number; size: number }>();
+
+  for (const node of nodes) {
+    if (node.tier === "Hub") {
+      points.set(node.id, { x: 500, y: 360, size: 58 });
+      continue;
+    }
+    const stageIndex = stageIndexById.get(node.stageId) ?? 0;
+    const baseAngle = -Math.PI / 2 + (stageIndex / network.stages.length) * Math.PI * 2;
+    let radius = node.tier === "Primary" ? 108 : node.tier === "Alternate" ? 170 : node.tier === "Contingency" ? 228 : 286;
+    let angle = baseAngle;
+    const size = node.tier === "Primary" ? 28 : node.tier === "Alternate" ? 23 : node.tier === "Contingency" ? 20 : 9 + Math.round(node.riskScore / 28);
+    if (node.tier === "Sub-tier") {
+      const satelliteIndex = satellitesByStage.get(node.stageId) ?? 0;
+      satellitesByStage.set(node.stageId, satelliteIndex + 1);
+      angle += (satelliteIndex - 8.5) * .027;
+      radius += ((satelliteIndex % 5) - 2) * 13;
+    }
+    points.set(node.id, { x: 500 + Math.cos(angle) * radius, y: 360 + Math.sin(angle) * radius, size });
+  }
+
+  const visibleIds = new Set(nodes.map((node) => node.id));
+  const edges = network.edges.filter((edge) => visibleIds.has(edge.from) && visibleIds.has(edge.to));
+  const resetView = () => { setZoom(.9); setPan({ x: 0, y: 0 }); };
+
+  return <div className="dense-network-shell">
+    <div className="dense-network-toolbar" aria-label="Graph navigation controls">
+      <span><b>{nodes.length}</b> entities <i /> <b>{edges.length}</b> visible links</span>
+      <button data-action-id="supply-network.focus" className={focusMode ? "active" : ""} type="button" aria-pressed={focusMode} onClick={() => setFocusMode((current) => !current)}>&#9673; Isolate path</button>
+      <button data-action-id="supply-network.labels" className={showLabels ? "active" : ""} type="button" aria-pressed={showLabels} onClick={() => setShowLabels((current) => !current)}>Aa Labels</button>
+      <button data-action-id="supply-network.zoom.out" type="button" aria-label="Zoom out" onClick={() => setZoom((current) => Math.max(.55, current - .1))}>&minus;</button>
+      <output aria-label="Graph zoom">{Math.round(zoom * 100)}%</output>
+      <button data-action-id="supply-network.zoom.in" type="button" aria-label="Zoom in" onClick={() => setZoom((current) => Math.min(1.5, current + .1))}>+</button>
+      <button data-action-id="supply-network.zoom.fit" type="button" onClick={resetView}>Fit</button>
+    </div>
+    <div
+      className="dense-network-viewport"
+      aria-label="Interactive supply network. Drag to pan and use the controls to zoom."
+      onWheel={(event) => { event.preventDefault(); setZoom((current) => Math.min(1.5, Math.max(.55, current + (event.deltaY < 0 ? .08 : -.08)))); }}
+      onPointerDown={(event) => {
+        if ((event.target as HTMLElement).closest("button")) return;
+        drag.current = { x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!drag.current) return;
+        setPan({ x: drag.current.panX + event.clientX - drag.current.x, y: drag.current.panY + event.clientY - drag.current.y });
+      }}
+      onPointerUp={(event) => { drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId); }}
+    >
+      <div className="dense-network-canvas" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
+        {network.stages.map((stage, index) => {
+          const angle = -Math.PI / 2 + (index / network.stages.length) * Math.PI * 2;
+          return <span className="dense-network-stage-label" key={stage.id} style={{ left: 500 + Math.cos(angle) * 334, top: 360 + Math.sin(angle) * 334 }}><b>{String(stage.sequence).padStart(2, "0")}</b>{stage.label}</span>;
+        })}
+        <div className="dense-network-edges" aria-hidden="true">{edges.map((edge) => {
+          const from = points.get(edge.from)!;
+          const to = points.get(edge.to)!;
+          const length = Math.hypot(to.x - from.x, to.y - from.y);
+          const angle = Math.atan2(to.y - from.y, to.x - from.x);
+          const active = tracedNodeIds.has(edge.from) && tracedNodeIds.has(edge.to);
+          return <span className={`${active ? "active" : ""} ${focusMode && !active ? "muted" : ""}`} data-risk={riskLabel(edge.riskScore).toLowerCase()} key={edge.id} style={{ left: from.x, top: from.y, width: length, transform: `rotate(${angle}rad)` }} />;
+        })}</div>
+        {nodes.map((node) => {
+          const point = points.get(node.id)!;
+          const selected = node.id === selectedNodeId;
+          const traced = tracedNodeIds.has(node.id);
+          const labeled = showLabels || selected || node.tier === "Hub" || node.tier === "Primary";
+          return <button data-action-id={`supply-network.node.${node.id}`} data-asset={assetKey(node.assetType)} data-tier={node.tier.toLowerCase()} data-status={node.status} className={`dense-network-node ${selected ? "selected" : ""} ${traced ? "traced" : ""} ${focusMode && !traced ? "muted" : ""}`} type="button" key={node.id} style={{ left: point.x, top: point.y, width: point.size, height: point.size }} title={`${node.label} | ${node.assetType} | ${node.country} | risk ${node.riskScore}`} aria-label={`Select ${node.label}, ${node.assetType}, risk ${node.riskScore}`} onClick={() => onSelect(node.id)}><span aria-hidden="true">{node.tier === "Hub" ? node.label.slice(0, 2).toUpperCase() : node.tier === "Sub-tier" ? "" : node.tier.slice(0, 1)}</span>{labeled && <em>{node.label}</em>}</button>;
+        })}
+      </div>
+    </div>
+    <div className="dense-network-legend" aria-label="Entity categories">{[...new Set(nodes.map((node) => node.assetType))].map((category) => <span data-asset={assetKey(category)} key={category}><i />{category}<b>{nodes.filter((node) => node.assetType === category).length}</b></span>)}</div>
+  </div>;
+}
+
 export default function ProjectSupplyChainExplorer({ project, query = "", onEvidence }: ExplorerProps) {
   const profile = caseStudyProfileFor(project);
   const network = profile?.supplyChain;
@@ -25,11 +119,13 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
   const [regionFilter, setRegionFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [traceDirection, setTraceDirection] = useState<TraceDirection>("both");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const selectedNode = network?.nodes.find((node) => node.id === selectedNodeId) ?? network?.nodes[0];
   const selectedCheckpoint = network?.checkpoints.find((checkpoint) => checkpoint.id === selectedCheckpointId) ?? network?.checkpoints[0];
   const normalizedQuery = query.trim().toLowerCase();
   const regions = [...new Set(network?.nodes.map((node) => node.geography) ?? [])];
+  const categories = [...new Set(network?.nodes.map((node) => node.assetType) ?? [])];
 
   const tracedNodeIds = (() => {
     const traced = new Set<string>();
@@ -60,6 +156,7 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
     const searchable = `${node.id} ${node.label} ${node.assetType} ${node.country} ${node.role} ${node.status}`.toLowerCase();
     return (stageFilter === "all" || node.stageId === stageFilter)
       && (regionFilter === "all" || node.geography === regionFilter)
+      && (categoryFilter === "all" || node.assetType === categoryFilter)
       && (!normalizedQuery || searchable.includes(normalizedQuery));
   });
   const visibleCheckpoints = network.checkpoints.filter((checkpoint) => {
@@ -114,13 +211,15 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
       <label>Level<select value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}><option value="all">All {network.stages.length} levels</option>{network.stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.sequence}. {stage.label}</option>)}</select></label>
       {view === "graph" ? <>
         <label>Geography<select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}><option value="all">All geographies</option>{regions.map((region) => <option value={region} key={region}>{region}</option>)}</select></label>
+        <label>Entity<select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">All entity types</option>{categories.map((category) => <option value={category} key={category}>{category}</option>)}</select></label>
         <label>Trace<select value={traceDirection} onChange={(event) => setTraceDirection(event.target.value as TraceDirection)}><option value="both">Upstream + downstream</option><option value="upstream">Upstream only</option><option value="downstream">Downstream only</option></select></label>
       </> : <label>Severity<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}><option value="all">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="moderate">Moderate</option><option value="low">Low</option></select></label>}
-      <button data-action-id="supply-network.filters.reset" type="button" onClick={() => { setStageFilter("all"); setRegionFilter("all"); setSeverityFilter("all"); setTraceDirection("both"); }}>Reset filters</button>
+      <button data-action-id="supply-network.filters.reset" type="button" onClick={() => { setStageFilter("all"); setRegionFilter("all"); setSeverityFilter("all"); setTraceDirection("both"); setCategoryFilter("all"); }}>Reset filters</button>
       <p><span />Operationally realistic synthetic data · no live company feed</p>
     </div>
 
     {view === "graph" ? <div className="supply-network-graph-view">
+      <DenseSupplyNetworkGraph network={network} nodes={visibleNodes} tracedNodeIds={tracedNodeIds} selectedNodeId={selectedNode?.id ?? ""} onSelect={setSelectedNodeId} />
       <div className="supply-stage-scroll" aria-label="Scrollable supply chain levels">
         <div className="supply-stage-grid" style={{ "--stage-count": visibleStages.length } as CSSProperties}>
           {visibleStages.map((stage) => {
@@ -141,10 +240,10 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
         </div>
       </div>
       {selectedNode && <aside className="supply-node-inspector">
-        <header><div><small>SELECTED OPERATING NODE</small><h3>{selectedNode.label}</h3><p>{selectedNode.role} · {selectedNode.country}</p></div><strong data-risk={riskLabel(selectedNode.riskScore).toLowerCase()}>{selectedNode.riskScore}<small>{riskLabel(selectedNode.riskScore)}</small></strong></header>
+        <header><div><small>SELECTED NETWORK ENTITY</small><h3>{selectedNode.label}</h3><p>{selectedNode.role} · {selectedNode.country}</p></div><strong data-risk={riskLabel(selectedNode.riskScore).toLowerCase()}>{selectedNode.riskScore}<small>{riskLabel(selectedNode.riskScore)}</small></strong></header>
         <dl><div><dt>Tier</dt><dd>{selectedNode.tier}</dd></div><div><dt>Capacity</dt><dd>{selectedNode.capacity}</dd></div><div><dt>Throughput</dt><dd>{selectedNode.throughput}</dd></div><div><dt>Annual value</dt><dd>{selectedNode.annualValue}</dd></div><div><dt>Utilization</dt><dd>{selectedNode.utilization}%</dd></div><div><dt>Lead time</dt><dd>{selectedNode.leadTime} days</dd></div><div><dt>Path concentration</dt><dd>{selectedNode.concentration}%</dd></div><div><dt>Confidence</dt><dd>{selectedNode.confidence}%</dd></div></dl>
-        <section><small>WHAT THIS NODE DEPENDS ON</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>) || <p>Origin of modeled chain.</p>}</section>
-        <section><small>WHAT COULD BE DISRUPTED</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
+        <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>)}</section>
+        <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
         <footer><span>{selectedNode.freshness}</span><button data-action-id={`supply-network.evidence.${selectedNode.id}`} type="button" onClick={() => onEvidence(nodeReceipt(selectedNode))}>Trace evidence &#8599;</button></footer>
       </aside>}
     </div> : <div className="supply-checkpoint-view">

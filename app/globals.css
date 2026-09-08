@@ -651,6 +651,95 @@ td button { min-height: 28px; padding: 0 8px; background: transparent; border: 1
 .theme-dark .evidence-graph-layout::before { color: #9ca7a0; }
 .theme-dark .path-entity-mark { color: color-mix(in srgb, var(--entity-accent) 52%, #fff); background: color-mix(in srgb, var(--entity-accent) 18%, #171a1d); border-color: color-mix(in srgb, var(--entity-accent) 45%, #343a3d); }
 
+/* Dense ecosystem graph: the project network is distinct from the evidence DAG. */
+.project-data-workspace > .graph-os { display: none; }
+.supply-network-graph-view > .supply-stage-scroll { display: none; }
+.dense-network-shell { min-width: 0; display: grid; grid-template-rows: 38px minmax(610px, calc(100vh - 305px)) auto; overflow: hidden; background: #f7f4ec; border: 1px solid #d7d7cf; }
+.dense-network-toolbar { min-width: 0; padding: 4px 6px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; background: rgba(255, 255, 255, .9); border-bottom: 1px solid #d8ddd7; }
+.dense-network-toolbar > span { margin-right: auto; color: #647168; font: 650 9px/1 var(--font-code); }
+.dense-network-toolbar > span b { color: #24352b; font-size: 11px; }
+.dense-network-toolbar > span i { margin: 0 6px; border-left: 1px solid #cfd6cf; }
+.dense-network-toolbar button { height: 28px; padding: 0 8px; color: #35463c; background: #fff; border: 1px solid #cfd7cf; cursor: pointer; font: 700 9px/1 var(--font-ui); }
+.dense-network-toolbar button:hover,
+.dense-network-toolbar button.active { color: #24350c; background: #eef7cc; border-color: #b9cc72; }
+.dense-network-toolbar output { min-width: 38px; color: #66736b; text-align: center; font: 700 8px/1 var(--font-code); }
+.dense-network-viewport { position: relative; min-width: 0; min-height: 610px; overflow: hidden; cursor: grab; touch-action: none; background-color: #f4f0e6; background-image: radial-gradient(#cfd3ca 1px, transparent 1px); background-size: 17px 17px; }
+.dense-network-viewport:active { cursor: grabbing; }
+.dense-network-canvas { position: absolute; left: 50%; top: 50%; width: 1000px; height: 720px; margin: -360px 0 0 -500px; transform-origin: 500px 360px; transition: transform 120ms ease-out; }
+.dense-network-edges { position: absolute; inset: 0; pointer-events: none; }
+.dense-network-edges > span { position: absolute; height: 1px; transform-origin: 0 50%; opacity: .2; background: #738178; }
+.dense-network-edges > span::after { position: absolute; right: 0; top: -2px; width: 4px; height: 4px; content: ""; background: inherit; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.dense-network-edges > span.active { height: 1.5px; opacity: .5; background: #3f7466; }
+.dense-network-edges > span[data-risk="high"].active { background: #db9725; }
+.dense-network-edges > span[data-risk="critical"].active { background: #df5a4c; }
+.dense-network-edges > span.muted { opacity: .035; }
+.dense-network-stage-label { position: absolute; z-index: 3; max-width: 110px; padding: 3px 5px; transform: translate(-50%, -50%); color: #536159; background: rgba(247, 244, 236, .88); border: 1px solid #d9ddd5; text-align: center; font: 700 8px/1.15 var(--font-ui); pointer-events: none; }
+.dense-network-stage-label b { margin-right: 4px; color: #7d8f21; font: 800 7px/1 var(--font-code); }
+.dense-network-node { --node-color: #82918a; position: absolute; z-index: 4; padding: 0; display: grid; place-items: center; transform: translate(-50%, -50%); color: #fff; background: var(--node-color); border: 1px solid rgba(255, 255, 255, .85); border-radius: 50%; box-shadow: 0 0 0 1px color-mix(in srgb, var(--node-color) 75%, #26352b); cursor: pointer; transition: opacity 120ms ease, transform 120ms ease, box-shadow 120ms ease; }
+.dense-network-node:hover { z-index: 10; transform: translate(-50%, -50%) scale(1.35); box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 0 0 5px var(--node-color); }
+.dense-network-node.selected { z-index: 11; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #24372d, 0 8px 18px rgba(24,44,31,.22); }
+.dense-network-node.muted { opacity: .12; }
+.dense-network-node > span { overflow: hidden; font: 800 7px/1 var(--font-code); }
+.dense-network-node > em { position: absolute; left: calc(100% + 5px); top: 50%; width: max-content; max-width: 145px; overflow: hidden; transform: translateY(-50%); color: #27372e; text-overflow: ellipsis; white-space: nowrap; font: 700 7px/1.2 var(--font-ui); text-shadow: 0 1px #fff, 1px 0 #fff, 0 -1px #fff, -1px 0 #fff; pointer-events: none; }
+.dense-network-node[data-tier="hub"] { --node-color: #168fa6; border-width: 3px; }
+.dense-network-node[data-tier="hub"] > span { font-size: 12px; }
+.dense-network-node[data-tier="hub"] > em { left: 50%; top: calc(100% + 10px); max-width: 200px; transform: translateX(-50%); color: #17251d; font-size: 10px; }
+.dense-network-node[data-tier="primary"] { border-width: 2px; }
+.dense-network-node[data-tier="alternate"] { filter: saturate(.82); }
+.dense-network-node[data-tier="contingency"] { filter: saturate(.62); }
+.dense-network-node[data-asset="company"] { --node-color: #168fa6; }
+.dense-network-node[data-asset="material"] { --node-color: #e43b36; }
+.dense-network-node[data-asset="supplier"] { --node-color: #7545e8; }
+.dense-network-node[data-asset="equipment"] { --node-color: #e18316; }
+.dense-network-node[data-asset="facility"] { --node-color: #2e6ee8; }
+.dense-network-node[data-asset="logistics"] { --node-color: #13a1bd; }
+.dense-network-node[data-asset="workforce"] { --node-color: #7f9e28; }
+.dense-network-node[data-asset="utility"] { --node-color: #e0ad27; }
+.dense-network-node[data-asset="policy"] { --node-color: #ef6658; }
+.dense-network-node[data-asset="quality"] { --node-color: #25a36f; }
+.dense-network-node[data-asset="inventory"] { --node-color: #607d9c; }
+.dense-network-node[data-asset="contract"] { --node-color: #b56822; }
+.dense-network-node[data-asset="demand"] { --node-color: #9c54d6; }
+.dense-network-node[data-asset="evidence"] { --node-color: #7a8580; }
+.dense-network-node[data-status="constrained"] { border-color: #ffdfd9; }
+.dense-network-legend { padding: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; color: #5e6b63; background: rgba(255,255,255,.9); border-top: 1px solid #d7dcd7; }
+.dense-network-legend > span { --node-color: #82918a; display: flex; align-items: center; gap: 4px; font-size: 8px; }
+.dense-network-legend i { width: 7px; height: 7px; background: var(--node-color); border-radius: 50%; }
+.dense-network-legend b { color: #34443a; font: 750 7px/1 var(--font-code); }
+.dense-network-legend [data-asset="company"] { --node-color: #168fa6; }
+.dense-network-legend [data-asset="material"] { --node-color: #e43b36; }
+.dense-network-legend [data-asset="supplier"] { --node-color: #7545e8; }
+.dense-network-legend [data-asset="equipment"] { --node-color: #e18316; }
+.dense-network-legend [data-asset="facility"] { --node-color: #2e6ee8; }
+.dense-network-legend [data-asset="logistics"] { --node-color: #13a1bd; }
+.dense-network-legend [data-asset="workforce"] { --node-color: #7f9e28; }
+.dense-network-legend [data-asset="utility"] { --node-color: #e0ad27; }
+.dense-network-legend [data-asset="policy"] { --node-color: #ef6658; }
+.dense-network-legend [data-asset="quality"] { --node-color: #25a36f; }
+.dense-network-legend [data-asset="inventory"] { --node-color: #607d9c; }
+.dense-network-legend [data-asset="contract"] { --node-color: #b56822; }
+.dense-network-legend [data-asset="demand"] { --node-color: #9c54d6; }
+.dense-network-legend [data-asset="evidence"] { --node-color: #7a8580; }
+.supply-node-inspector { max-height: calc(100vh - 267px); overflow-y: auto; scrollbar-width: thin; }
+.supply-node-inspector > section > button { min-height: 38px; }
+
+.theme-dark .dense-network-shell { background: #111416; border-color: #343a3d; }
+.theme-dark .dense-network-toolbar,
+.theme-dark .dense-network-legend { color: #cbd4ce; background: #171b1d; border-color: #343a3d; }
+.theme-dark .dense-network-toolbar > span { color: #9ba69f; }
+.theme-dark .dense-network-toolbar > span b,
+.theme-dark .dense-network-legend b { color: #eaf0eb; }
+.theme-dark .dense-network-toolbar button { color: #dce4de; background: #202527; border-color: #3a4245; }
+.theme-dark .dense-network-toolbar button:hover,
+.theme-dark .dense-network-toolbar button.active { color: #dfff5a; background: #283119; border-color: #586a27; }
+.theme-dark .dense-network-viewport { background-color: #111416; background-image: radial-gradient(#30373a 1px, transparent 1px); }
+.theme-dark .dense-network-stage-label { color: #bbc5be; background: rgba(19, 23, 25, .88); border-color: #394145; }
+.theme-dark .dense-network-node { border-color: #111416; box-shadow: 0 0 0 1px color-mix(in srgb, var(--node-color) 74%, #fff); }
+.theme-dark .dense-network-node:hover,
+.theme-dark .dense-network-node.selected { box-shadow: 0 0 0 3px #121618, 0 0 0 6px var(--node-color); }
+.theme-dark .dense-network-node > em { color: #edf2ee; text-shadow: 0 1px #101315, 1px 0 #101315, 0 -1px #101315, -1px 0 #101315; }
+.theme-dark .dense-network-legend > span { color: #aab4ad; }
+
 @media (max-width: 1280px) {
   .supply-network-facts > span:nth-of-type(-n+2),
   .supply-network-facts > small { display: none; }
@@ -659,6 +748,7 @@ td button { min-height: 28px; padding: 0 8px; background: transparent; border: 1
   .supply-checkpoint-register > header,
   .supply-checkpoint-register > button { grid-template-columns: 36px minmax(190px, 1.5fr) minmax(110px, .8fr) minmax(110px, .8fr) 72px; }
   .supply-checkpoint-register > :is(header, button) > :nth-child(5) { display: none; }
+  .dense-network-shell { grid-template-rows: 38px minmax(540px, calc(100vh - 285px)) auto; }
 }
 
 @media (max-width: 900px) {
@@ -671,6 +761,7 @@ td button { min-height: 28px; padding: 0 8px; background: transparent; border: 1
   .supply-checkpoint-view { grid-template-columns: 1fr; }
   .supply-node-inspector,
   .supply-checkpoint-inspector { grid-column: 1; }
+  .dense-network-shell { grid-template-rows: 38px 520px auto; }
   .supply-checkpoint-register { overflow-x: auto; }
   .supply-checkpoint-register > header,
   .supply-checkpoint-register > button { min-width: 720px; }

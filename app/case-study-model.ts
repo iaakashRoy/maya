@@ -27,7 +27,7 @@ export type SupplyChainNode = {
   assetType: string;
   geography: string;
   country: string;
-  tier: "Primary" | "Alternate" | "Contingency";
+  tier: "Hub" | "Primary" | "Alternate" | "Contingency" | "Sub-tier";
   role: string;
   capacity: string;
   throughput: string;
@@ -2337,6 +2337,27 @@ const severityFor = (score: number): SupplyChainCheckpoint["severity"] =>
 const nodeStatusFor = (score: number): SupplyChainNode["status"] =>
   score >= 76 ? "constrained" : score >= 55 ? "watch" : "stable";
 
+const ecosystemNodeTemplates = [
+  { suffix: "material family", assetType: "Material", role: "Critical input specification", country: "primary" },
+  { suffix: "specialty chemistry", assetType: "Material", role: "Process input", country: "alternate" },
+  { suffix: "tier-2 cluster", assetType: "Supplier", role: "Direct sub-tier supplier", country: "primary" },
+  { suffix: "tier-3 cluster", assetType: "Supplier", role: "Deep-tier dependency", country: "alternate" },
+  { suffix: "constrained toolset", assetType: "Equipment", role: "Production equipment", country: "primary" },
+  { suffix: "service pool", assetType: "Equipment", role: "Maintenance and spares", country: "alternate" },
+  { suffix: "operating site", assetType: "Facility", role: "Primary processing site", country: "primary" },
+  { suffix: "recovery site", assetType: "Facility", role: "Qualified recovery site", country: "alternate" },
+  { suffix: "freight corridor", assetType: "Logistics", role: "Inbound and outbound lane", country: "primary" },
+  { suffix: "customs gate", assetType: "Logistics", role: "Border and release control", country: "alternate" },
+  { suffix: "specialist workforce", assetType: "Workforce", role: "Critical skill pool", country: "primary" },
+  { suffix: "energy and utility node", assetType: "Utility", role: "Power, water, and site utility", country: "primary" },
+  { suffix: "policy control", assetType: "Policy", role: "Trade and regulatory gate", country: "alternate" },
+  { suffix: "quality release", assetType: "Quality", role: "Qualification and release evidence", country: "primary" },
+  { suffix: "buffer position", assetType: "Inventory", role: "Time-phased resilience stock", country: "alternate" },
+  { suffix: "capacity option", assetType: "Contract", role: "Reserved capacity and commercial right", country: "alternate" },
+  { suffix: "demand signal", assetType: "Demand", role: "Service and allocation requirement", country: "global" },
+  { suffix: "evidence control", assetType: "Evidence", role: "Governed data and provenance", country: "global" },
+] as const;
+
 const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork => {
   const blueprint = supplyChainBlueprints[seed.clientId];
   const stages = blueprint.stages.map((stage, stageIndex) => ({
@@ -2345,7 +2366,7 @@ const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork
     label: stage.label,
     description: stage.description,
   }));
-  const nodes = blueprint.stages.flatMap((stage, stageIndex) => {
+  const coreNodes = blueprint.stages.flatMap((stage, stageIndex) => {
     const base = 72 + projectIndex * 9 + stageIndex * 13;
     const primaryRisk = 38 + ((projectIndex * 17 + stageIndex * 11) % 58);
     const alternateRisk = Math.max(22, primaryRisk - 18 + (stageIndex % 3) * 3);
@@ -2376,6 +2397,57 @@ const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork
       status: nodeStatusFor(variant.risk),
     } satisfies SupplyChainNode));
   });
+  const hubNode = {
+    id: `${seed.code}-HUB`,
+    stageId: "network-hub",
+    label: seed.client,
+    assetType: "Company",
+    geography: "Global",
+    country: "Global",
+    tier: "Hub",
+    role: `${seed.product} resilience network`,
+    capacity: `${Math.round((120 + projectIndex * 17) * 8).toLocaleString("en-US")} ${blueprint.unit}`,
+    throughput: `${Math.round((92 + projectIndex * 13) * 8).toLocaleString("en-US")} ${blueprint.unit}`,
+    annualValue: seed.metrics[0]?.value ?? `$${640 + projectIndex * 83}M`,
+    utilization: 78 + (projectIndex % 13),
+    leadTime: 2 + (projectIndex % 5),
+    concentration: 51 + ((projectIndex * 7) % 34),
+    riskScore: 58 + ((projectIndex * 9) % 31),
+    confidence: seed.resilience.confidence,
+    freshness: "3 sec modeled age",
+    sourceClass: "Synthetic project network register",
+    evidenceRef: `${seed.code}-EV-NET-HUB`,
+    status: nodeStatusFor(58 + ((projectIndex * 9) % 31)),
+  } satisfies SupplyChainNode;
+  const ecosystemNodes = blueprint.stages.flatMap((stage, stageIndex) => ecosystemNodeTemplates.map((template, templateIndex) => {
+    const base = 31 + projectIndex * 5 + stageIndex * 7 + templateIndex * 3;
+    const risk = 26 + ((projectIndex * 19 + stageIndex * 13 + templateIndex * 11) % 70);
+    const country = template.country === "primary" ? stage.country : template.country === "alternate" ? stage.alternateCountry : "Global";
+    const unitFactor = 0.12 + ((templateIndex % 6) * 0.045);
+    return {
+      id: `${seed.code}-X-${String(stageIndex + 1).padStart(2, "0")}-${String(templateIndex + 1).padStart(2, "0")}`,
+      stageId: stages[stageIndex].id,
+      label: `${stage.label} ${template.suffix}`,
+      assetType: template.assetType,
+      geography: country,
+      country,
+      tier: "Sub-tier",
+      role: template.role,
+      capacity: `${Math.round(base * (unitFactor + 0.18)).toLocaleString("en-US")} ${blueprint.unit}`,
+      throughput: `${Math.max(1, Math.round(base * unitFactor)).toLocaleString("en-US")} ${blueprint.unit}`,
+      annualValue: `$${Math.max(2, Math.round(base * (projectIndex + 2) * unitFactor))}M`,
+      utilization: 48 + ((projectIndex * 7 + stageIndex * 9 + templateIndex * 5) % 50),
+      leadTime: 2 + ((projectIndex * 3 + stageIndex * 7 + templateIndex * 5) % 58),
+      concentration: 24 + ((projectIndex * 11 + stageIndex * 6 + templateIndex * 7) % 72),
+      riskScore: risk,
+      confidence: 72 + ((projectIndex * 5 + stageIndex * 3 + templateIndex) % 27),
+      freshness: `${4 + ((projectIndex + stageIndex * 3 + templateIndex * 2) % 56)} sec modeled age`,
+      sourceClass: `Synthetic ${template.assetType.toLowerCase()} register`,
+      evidenceRef: `${seed.code}-EV-X-${String(stageIndex + 1).padStart(2, "0")}-${String(templateIndex + 1).padStart(2, "0")}`,
+      status: nodeStatusFor(risk),
+    } satisfies SupplyChainNode;
+  }));
+  const nodes = [hubNode, ...coreNodes, ...ecosystemNodes];
   const primaryNodes = nodes.filter((node) => node.tier === "Primary");
   const alternateNodes = nodes.filter((node) => node.tier === "Alternate");
   const contingencyNodes = nodes.filter((node) => node.tier === "Contingency");
@@ -2429,6 +2501,57 @@ const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork
       riskScore: Math.max(contingency.riskScore, alternateNext.riskScore),
       evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(2, "0")}`,
     });
+  }
+  for (let stageIndex = 0; stageIndex < stages.length; stageIndex += 1) {
+    const stageSatellites = ecosystemNodes.filter((node) => node.stageId === stages[stageIndex].id);
+    stageSatellites.forEach((satellite, satelliteIndex) => {
+      const core = [primaryNodes[stageIndex], alternateNodes[stageIndex], contingencyNodes[stageIndex]][satelliteIndex % 3];
+      edges.push({
+        id: `${seed.code}-E-${String(edges.length + 1).padStart(3, "0")}`,
+        from: satellite.id,
+        to: core.id,
+        relationship: satellite.assetType === "Demand" ? "requires" : satellite.assetType === "Evidence" ? "governs" : "enables",
+        volume: satellite.throughput,
+        value: satellite.annualValue,
+        share: 7 + ((projectIndex * 3 + stageIndex * 5 + satelliteIndex * 7) % 44),
+        leadTime: satellite.leadTime,
+        mode: satellite.assetType,
+        riskScore: Math.max(satellite.riskScore, core.riskScore),
+        evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(3, "0")}`,
+      });
+    });
+    edges.push({
+      id: `${seed.code}-E-${String(edges.length + 1).padStart(3, "0")}`,
+      from: primaryNodes[stageIndex].id,
+      to: hubNode.id,
+      relationship: stageIndex === stages.length - 1 ? "fulfills" : "contributes to",
+      volume: primaryNodes[stageIndex].throughput,
+      value: primaryNodes[stageIndex].annualValue,
+      share: 22 + ((projectIndex * 5 + stageIndex * 9) % 67),
+      leadTime: primaryNodes[stageIndex].leadTime,
+      mode: blueprint.stages[stageIndex].mode,
+      riskScore: Math.max(primaryNodes[stageIndex].riskScore, hubNode.riskScore),
+      evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(3, "0")}`,
+    });
+  }
+  for (let stageIndex = 0; stageIndex < stages.length - 1; stageIndex += 1) {
+    for (let templateIndex = 0; templateIndex < ecosystemNodeTemplates.length; templateIndex += 1) {
+      const from = ecosystemNodes[stageIndex * ecosystemNodeTemplates.length + templateIndex];
+      const to = ecosystemNodes[(stageIndex + 1) * ecosystemNodeTemplates.length + templateIndex];
+      edges.push({
+        id: `${seed.code}-E-${String(edges.length + 1).padStart(3, "0")}`,
+        from: from.id,
+        to: to.id,
+        relationship: templateIndex % 3 === 0 ? "constrains" : templateIndex % 3 === 1 ? "supports" : "signals",
+        volume: from.throughput,
+        value: from.annualValue,
+        share: 5 + ((projectIndex + stageIndex * 5 + templateIndex * 3) % 38),
+        leadTime: Math.max(1, Math.round((from.leadTime + to.leadTime) / 2)),
+        mode: from.assetType,
+        riskScore: Math.max(from.riskScore, to.riskScore),
+        evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(3, "0")}`,
+      });
+    }
   }
   const checkpoints = stages.flatMap((stage, stageIndex) => {
     const primary = primaryNodes[stageIndex];

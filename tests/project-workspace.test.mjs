@@ -802,7 +802,14 @@ test("project graph includes a multilevel dependency and chokepoint explorer", a
   assert.match(explorer, /setSelectedCheckpointId/);
   assert.match(explorer, /Trace evidence/);
   assert.match(explorer, /Open checkpoint evidence/);
+  assert.match(explorer, /DenseSupplyNetworkGraph/);
+  assert.match(explorer, /supply-network\.zoom\.fit/);
+  assert.match(explorer, /supply-network\.focus/);
+  assert.match(explorer, /SUPPLIED BY/);
+  assert.match(explorer, /SUPPLIES/);
   assert.match(css, /\.supply-network-graph-view/);
+  assert.match(css, /\.dense-network-viewport/);
+  assert.match(css, /\.project-data-workspace > \.graph-os \{ display: none; \}/);
   assert.match(css, /\.supply-checkpoint-register/);
   assert.match(css, /\.theme-dark \.supply-network-explorer/);
 });
