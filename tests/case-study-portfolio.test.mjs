@@ -55,6 +55,15 @@ test("global graph, statistical analysis, and full-table query surfaces are wire
   assert.match(scope, /Global knowledge graph/);
   assert.match(globalGraph, /GLOBAL NETWORK OPTIMIZER/);
   assert.match(globalGraph, /crossClient/);
+  assert.match(globalGraph, /global-graph-modes/);
+  assert.match(globalGraph, /Graph mode/);
+  assert.match(globalGraph, /Chokepoints/);
+  assert.match(globalGraph, /colorMode/);
+  assert.match(globalGraph, /sizeMode/);
+  assert.match(globalGraph, /onPointerMove/);
+  assert.match(globalGraph, /onDoubleClick/);
+  assert.match(globalGraph, /global-graph-tooltip/);
+  assert.doesNotMatch(globalGraph, /projectIndex % 5/);
   assert.match(studios, /StatisticalStudio/);
   assert.match(studios, /MARKOV STATE MODEL/);
   assert.match(statistics, /statisticalProfilesFor/);
