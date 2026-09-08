@@ -34,6 +34,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Coca-Cola/);
   assert.match(html, /Water-to-Shelf Availability/);
   assert.match(html, /Case studies/);
+  assert.match(html, /Decision journey/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
   assert.match(html, /aria-label="Open tanjnx workspace"/);
   assert.match(html, /Supply chain workspace/);
@@ -60,6 +61,27 @@ test("case-study library explains and deep-links all ten simulations", async () 
   assert.match(html, /Inspect data and graph/);
   assert.match(html, /Inspect decision graph/);
   assert.match(html, /Run in Playground/);
+  assert.match(html, /Rehearse decision/);
+});
+
+test("decision journey is a native tanjnx route with project-scoped deep links", async () => {
+  const response = await render("/decision-journey?client=tesla");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Decision Journey · tanjnx/);
+  assert.match(html, /From disruption to a defensible decision/);
+  assert.match(html, /Tesla[\s\S]*?\/[\s\S]*?Battery scale resilience/);
+  assert.match(html, /Publish local dataset/);
+  assert.match(html, /Human review required/);
+  assert.match(html, /← Workspace/);
+  assert.doesNotMatch(html, /Resilience OS|Maya|Kearney/);
+
+  const tableResponse = await render("/decision-journey/table?project=tesla&dataset=DS-tesla-local");
+  assert.equal(tableResponse.status, 200);
+  const tableHtml = await tableResponse.text();
+  assert.match(tableHtml, /Versioned table explorer · tanjnx/);
+  assert.match(tableHtml, /Versioned table/);
+  assert.match(tableHtml, /Return to journey/);
 });
 
 test("Operations World renders authoritative Global and Regional scopes", async () => {

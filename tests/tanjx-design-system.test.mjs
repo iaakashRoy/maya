@@ -16,6 +16,8 @@ test("tanjnx branding replaces the former product and provider labels", async ()
 
   assert.match(layout, /tanjnx — Supply Chain Workspace/);
   assert.match(shell, /<BrandMark \/>/);
+  assert.match(shell, /data-action-id="nav\.decision-journey"/);
+  assert.match(shell, /<NavigationIcon name="journey" \/>/);
   assert.match(shell, /<b>tanjnx<\/b><small>Supply chain workspace<\/small>/);
   assert.match(shell, /Aakash Roy/);
   assert.match(workspace, /role: "Super Admin"/);

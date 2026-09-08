@@ -1780,6 +1780,12 @@ td button { min-height: 28px; padding: 0 8px; background: transparent; border: 1
 .navigation-icon-variables > i { left: 4px; top: 4px; width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 3px; }
 .navigation-icon-variables > i::before { position: absolute; left: 3px; top: 3px; content: "L0"; font: 800 6px/1 var(--font-code); }
 .navigation-icon-variables > i::after { position: absolute; left: 3px; bottom: 3px; width: 9px; height: 1.5px; content: ""; background: currentColor; box-shadow: 0 -3px currentColor; }
+.navigation-icon-journey > i { left: 3px; top: 10px; width: 18px; height: 1.5px; background: currentColor; }
+.navigation-icon-journey > i::before,
+.navigation-icon-journey > i::after { position: absolute; top: -5px; width: 7px; height: 7px; content: ""; background: var(--rail, #f7f8f4); border: 1.5px solid currentColor; border-radius: 50%; }
+.navigation-icon-journey > i::before { left: 0; }
+.navigation-icon-journey > i::after { right: 0; }
+.navigation-icon-journey > em { left: 9px; top: 3px; width: 7px; height: 7px; background: var(--rail, #f7f8f4); border: 1.5px solid currentColor; border-radius: 50%; }
 
 .theme-dark :is(.variables-header,.variables-toolbar,.variables-levels,.variables-layout,.variables-results > div > button) { color: #e9efeb; background: #171b1d; border-color: #343b3e; }
 .theme-dark .variables-header > div:last-child > span,.theme-dark .variables-results,.theme-dark .variables-results > header,.theme-dark .variables-detail > header,.theme-dark .variables-detail > section { border-color: #343b3e; }.theme-dark .variables-header p,.theme-dark .variables-header > div:first-child > span,.theme-dark .variables-header > div:last-child > span,.theme-dark .variables-results > header span,.theme-dark .variables-detail header small,.theme-dark .variables-detail h3 { color: #9ca7a0; }.theme-dark .variables-header > div:last-child b,.theme-dark .variables-detail h2 { color: #eef3ef; }

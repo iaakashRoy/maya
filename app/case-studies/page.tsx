@@ -51,7 +51,7 @@ export default function CaseStudiesPage() {
       return <article className="case-study" id={profile.projectId} key={profile.projectId}>
         <header className="case-study__header">
           <div><span>{String(index + 1).padStart(2, "0")}</span><p>{project.sector} · {project.code}</p><h2>{profile.company}</h2><h3>{profile.project}</h3></div>
-          <div className="case-study__header-actions"><a href={`/?view=company&project=${profile.projectId}&projectTab=overview`}>Open project →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=agents`}>Run in Playground →</a></div>
+          <div className="case-study__header-actions"><a href={`/?view=company&project=${profile.projectId}&projectTab=overview`}>Open project →</a><a href={`/decision-journey?client=${project.clientId === "tata-motors" ? "tata" : project.clientId}`}>Rehearse decision →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=agents`}>Run in Playground →</a></div>
         </header>
 
         <section className="case-study__brief">

@@ -77,7 +77,7 @@ test("ten clients and their cross-tower projects are isolated, evidence-aware, a
 });
 
 test("every project taxonomy reference resolves to the source taxonomy and stores only canonical IDs", async () => {
-  const [model, taxonomy] = await Promise.all([loadWorkspaceModel(), read("../../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md")]);
+  const [model, taxonomy] = await Promise.all([loadWorkspaceModel(), read("../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md")]);
   const knownIds = new Set([...taxonomy.matchAll(/^\| (L[012]-\d{3}) \|/gm)].map((match) => match[1]));
 
   for (const project of model.workspaceProjects) {
@@ -98,7 +98,7 @@ test("every project taxonomy reference resolves to the source taxonomy and store
 });
 
 test("each project variable pack follows a valid taxonomy L2 to L1 to L0 ancestry", async () => {
-  const [model, taxonomy] = await Promise.all([loadWorkspaceModel(), read("../../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md")]);
+  const [model, taxonomy] = await Promise.all([loadWorkspaceModel(), read("../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md")]);
   const expand = (text, prefix) => {
     const ids = new Set();
     const expression = new RegExp(`${prefix}-(\\d{3})(?:[–-]${prefix}-(\\d{3}))?`, "g");

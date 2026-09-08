@@ -107,7 +107,7 @@ export function BrandMark() {
   return <span className="tanjnx-mark" aria-hidden="true"><i /><i /></span>;
 }
 
-export type NavigationIconName = "client-add" | "project-add" | "collapse" | "expand" | "close" | "workspace" | "world" | "variables";
+export type NavigationIconName = "client-add" | "project-add" | "collapse" | "expand" | "close" | "workspace" | "world" | "variables" | "journey";
 
 export function NavigationIcon({ name }: { name: NavigationIconName }) {
   return <span className={`navigation-icon navigation-icon-${name}`} aria-hidden="true" data-navigation-icon={name}><i /><em /></span>;

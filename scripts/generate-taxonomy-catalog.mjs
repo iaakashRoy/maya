@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const sourcePath = resolve(here, "../../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md");
+const sourcePath = resolve(here, "../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md");
 const outputPath = resolve(here, "../app/taxonomy-catalog.generated.ts");
 const source = await readFile(sourcePath, "utf8");
 

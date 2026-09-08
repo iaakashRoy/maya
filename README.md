@@ -1,6 +1,6 @@
-# Maya Workspace
+# tanjnx Supply Chain Workspace
 
-Maya is an interactive, front-end-only concept for operating a connected supply
+tanjnx is an interactive, front-end-only concept for operating a connected supply
 chain through client projects, specialist applications, expert agents,
 operations-research methods, a knowledge graph, and evidence receipts.
 
@@ -42,18 +42,20 @@ value intakes retain the selected entity, frame, and scenario when they seed a
 new project. Project data, apps, decisions, agents, and reviews open only after
 a project has been selected.
 
-Each project exposes five stable working surfaces:
+Each project exposes four stable working surfaces:
 
 - **Overview** - outcomes, KPIs, mounted apps, decision preview, knowledge
   footprint, and direct handoffs.
 - **Decisions** - a D0-D3 choice tree connected to L2, L1, and L0 taxonomy
   variables, OR methods, and evidence.
-- **Data & graph** - one searchable surface for files, tables, PDFs, variables,
+- **Data** - one searchable surface for files, tables, PDFs, variables,
   evidence, connectors, governed IoT source requests, and graph entities.
-- **Playground** - a minimal code-style prompt workspace, session history, trace controls,
-  experience profiles, Skills/MCP/tool manifest builder, and human gate.
 - **Controls** - explicit concept controls, production gaps, evidence state,
   and project boundaries.
+
+Playground is a mounted project application rather than a project tab. It provides
+a code-style prompt workspace, session history, trace controls, experience
+profiles, Skills/MCP/tool manifest builder, and a human gate.
 
 The project chrome keeps navigation separate from execution. Its first row
 contains the current surface and mounted specialist apps. A dedicated second
@@ -74,15 +76,15 @@ mounted apps, accountable agents, and team members. Valid agent-session and app-
 addressable in the URL and restore through browser Back and Forward.
 
 New client and new project flows are available from Workspace. A session project
-starts empty, receives one client and one Kearney membership draft, and adds data,
-apps, agents, and decisions only through explicit project actions. Maya Rao is
-represented as a Kearney portfolio collaborator with an explicit membership in
+starts empty, receives one client and one workspace membership draft, and adds data,
+apps, agents, and decisions only through explicit project actions. Aakash Roy is
+represented by the signed-in Super Admin with an explicit membership in
 each seeded project. Project entry and governed session mutations evaluate that
 identity's capabilities instead of borrowing a client owner's rights.
 Top-level and project tabs wrap within the available width; navigation never
 depends on a horizontal tab carousel.
 
-## Ten distinct specialist applications
+## Specialist applications
 
 The applications share project and evidence contracts but deliberately use
 different visual grammars and working rhythms:
@@ -99,6 +101,8 @@ different visual grammars and working rhythms:
 - **ManufacturingTwin** - steel-blue plant flow, bottleneck, and schedule studio.
 - **LogisticsRadar** - teal route, cargo, transfer, customs, and last-mile radar.
 - **QualityGenealogy** - amber lot genealogy and release/containment gate.
+- **Playground** - project-scoped agent terminal, work threads, tools, evidence,
+  file attachment, mentions, commands, and human review.
 
 Each app uses concise, task-specific controls and exposes its methods, data
 contracts, controls, KPIs, handoffs, change ledger, validation rules, and
@@ -134,6 +138,20 @@ reference and formulation workbench:
 
 The current interface runs a deterministic response calculator only. It does
 not execute a solver and never labels a generated candidate as optimal.
+
+## Connected decision journey
+
+The workspace navigation and every case study link to the
+`/decision-journey` route. It connects seven stages:
+validated local data, relationship meaning, empirical statistics, stressed
+alternatives, human review, controlled release, and measured outcomes.
+
+Ten company-inspired cases use different units, constraints, disruption
+assumptions, and supply-chain economics. Calculations are deterministic and
+browser-local. Publishing a dataset creates a project-scoped local version;
+the full-table route supports filtering, recomputed descriptive statistics,
+pagination, and CSV export. No operational backend, solver, approval service,
+or write-back is implied.
 
 ## World Network Radar
 

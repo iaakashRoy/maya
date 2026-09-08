@@ -87,7 +87,7 @@ test("global and project relationships, statistical analysis, and full-table que
 test("every case variable follows a selected taxonomy ancestry", async () => {
   const [workspace, taxonomy] = await Promise.all([
     loadLinkedWorkspaceModel(),
-    read("../../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md"),
+    read("../SUPPLY_CHAIN_VARIABLE_TAXONOMY.md"),
   ]);
   const expand = (text, prefix) => {
     const ids = new Set();
