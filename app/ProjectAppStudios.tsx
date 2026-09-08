@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { fixtureEvidenceFor, projectApps, type EvidenceReceipt, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
 import { AppGlyph } from "./VisualIdentity";
+import { statisticalProfilesFor } from "./statistical-model";
 
 type Props = {
   appId: ProjectAppId;
@@ -22,6 +23,32 @@ function StudioHeader({ appId, project }: Pick<Props, "appId" | "project">) {
 function EvidenceMetric({ project, app, id, label, value, detail, variableId, onEvidence }: { project: WorkspaceProject; app: string; id: string; label: string; value: string; detail: string; variableId?: string; onEvidence: Props["onEvidence"] }) {
   const receipt = fixtureEvidenceFor(project, { id: `EV-${app}-${id}`, claim: label, displayedValue: value, source: `${app} deterministic demonstration fixture`, formula: detail, variableId });
   return <button className="studio-metric" data-action-id={`evidence.open.${receipt.id}`} type="button" onClick={() => onEvidence(receipt)}><span>{label}</span><b>{value}</b><small>{detail}</small><em>◇ {receipt.id}</em></button>;
+}
+
+function StatisticalStudio({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
+  const tables = statisticalProfilesFor(project);
+  const [tableId, setTableId] = useState(tables[0]?.id ?? "");
+  const [method, setMethod] = useState("Distribution fit");
+  const [runState, setRunState] = useState("Ready");
+  const table = tables.find((item) => item.id === tableId) ?? tables[0];
+  const column = table?.columns[0];
+  if (!table || !column) return null;
+  const methods = ["Distribution fit", "Engineering capability", "Markov states", "Bayesian update", "Monte Carlo", "Time series"];
+  const states = ["Stable", "Watch", "Constrained"];
+  const transition = [[84, 13, 3], [18, 63, 19], [8, 31, 61]];
+  return <div className="statistical-studio">
+    <section className="statistics-commandbar">
+      <div><p>ISSUE DETECTION</p><b>{project.problem}</b><span>{tables.length} governed project tables matched to the operating question.</span></div>
+      <label>Dataset<select value={table.id} onChange={(event) => setTableId(event.target.value)}>{tables.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+      <label>Method<select value={method} onChange={(event) => setMethod(event.target.value)}>{methods.map((item) => <option key={item}>{item}</option>)}</select></label>
+      <button data-action-id="statistics.run" type="button" onClick={() => { setRunState("Modeled · human review"); onOutcome("Statistical-analysis receipt recorded", `${method} was replayed against ${table.name} for ${project.client}. The deterministic result is isolated to ${project.name}; no source data or production model changed.`, `${project.code}-STAT-${method.toUpperCase().replace(/[^A-Z]+/g, "-")}-01`); }}>Run analysis &#8594;</button>
+    </section>
+    <div className="studio-metrics statistics-metrics"><EvidenceMetric project={project} app="STATISTICS" id={`${table.id}-ROWS`} label="Observed records" value={table.rows} detail={`${table.grain} · ${table.freshness} modeled refresh`} onEvidence={onEvidence} /><EvidenceMetric project={project} app="STATISTICS" id={`${table.id}-FIT`} label="Best distribution" value={column.distribution} detail={`${column.fitScore}% goodness-of-fit score on ${column.id}`} variableId={column.id} onEvidence={onEvidence} /><EvidenceMetric project={project} app="STATISTICS" id={`${table.id}-DRIFT`} label="Drift index" value={String(table.driftScore)} detail={`${table.stationarity}; review threshold 50`} variableId={column.id} onEvidence={onEvidence} /><EvidenceMetric project={project} app="STATISTICS" id={`${table.id}-MISSING`} label="Missingness" value={`${table.missingPercent}%`} detail={`${table.quality}% governed table quality`} onEvidence={onEvidence} /></div>
+    <div className="statistics-layout">
+      <section className="distribution-panel"><header><div><p>{method.toUpperCase()} · {column.id}</p><h2>{table.name}</h2></div><span>{runState}</span></header><div className="distribution-chart" aria-label={`Synthetic ${column.distribution} histogram`}>{[21,34,49,67,86,100,91,73,55,38,24,13].map((height, index) => <i key={index} style={{ height: `${height}%` }} title={`Bin ${index + 1}: ${height}`} />)}<span className="distribution-curve" /></div><div className="distribution-axis"><span>P05 {column.p05}</span><span>Mean {column.mean}</span><span>P95 {column.p95}</span></div><div className="statistics-column-grid">{table.columns.map((item) => <button data-action-id={`statistics.variable.${item.id}`} type="button" key={item.id} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-STAT-${table.id}-${item.id}`, claim: `${item.id} statistical profile`, displayedValue: `${item.distribution} · mean ${item.mean} · σ ${item.standardDeviation}`, source: `${table.source} deterministic statistical fixture`, formula: `${method}; P05/P50/P95 and fit diagnostics from the project-isolated synthetic table`, inputs: [table.tableNodeId, item.id, project.id], variableId: item.id, grain: table.grain, confidence: item.fitScore }))}><b>{item.id}</b><span>{item.distribution}</span><small>μ {item.mean} · σ {item.standardDeviation} · missing {item.missingPercent}%</small></button>)}</div></section>
+      <aside className="markov-panel"><header><p>MARKOV STATE MODEL</p><h2>Next operating state</h2><span>One-step transition · fitted from {table.name}</span></header><div className="markov-matrix"><span />{states.map((state) => <b key={state}>{state}</b>)}{states.flatMap((from, row) => [<b key={`${from}-label`}>{from}</b>, ...transition[row].map((value, columnIndex) => <button data-action-id={`statistics.transition.${row}.${columnIndex}`} type="button" key={`${from}-${states[columnIndex]}`} title={`${from} to ${states[columnIndex]}: ${value}%`} style={{ "--transition-strength": value / 100 } as React.CSSProperties} onClick={() => onOutcome("Transition probability inspected", `${from} to ${states[columnIndex]} is ${value}% in the ${table.name} deterministic one-step transition fixture.`, `${project.code}-MARKOV-${row + 1}-${columnIndex + 1}`)}>{value}%</button>)])}</div><dl><div><dt>Most likely next state</dt><dd>{table.driftScore > 50 ? "Watch" : "Stable"}</dd></div><div><dt>Constrained-state persistence</dt><dd>61%</dd></div><div><dt>95% predictive interval</dt><dd>{column.p05}–{column.p95} {column.unit}</dd></div><div><dt>Model use</dt><dd>Network Optimizer uncertainty contract</dd></div></dl><a data-action-id="statistics.table.open" href={`/table?project=${encodeURIComponent(project.id)}&table=${encodeURIComponent(table.id)}`} target="_blank" rel="noopener noreferrer">Open and query full table &#8599;</a><button data-action-id="statistics.send.optimizer" type="button" onClick={() => onOutcome("Optimizer input contract drafted", `${column.distribution} distribution, fitted parameters, Markov transition matrix, and provenance for ${table.name} were recorded as a browser-session draft for Network Optimizer.`, `${project.code}-STAT-TO-NO-01`)}>Send distribution contract to Network Optimizer</button></aside>
+    </div>
+  </div>;
 }
 
 function MineralAtlas({ project, onEvidence, onOutcome }: Omit<Props, "appId">) {
@@ -93,7 +120,8 @@ export default function ProjectAppStudio(props: Props) {
   const app = projectApps.find((item) => item.id === props.appId) ?? projectApps[0];
   return <div className={`project-app-studio app-theme-${props.appId}`} data-app-theme={props.appId} style={{ "--studio-accent": app.accent } as React.CSSProperties}>
     <StudioHeader appId={props.appId} project={props.project} />
-    {props.appId === "minerals" ? <MineralAtlas project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
+    {props.appId === "statistics" ? <StatisticalStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
+      : props.appId === "minerals" ? <MineralAtlas project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "workforce" ? <WorkforceStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "manufacturing" ? <ManufacturingTwin project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "logistics" ? <LogisticsRadar project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />

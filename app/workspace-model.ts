@@ -3,7 +3,7 @@ import { caseStudyProjects, caseStudyProfileFor } from "./case-study-model";
 export type WorkspaceTabId = "overview" | "decisions" | "apps" | "data" | "graph" | "agents" | "team" | "governance";
 export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
-export type ProjectAppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
+export type ProjectAppId = "risk" | "optimizer" | "statistics" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
 export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
 export type CollaboratorAffiliation = "Client" | "tanjx";
 export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
@@ -407,6 +407,7 @@ export const connectorTemplates: readonly ConnectorTemplate[] = [
 export const projectApps: readonly ProjectAppDefinition[] = [
   { id: "risk", name: "Risk Radar", icon: "RR", accent: "#ff715b", archetype: "Signal room + causal propagation", outcome: "Know what can stop the project", artifact: "Risk control brief", methodCodes: ["M-04", "M-16", "M-20", "M-23"], variableIds: ["L2-027", "L0-025", "L0-054"], status: "Concept ready" },
   { id: "optimizer", name: "Network Optimizer", icon: "NO", accent: "#d7ff38", archetype: "Formulation editor + run console", outcome: "Choose a feasible response", artifact: "Versioned solution package", methodCodes: ["M-05", "M-06", "M-20", "M-22", "M-24"], variableIds: ["L0-001", "L0-071", "L0-299"], status: "Concept ready" },
+  { id: "statistics", name: "Statistical Studio", icon: "ST", accent: "#ec5fa3", archetype: "Distribution lab + state-transition notebook", outcome: "Explain variation and predict the next operating state", artifact: "Versioned statistical model package", methodCodes: ["M-02", "M-03", "M-04", "M-13", "M-16", "M-17", "M-20", "M-26"], variableIds: ["L0-001", "L0-071", "L0-101", "L0-202"], status: "Concept ready" },
   { id: "flow", name: "Flow Lens", icon: "FL", accent: "#6ed0ff", archetype: "Material-to-cash Sankey", outcome: "Release cash without harming service", artifact: "Cash action package", methodCodes: ["M-05", "M-06", "M-24"], variableIds: ["L0-155", "L0-290", "L0-312"], status: "Concept ready" },
   { id: "demand", name: "Demand Sense", icon: "DS", accent: "#b8a4ff", archetype: "Forecast fan + causal notebook", outcome: "Commit an explainable demand range", artifact: "Demand contract", methodCodes: ["M-02", "M-03", "M-04", "M-20"], variableIds: ["L0-001", "L0-016", "L2-011"], status: "Concept ready" },
   { id: "suppliers", name: "Supplier Graph", icon: "SG", accent: "#77d59c", archetype: "N-tier graph + qualification funnel", outcome: "Find dependency and optionality", artifact: "Qualified shortlist", methodCodes: ["M-22", "M-25", "M-29"], variableIds: ["L0-057", "L0-044", "L0-056"], status: "Concept ready" },

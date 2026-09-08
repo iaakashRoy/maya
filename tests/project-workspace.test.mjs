@@ -40,9 +40,9 @@ test("ten clients and their cross-tower projects are isolated, evidence-aware, a
   assert.equal(new Set(workspaceProjects.map((project) => project.sectorId)).size, 10);
   assert.equal(new Set(workspaceProjects.map((project) => project.clientId)).size, 10);
   assert.ok(workspaceProjects.every((project) => workspaceProjects.filter((candidate) => candidate.clientId === project.clientId).length === 1));
-  assert.equal(projectApps.length, 10);
-  assert.equal(new Set(projectApps.map((app) => app.accent)).size, 10);
-  assert.equal(new Set(projectApps.map((app) => app.archetype)).size, 10);
+  assert.equal(projectApps.length, 11);
+  assert.equal(new Set(projectApps.map((app) => app.accent)).size, 11);
+  assert.equal(new Set(projectApps.map((app) => app.archetype)).size, 11);
 
   for (const project of workspaceProjects) {
     assert.equal(project.counts.apps, project.mountedAppIds.length, `${project.code} app count`);
@@ -693,7 +693,7 @@ test("decision lineage, interactive controls, uniform project leaves, and theme 
   assert.match(workspace, /parentLabel = isMerge \? "D2-A \+ D2-B"/);
   assert.match(workspace, /data-action-id="decisions\.view\.compare"/);
   assert.match(workspace, /data-action-id="decisions\.compare\.record"/);
-  assert.match(workspace, /Evidence lineage remains in Data &amp; graph/);
+  assert.match(workspace, /Evidence lineage remains in Data/);
   assert.match(workspace, /role="switch" aria-checked=\{controlStates\[control\.id\]\}/);
   assert.match(workspace, /data-action-id="governance\.test"/);
   assert.match(workspace, /data-action-id="governance\.reset"/);

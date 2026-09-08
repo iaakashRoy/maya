@@ -5,6 +5,7 @@ import WorldNetworkMap, { type MapSelectionContext } from "./WorldNetworkMap";
 import { getNetworkView, networkLocations, type MapLayer, type NetworkFrameId, type NetworkRegion } from "./network-operations-model";
 import { type ScopeSnapshot, type StatusTone } from "./platform-model";
 import type { WorkspaceProject } from "./workspace-model";
+import GlobalKnowledgeGraph from "./GlobalKnowledgeGraph";
 
 type ScopeDashboardProps = {
   snapshot: ScopeSnapshot;
@@ -169,6 +170,7 @@ export default function ScopeDashboard({ snapshot, projects, worldScope, region:
   const [moneyMode, setMoneyMode] = useState<"Cash position" | "Working capital" | "Margin">("Cash position");
   const [currency, setCurrency] = useState(snapshot.currency);
   const [reconciled, setReconciled] = useState(false);
+  const [operationsView, setOperationsView] = useState<"overview" | "knowledge">("overview");
   const activeSnapshot = worldScope === "region" ? { ...snapshot, ...regionalOperationsProfiles[selectedRegion] } : snapshot;
   const traceScopeId = worldScope === "region" ? `region-${selectedRegion.toLowerCase().replaceAll(" ", "-")}` : snapshot.id;
   const traceContext = `Operations World / ${activeSnapshot.shortLabel}`;
@@ -208,6 +210,13 @@ export default function ScopeDashboard({ snapshot, projects, worldScope, region:
           <small><ToneDot tone="healthy" />{activeSnapshot.updated}</small>
         </div>
       </section>
+
+      <nav className="operations-view-tabs" aria-label="Operations World views">
+        <button data-action-id="operations.view.overview" className={operationsView === "overview" ? "active" : ""} type="button" aria-current={operationsView === "overview" ? "page" : undefined} onClick={() => setOperationsView("overview")}><span aria-hidden="true">◎</span><b>Network operations</b><small>Signals, movements, and cash</small></button>
+        <button data-action-id="operations.view.knowledge" className={operationsView === "knowledge" ? "active" : ""} type="button" aria-current={operationsView === "knowledge" ? "page" : undefined} onClick={() => setOperationsView("knowledge")}><span aria-hidden="true">⌘</span><b>Global knowledge graph</b><small>All clients, projects, tables, and dependencies</small></button>
+      </nav>
+
+      {operationsView === "knowledge" ? <GlobalKnowledgeGraph projects={projects} onOpenProject={onOpenProject} onTrace={onTrace} /> : <>
 
       <section className="control-strip" aria-label="Operations filters">
         <div className="filter-group">
@@ -286,6 +295,7 @@ export default function ScopeDashboard({ snapshot, projects, worldScope, region:
           <button className="secondary-action" type="button" onClick={() => onAddToProject()}>Start sourcing project intake</button>
         </section>
       </div>
+      </>}
     </div>
   );
 }

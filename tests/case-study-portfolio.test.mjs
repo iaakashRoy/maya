@@ -20,15 +20,17 @@ test("the canonical portfolio contains ten complete public-context simulations",
     assert.ok(profile.hardConstraints.length >= 4, `${profile.company} hard constraints`);
     assert.ok(profile.timeline.length >= 5, `${profile.company} activity trail`);
     assert.equal(profile.supplyChain.stages.length, 8, `${profile.company} multilevel chain`);
-    assert.equal(profile.supplyChain.nodes.length, 169, `${profile.company} hub, operating, alternate, contingency, and sub-tier nodes`);
-    assert.equal(profile.supplyChain.edges.length, 313, `${profile.company} typed multilevel dependencies`);
+    assert.equal(profile.supplyChain.nodes.length, 199, `${profile.company} operating, ecosystem, table, and variable entities`);
+    assert.equal(profile.supplyChain.edges.length, 349, `${profile.company} typed operational and analytical dependencies`);
     assert.equal(profile.supplyChain.checkpoints.length, 16, `${profile.company} checkpoint register`);
     assert.equal(profile.supplyChain.signals.length, 16, `${profile.company} realtime-style signals`);
+    assert.equal(profile.supplyChain.nodes.filter((node) => node.assetType === "Table").length, 6, `${profile.company} governed tables in graph`);
+    assert.equal(profile.supplyChain.nodes.filter((node) => node.assetType === "Variable").length, 24, `${profile.company} statistical variables in graph`);
     const nodeIds = new Set(profile.supplyChain.nodes.map((node) => node.id));
     const stageIds = new Set(profile.supplyChain.stages.map((stage) => stage.id));
     for (const node of profile.supplyChain.nodes) {
       assert.ok(node.tier === "Hub" || stageIds.has(node.stageId), `${profile.company} node stage reference`);
-      assert.match(node.evidenceRef, /^P-\d{3}-EV-(?:NET|X)-/);
+      assert.match(node.evidenceRef, /^P-\d{3}-EV-(?:NET|X|TABLE|VAR)-/);
     }
     for (const edge of profile.supplyChain.edges) {
       assert.ok(nodeIds.has(edge.from), `${profile.company} edge source reference`);
@@ -37,6 +39,27 @@ test("the canonical portfolio contains ten complete public-context simulations",
     assert.match(profile.publicSource.url, /^https:\/\//);
     assert.notEqual(profile.baseline, profile.resilient);
   }
+  const fingerprints = model.caseStudyProfiles.map((profile) => JSON.stringify({ datasets: profile.datasets, stages: profile.supplyChain.stages, core: profile.supplyChain.nodes.filter((node) => node.tier !== "Sub-tier").map((node) => [node.label, node.country, node.capacity, node.riskScore]) }));
+  assert.equal(new Set(fingerprints).size, 10, "every client and project has a distinct data and network fingerprint");
+});
+
+test("global graph, statistical analysis, and full-table query surfaces are wired", async () => {
+  const [scope, globalGraph, studios, statistics, tablePage] = await Promise.all([
+    read("../app/ScopeDashboard.tsx"),
+    read("../app/GlobalKnowledgeGraph.tsx"),
+    read("../app/ProjectAppStudios.tsx"),
+    read("../app/statistical-model.ts"),
+    read("../app/table/TableExplorerClient.tsx"),
+  ]);
+  assert.match(scope, /GlobalKnowledgeGraph/);
+  assert.match(scope, /Global knowledge graph/);
+  assert.match(globalGraph, /GLOBAL NETWORK OPTIMIZER/);
+  assert.match(globalGraph, /crossClient/);
+  assert.match(studios, /StatisticalStudio/);
+  assert.match(studios, /MARKOV STATE MODEL/);
+  assert.match(statistics, /statisticalProfilesFor/);
+  assert.match(tablePage, /QUERY TABLE/);
+  assert.match(tablePage, /target table is unchanged|source table is unchanged/i);
 });
 
 test("every case variable follows a selected taxonomy ancestry", async () => {
@@ -86,7 +109,7 @@ test("embedded and standalone case-study guides expose project-deep links and si
   assert.match(deck, /ArrowRight/);
   assert.match(deck, /window\.print/);
   assert.match(deck, /GRAPH \+ CHOKEPOINTS/);
-  assert.match(deck, /5,140<\/b> portfolio network records/);
+  assert.match(deck, /5,800<\/b> portfolio network records/);
   for (const company of ["Apple", "Coca-Cola", "Gucci", "Tata Motors", "Tesla", "BYD", "Hershey", "TSMC", "Airbus", "Pfizer"]) {
     assert.match(deck, new RegExp(`company:\\s*["']${company.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`));
   }

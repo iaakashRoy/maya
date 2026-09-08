@@ -5,7 +5,7 @@ import type { ProjectActivityState } from "./project-activity-model";
 /** Internal compatibility scopes. The UI exposes Workspace and Operations World. */
 export const scopeIds: ScopeId[] = ["global", "region", "company"];
 const operationsScopeIds: readonly ScopeId[] = ["global", "region"];
-const workspaceStudioIds: readonly ProjectAppId[] = ["minerals", "workforce", "manufacturing", "logistics", "quality"];
+const workspaceStudioIds: readonly ProjectAppId[] = ["statistics", "minerals", "workforce", "manufacturing", "logistics", "quality"];
 
 export const viewLabels: Record<ViewId, string> = {
   global: "Operations World",

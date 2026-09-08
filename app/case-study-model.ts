@@ -2447,11 +2447,96 @@ const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork
       status: nodeStatusFor(risk),
     } satisfies SupplyChainNode;
   }));
-  const nodes = [hubNode, ...coreNodes, ...ecosystemNodes];
+  const tableNodes = seed.datasets.map((dataset, datasetIndex) => {
+    const stageIndex = datasetIndex % stages.length;
+    const score = 24 + ((projectIndex * 13 + datasetIndex * 9) % 59);
+    return {
+      id: `${seed.code}-TABLE-${String(datasetIndex + 1).padStart(2, "0")}`,
+      stageId: stages[stageIndex].id,
+      label: dataset.name,
+      assetType: "Table",
+      geography: blueprint.stages[stageIndex].country,
+      country: blueprint.stages[stageIndex].country,
+      tier: "Sub-tier",
+      role: `${dataset.grain} governed analytical table`,
+      capacity: `${dataset.rows} rows`,
+      throughput: `${dataset.freshness} refresh`,
+      annualValue: `${dataset.quality}% data quality`,
+      utilization: 54 + ((projectIndex * 7 + datasetIndex * 6) % 40),
+      leadTime: 1 + ((projectIndex + datasetIndex * 3) % 13),
+      concentration: 28 + ((projectIndex * 5 + datasetIndex * 11) % 61),
+      riskScore: score,
+      confidence: dataset.quality,
+      freshness: dataset.freshness,
+      sourceClass: dataset.source,
+      evidenceRef: `${seed.code}-EV-TABLE-${String(datasetIndex + 1).padStart(2, "0")}`,
+      status: nodeStatusFor(score),
+    } satisfies SupplyChainNode;
+  });
+  const variableNodes = seed.datasets.flatMap((dataset, datasetIndex) => {
+    const stageIndex = datasetIndex % stages.length;
+    const variables = [...dataset.variables, `${seed.code}-OBS-${String(datasetIndex + 1).padStart(2, "0")}`];
+    return variables.map((variable, variableIndex) => {
+      const score = 18 + ((projectIndex * 17 + datasetIndex * 13 + variableIndex * 19) % 68);
+      return {
+        id: `${seed.code}-VAR-${String(datasetIndex + 1).padStart(2, "0")}-${String(variableIndex + 1).padStart(2, "0")}`,
+        stageId: stages[stageIndex].id,
+        label: variable,
+        assetType: "Variable",
+        geography: blueprint.stages[stageIndex].country,
+        country: blueprint.stages[stageIndex].country,
+        tier: "Sub-tier",
+        role: `${dataset.name} analytical variable`,
+        capacity: `${dataset.rows} observations`,
+        throughput: `${dataset.freshness} refresh`,
+        annualValue: `${82 + ((projectIndex + datasetIndex + variableIndex) % 17)}% model fit`,
+        utilization: 42 + ((projectIndex * 5 + datasetIndex * 9 + variableIndex * 7) % 54),
+        leadTime: 1 + ((projectIndex + datasetIndex + variableIndex) % 9),
+        concentration: 19 + ((projectIndex * 11 + datasetIndex * 5 + variableIndex * 17) % 72),
+        riskScore: score,
+        confidence: 81 + ((projectIndex * 3 + datasetIndex * 2 + variableIndex) % 18),
+        freshness: dataset.freshness,
+        sourceClass: "Synthetic statistical profile",
+        evidenceRef: `${seed.code}-EV-VAR-${String(datasetIndex + 1).padStart(2, "0")}-${String(variableIndex + 1).padStart(2, "0")}`,
+        status: nodeStatusFor(score),
+      } satisfies SupplyChainNode;
+    });
+  });
+  const nodes = [hubNode, ...coreNodes, ...ecosystemNodes, ...tableNodes, ...variableNodes];
   const primaryNodes = nodes.filter((node) => node.tier === "Primary");
   const alternateNodes = nodes.filter((node) => node.tier === "Alternate");
   const contingencyNodes = nodes.filter((node) => node.tier === "Contingency");
   const edges: SupplyChainEdge[] = [];
+  tableNodes.forEach((table, datasetIndex) => {
+    const stageIndex = datasetIndex % stages.length;
+    const tableVariables = variableNodes.slice(datasetIndex * 4, datasetIndex * 4 + 4);
+    tableVariables.forEach((variable) => edges.push({
+      id: `${seed.code}-E-${String(edges.length + 1).padStart(3, "0")}`,
+      from: variable.id,
+      to: table.id,
+      relationship: "profiles",
+      volume: variable.capacity,
+      value: variable.annualValue,
+      share: 100,
+      leadTime: 1,
+      mode: "Statistical contract",
+      riskScore: Math.max(variable.riskScore, table.riskScore),
+      evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(3, "0")}`,
+    }));
+    for (const target of [primaryNodes[stageIndex], hubNode]) edges.push({
+      id: `${seed.code}-E-${String(edges.length + 1).padStart(3, "0")}`,
+      from: table.id,
+      to: target.id,
+      relationship: target.tier === "Hub" ? "informs" : "observes",
+      volume: table.capacity,
+      value: table.annualValue,
+      share: datasetIndex % 2 === 0 ? 94 : 87,
+      leadTime: table.leadTime,
+      mode: "Governed data",
+      riskScore: Math.max(table.riskScore, target.riskScore),
+      evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(3, "0")}`,
+    });
+  });
   for (let stageIndex = 0; stageIndex < stages.length - 1; stageIndex += 1) {
     for (const tierNodes of [primaryNodes, alternateNodes, contingencyNodes]) {
       const from = tierNodes[stageIndex];
@@ -2662,7 +2747,7 @@ export const caseStudyProfiles: readonly CaseStudyProfile[] = seeds.map(
     cvar: seed.resilience.cvar,
     hardConstraints: seed.hardConstraints,
     methods: seed.methodCodes,
-    apps: seed.mountedAppIds,
+    apps: [...new Set([...seed.mountedAppIds, "statistics" as const])],
     datasets: seed.datasets,
     supplyChain: networkFor(seed, projectIndex),
     timeline: timelineFor(seed),
@@ -2714,9 +2799,9 @@ export const caseStudyProjects: readonly WorkspaceProject[] = seeds.map(
     owner: seed.owner,
     classification: seed.classification,
     dataResidency: seed.dataResidency,
-    counts: { ...seed.counts, apps: seed.mountedAppIds.length },
+    counts: { ...seed.counts, apps: new Set([...seed.mountedAppIds, "statistics" as const]).size },
     metrics: seed.metrics,
-    mountedAppIds: seed.mountedAppIds,
+    mountedAppIds: [...new Set([...seed.mountedAppIds, "statistics" as const])],
     variablePack: canonicalVariablePack(seed),
     methodCodes: seed.methodCodes,
     simulation: {

@@ -2,6 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from "react";
 import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainNetwork, type SupplyChainNode } from "./case-study-model";
+import { statisticalProfileForNode } from "./statistical-model";
 import { fixtureEvidenceFor, type EvidenceReceipt, type WorkspaceProject } from "./workspace-model";
 
 type ExplorerProps = {
@@ -122,6 +123,7 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const selectedNode = network?.nodes.find((node) => node.id === selectedNodeId) ?? network?.nodes[0];
+  const selectedTable = selectedNode ? statisticalProfileForNode(project, selectedNode.id) : undefined;
   const selectedCheckpoint = network?.checkpoints.find((checkpoint) => checkpoint.id === selectedCheckpointId) ?? network?.checkpoints[0];
   const normalizedQuery = query.trim().toLowerCase();
   const regions = [...new Set(network?.nodes.map((node) => node.geography) ?? [])];
@@ -244,6 +246,13 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
         <dl><div><dt>Tier</dt><dd>{selectedNode.tier}</dd></div><div><dt>Capacity</dt><dd>{selectedNode.capacity}</dd></div><div><dt>Throughput</dt><dd>{selectedNode.throughput}</dd></div><div><dt>Annual value</dt><dd>{selectedNode.annualValue}</dd></div><div><dt>Utilization</dt><dd>{selectedNode.utilization}%</dd></div><div><dt>Lead time</dt><dd>{selectedNode.leadTime} days</dd></div><div><dt>Path concentration</dt><dd>{selectedNode.concentration}%</dd></div><div><dt>Confidence</dt><dd>{selectedNode.confidence}%</dd></div></dl>
         <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>)}</section>
         <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
+        {selectedTable && <section className="supply-table-profile">
+          <small>TABLE STATISTICAL PROFILE</small>
+          <div className="supply-table-stats"><span><b>{selectedTable.rows}</b>rows</span><span><b>{selectedTable.quality}%</b>quality</span><span><b>{selectedTable.missingPercent}%</b>missing</span><span><b>{selectedTable.driftScore}</b>drift</span></div>
+          <p><b>{selectedTable.bestFit}</b> best fit · {selectedTable.stationarity}</p>
+          <div className="supply-table-head"><div>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <b key={column}>{column}</b>)}</div>{selectedTable.sampleRows.slice(0, 3).map((row, rowIndex) => <div key={rowIndex}>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <span key={column}>{row[column]}</span>)}</div>)}</div>
+          <a data-action-id={`supply-network.table.open.${selectedTable.id}`} href={`/table?project=${encodeURIComponent(project.id)}&table=${encodeURIComponent(selectedTable.id)}`} target="_blank" rel="noopener noreferrer">Open full table &#8599;</a>
+        </section>}
         <footer><span>{selectedNode.freshness}</span><button data-action-id={`supply-network.evidence.${selectedNode.id}`} type="button" onClick={() => onEvidence(nodeReceipt(selectedNode))}>Trace evidence &#8599;</button></footer>
       </aside>}
     </div> : <div className="supply-checkpoint-view">
