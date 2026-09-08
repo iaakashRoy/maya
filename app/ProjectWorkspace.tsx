@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type Dispatch, type FormEvent } from "react";
 import ProjectAppStudio from "./ProjectAppStudios";
 import ProjectSupplyChainExplorer from "./ProjectSupplyChainExplorer";
+import { caseStudyProfileFor } from "./case-study-model";
 import { useDialogLifecycle } from "./useDialogLifecycle";
 import { AppGlyph } from "./VisualIdentity";
 import {
@@ -17,13 +18,11 @@ import {
   evaluateProjectAccess,
   evidenceFor,
   fixtureEvidenceFor,
-  graphNodesFor,
   humanExperts,
   membershipsForProject,
   methodFamilies,
   projectApps,
   projectMemberships,
-  projectGraphEdges,
   queueConnectorPolicyReview,
   replayConnectorFixture,
   signedInCollaboratorId,
@@ -216,7 +215,7 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
   const focusedAppRunId = initialRunId;
   const studioApp = initialApp && !isExistingApp(initialApp) && initialSession.mountedApps.includes(initialApp) ? initialApp : null;
   const [selectedDecision, setSelectedDecision] = useState<string>(initialSession.selectedDecision);
-  const [selectedGraphNode, setSelectedGraphNode] = useState<string>(initialSession.selectedGraphNode);
+  const [selectedGraphNode] = useState<string>(initialSession.selectedGraphNode);
   const [selectedAgentId, setSelectedAgentId] = useState(initialSession.selectedAgentId);
   const [chatText, setChatText] = useState(initialSession.chatText);
   const [uploadStage, setUploadStage] = useState<UploadStage>(initialSession.uploadStage);
@@ -262,12 +261,10 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
     const collaborator = collaborators.find((item) => item.id === membership.collaboratorId);
     return collaborator ? [{ membership, collaborator }] : [];
   });
-  const graphNodes = graphNodesFor(project);
   const traceSteps = traceStepsFor(project, activePrompt, steeringInstructions);
   const availableAgents = [...agentsFor(project), ...createdAgents];
   const selectedAgent = availableAgents.find((item) => item.id === selectedAgentId) ?? availableAgents[0] ?? null;
   const selectedExpert = humanExperts.find((item) => item.id === selectedExpertId) ?? humanExperts[0];
-  const selectedNode = graphNodes.find((item) => item.id === selectedGraphNode) ?? graphNodes[0];
   const changeTab = (next: WorkspaceTabId) => {
     if (!authorize(capabilityForTab(next))) return;
     if (next === tab && !studioApp) return;
@@ -529,7 +526,7 @@ export default function ProjectWorkspace({ onOpenApp, onOpenCase, onOutcome = ()
          {tab === "overview" && <><LiveScenarioStrip project={project} onEvidence={openEvidence} /><OverviewPanel project={project} mounted={mountedApps} onTab={changeTab} onEvidence={openEvidence} onOpenApp={openApp} /><RecentWorkPanel sessions={workSessions} onOpen={openWorkSession} onContinue={continueWorkSession} />{project.operationsWorldIntake && <ProjectIntakeSummary project={project} onEvidence={openEvidence} />}</>}
         {tab === "decisions" && <DecisionPanel project={project} selected={selectedDecision} onSelect={setSelectedDecision} onEvidence={openEvidence} onOpenCase={onOpenCase} onOutcome={onOutcome} onCreateDraft={() => { if (!dataContractReady) { onOutcome("Decision draft blocked", "Complete the Data mapping review before creating a decision brief. No empty decision or case was created.", `DECISION-${project.code}-DATA-REQUIRED`, "Blocked"); return; } setDecisionDraftReady(true); setSelectedDecision("D0"); onProjectSetupChange?.(project.id, { counts: { ...project.counts, decisions: 1 } }); onOutcome("Decision brief draft created", `A browser-session decision brief was created for ${project.name} with a human review boundary; no approval or operational release occurred.`, `DECISION-${project.code}-DRAFT-01`, "Saved"); }} draftReady={decisionDraftReady} />}
          {tab === "apps" && <AppsPanel project={project} mounted={mountedApps} runs={projectAppRuns} activityState={activityState} dispatchActivity={dispatchActivity} onOpen={openApp} onOpenPlayground={() => changeTab("agents")} onOpenSession={openWorkSession} onEvidence={openEvidence} onOutcome={onOutcome} canRun={evaluateProjectAccess(project.id, activeCollaboratorId, "agents.run", memberships).allowed && dataContractReady} runBlockedReason={!dataContractReady ? "Complete the Data mapping review before starting an application run." : undefined} focusedRunId={focusedAppRunId} onRunChange={onRunChange} />}
-        {(tab === "data" || tab === "graph") && <ProjectDataWorkspace mode={tab === "graph" ? "graph" : "sources"} onMode={(mode) => changeTab(mode === "graph" ? "graph" : "data")} query={dataQuery} onQuery={setDataQuery} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={requestConnector} onReviewConnector={reviewConnector} onTestConnector={testConnectorFixture} onFile={setUploadFile} onUseSample={() => { if (!authorize("data.stage")) return; setUploadName(`${project.code}_Project_Sample.csv`); setUploadStage("Staged"); }} onAdvance={nextUploadStage} onEvidence={openEvidence} onOutcome={onOutcome} nodes={graphNodes} traceSteps={traceSteps} selectedNode={selectedGraphNode} onSelectNode={setSelectedGraphNode} selected={selectedNode} traceIndex={traceIndex} onSteer={steerRun} canSteer={Boolean(selectedWorkSession) && dataContractReady} />}
+        {(tab === "data" || tab === "graph") && <ProjectDataWorkspace mode={tab === "graph" ? "graph" : "sources"} onMode={(mode) => changeTab(mode === "graph" ? "graph" : "data")} query={dataQuery} onQuery={setDataQuery} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={requestConnector} onReviewConnector={reviewConnector} onTestConnector={testConnectorFixture} onFile={setUploadFile} onUseSample={() => { if (!authorize("data.stage")) return; setUploadName(`${project.code}_Project_Sample.csv`); setUploadStage("Staged"); }} onAdvance={nextUploadStage} onEvidence={openEvidence} onOutcome={onOutcome} traceSteps={traceSteps} traceIndex={traceIndex} onSteer={steerRun} canSteer={Boolean(selectedWorkSession) && dataContractReady} />}
          {tab === "agents" && <AgentPanel project={project} dataReady={dataContractReady} traceSteps={traceSteps} selectedAgent={selectedAgent} selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} sessions={workSessions} selectedSession={selectedWorkSession} messages={sessionMessages} activities={sessionActivities} appRuns={projectAppRuns} sessionsOpen={agentSessionsOpen} inspectorOpen={agentInspectorOpen} playgroundFullscreen={playgroundFullscreen} onToggleSessions={() => setAgentSessionsOpen((current) => !current)} onToggleInspector={() => setAgentInspectorOpen((current) => !current)} onToggleFullscreen={() => setPlaygroundFullscreen((current) => !current)} onSelectSession={selectWorkSession} onContinueSession={continueWorkSession} onOpenRun={openAppRun} chatText={chatText} onChatText={setChatText} onSubmit={submitChat} traceIndex={traceIndex} runState={runState} onAdvance={advanceRun} onCancel={cancelRun} onSteer={steerRun} onEvidence={openEvidence} onOpenBuilder={() => { if (!authorize("agents.create")) return; setBuilderOpen(true); setBuilderStep(0); }} agents={availableAgents} />}
         {tab === "team" && <><ProjectMembershipsPanel project={project} members={projectMembers} onEvidence={openEvidence} /><TeamPanel project={project} selected={selectedExpert} selectedId={selectedExpertId} assigned={assignedExperts} onSelect={setSelectedExpertId} onEvidence={openEvidence} onAssign={(id) => { if (!authorize("team.manage")) return; setAssignedExperts((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]); onOutcome("Team assignment updated", `${humanExperts.find((item) => item.id === id)?.name} assignment was updated in this synthetic project session.`, `${project.code}-TEAM-${id.toUpperCase()}`); }} /></>}
         {tab === "governance" && <GovernancePanel project={project} onOutcome={onOutcome} onEvidence={openEvidence} />}
@@ -777,17 +774,15 @@ type ProjectDataWorkspaceProps = {
   onAdvance: () => void;
   onEvidence: (target: string | EvidenceReceipt) => void;
   onOutcome: OutcomeHandler;
-  nodes: ReturnType<typeof graphNodesFor>;
   traceSteps: readonly TraceStep[];
-  selectedNode: string;
-  onSelectNode: (id: string) => void;
-  selected: ReturnType<typeof graphNodesFor>[number] | undefined;
   traceIndex: number;
   onSteer: (label: string) => void;
   canSteer: boolean;
 };
 
-function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadStage, uploadName, sessionDatasets, connectorDrafts, onRequestConnector, onReviewConnector, onTestConnector, onFile, onUseSample, onAdvance, onEvidence, onOutcome, nodes, traceSteps, selectedNode, onSelectNode, selected, traceIndex, onSteer, canSteer }: ProjectDataWorkspaceProps) {
+function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadStage, uploadName, sessionDatasets, connectorDrafts, onRequestConnector, onReviewConnector, onTestConnector, onFile, onUseSample, onAdvance, onEvidence, onOutcome, traceSteps, traceIndex, onSteer, canSteer }: ProjectDataWorkspaceProps) {
+  const networkNodes = caseStudyProfileFor(project)?.supplyChain.nodes ?? [];
+  const [selectedNetworkNodeId, setSelectedNetworkNodeId] = useState(networkNodes[0]?.id ?? "");
   const normalizedQuery = query.trim().toLowerCase();
   const matches = (...values: readonly (string | number | undefined)[]) => !normalizedQuery || values.some((value) => String(value ?? "").toLowerCase().includes(normalizedQuery));
   const datasetHits = datasetsFor(project).filter((dataset) => matches(dataset.id, dataset.name, dataset.source, dataset.grain, dataset.variables.join(" ")));
@@ -795,17 +790,17 @@ function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadSta
   const documentHits = projectDocumentsFor(project).filter((document) => matches(document.id, document.name, document.kind, document.locator, document.detail, document.state, document.variableId));
   const connectorTemplateHits = connectorTemplates.filter((template) => matches(template.id, template.name, template.sourceClass, template.protocol, template.targetData.join(" "), template.targetBoundary));
   const connectorHits = connectorDrafts.filter((connector) => matches(connector.id, connector.name, connector.protocol, connector.state, connector.policyReviewState));
-  const graphHits = nodes.filter((node) => matches(node.id, node.label, node.kind, node.detail, node.evidenceRef));
+  const graphHits = networkNodes.filter((node) => matches(node.id, node.label, node.assetType, node.role, node.country, node.evidenceRef));
   const metricHits = project.metrics.filter((metric) => matches(metric.label, metric.value, metric.detail, metric.evidenceRef));
   const variableHits = [...project.variablePack.l2, ...project.variablePack.l1, ...project.variablePack.l0].filter((variable) => matches(variable)).slice(0, 12);
   const hitCount = datasetHits.length + previewHits.length + documentHits.length + connectorTemplateHits.length + connectorHits.length + graphHits.length + metricHits.length + variableHits.length;
 
   return <div className="project-data-workspace">
-    {mode === "graph" && <ProjectSupplyChainExplorer project={project} query={query} onEvidence={onEvidence} />}
+    {mode === "graph" && <ProjectSupplyChainExplorer project={project} query={query} onEvidence={onEvidence} selectedNodeId={selectedNetworkNodeId} onSelectNode={setSelectedNetworkNodeId} traceSteps={traceSteps} traceIndex={traceIndex} onSteer={onSteer} canSteer={canSteer} />}
     <div className="data-graph-commandbar" aria-label="Data and graph tools">
       <nav aria-label="Data and graph views">
         <button data-action-id="data-graph.mode.sources" className={mode === "sources" ? "active" : ""} type="button" aria-pressed={mode === "sources"} onClick={() => onMode("sources")}>Sources <span>{datasetsFor(project).length + sessionDatasets.length}</span></button>
-        <button data-action-id="data-graph.mode.graph" className={mode === "graph" ? "active" : ""} type="button" aria-pressed={mode === "graph"} onClick={() => onMode("graph")}>Knowledge graph <span>{nodes.length}</span></button>
+        <button data-action-id="data-graph.mode.graph" className={mode === "graph" ? "active" : ""} type="button" aria-pressed={mode === "graph"} onClick={() => onMode("graph")}>Knowledge graph <span>{networkNodes.length}</span></button>
       </nav>
       <label className="data-graph-search">
         <span aria-hidden="true">⌕</span>
@@ -823,13 +818,13 @@ function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadSta
         {documentHits.map((document) => <button data-action-id={`data-query.document.${document.id}`} type="button" key={`document-${document.id}`} onClick={() => onEvidence(projectDocumentReceipt(project, document))}><i>{document.kind === "Excel workbook" ? "XLSX" : document.kind === "SQL table" ? "SQL" : document.kind.toUpperCase()}</i><span><b>{document.name}</b><small>{document.kind} · {document.detail}</small></span><em>Trace</em></button>)}
         {connectorTemplateHits.map((template) => <button data-action-id={`data-query.connector-template.${template.id}`} type="button" key={`connector-template-${template.id}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-CONNECTOR-TEMPLATE-${template.id}`, claim: `${template.name} source contract`, displayedValue: `${template.sourceClass} · ${template.catalogState}`, source: "Project connector-catalog deterministic fixture", formula: template.limitations, inputs: [template.protocol, template.targetBoundary, template.targetDirection, ...template.targetData], variableId: "Project connector metadata", grain: "Project × connector template" }))}><i>SOURCE</i><span><b>{template.name}</b><small>{template.protocol} · {template.targetData.join(" · ")}</small></span><em>Inspect</em></button>)}
         {connectorHits.map((connector) => <button data-action-id={`data-query.connector.${connector.id}`} type="button" key={`connector-${connector.id}`} onClick={() => onEvidence(connectorReceiptFor(project, connector))}><i>IOT</i><span><b>{connector.name}</b><small>{connector.protocol} · {connector.policyReviewState}</small></span><em>Trace</em></button>)}
-        {graphHits.map((node) => <button data-action-id={`data-query.graph.${node.id}`} type="button" key={`graph-${node.id}`} onClick={() => { onSelectNode(node.id); onMode("graph"); }}><i>NODE</i><span><b>{node.label}</b><small>{node.kind} · {node.detail}</small></span><em>Open</em></button>)}
+        {graphHits.map((node) => <button data-action-id={`data-query.graph.${node.id}`} type="button" key={`graph-${node.id}`} onClick={() => { setSelectedNetworkNodeId(node.id); onMode("graph"); }}><i>NODE</i><span><b>{node.label}</b><small>{node.assetType} · {node.role} · {node.country}</small></span><em>Open</em></button>)}
         {metricHits.map((metric) => <button data-action-id={`data-query.metric.${metric.evidenceRef}`} type="button" key={`metric-${metric.evidenceRef}`} onClick={() => onEvidence(metric.evidenceRef)}><i>CLAIM</i><span><b>{metric.label}: {metric.value}</b><small>{metric.evidenceRef} · {metric.detail}</small></span><em>Trace</em></button>)}
         {variableHits.map((variable) => <button data-action-id={`data-query.variable.${variable}`} type="button" key={`variable-${variable}`} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: `EV-VARIABLE-${variable}`, claim: `${variable} project variable binding`, displayedValue: "Bound to selected project fixture", source: "Project variable-contract fixture", formula: "Variable identifier is declared in the selected project's taxonomy pack", variableId: variable, grain: "Project × variable", inputs: [project.code, variable] }))}><i>VAR</i><span><b>{variable}</b><small>Project taxonomy binding</small></span><em>Trace</em></button>)}
         {!hitCount && <p>No project file, table, source contract, claim, variable, or graph entity matches this query.</p>}
       </div>
     </section>}
-    {mode === "sources" ? <DataPanel embedded query={query} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={onRequestConnector} onReviewConnector={onReviewConnector} onTestConnector={onTestConnector} onFile={onFile} onUseSample={onUseSample} onAdvance={onAdvance} onEvidence={onEvidence} onOutcome={onOutcome} /> : <GraphPanel embedded query={query} project={project} nodes={nodes} traceSteps={traceSteps} selectedNode={selectedNode} onSelect={onSelectNode} selected={selected} traceIndex={traceIndex} onEvidence={onEvidence} onSteer={onSteer} canSteer={canSteer} onOpenData={() => onMode("sources")} />}
+    {mode === "sources" && <DataPanel embedded query={query} project={project} uploadStage={uploadStage} uploadName={uploadName} sessionDatasets={sessionDatasets} connectorDrafts={connectorDrafts} onRequestConnector={onRequestConnector} onReviewConnector={onReviewConnector} onTestConnector={onTestConnector} onFile={onFile} onUseSample={onUseSample} onAdvance={onAdvance} onEvidence={onEvidence} onOutcome={onOutcome} />}
   </div>;
 }
 
@@ -870,14 +865,6 @@ function DataPanel({ project, uploadStage, uploadName, sessionDatasets, connecto
     <section className="source-file-register"><header><div><p>FILES AND RECORDS</p><h2>{normalizedQuery ? `${visibleProjectDocuments.length} matching artifacts` : `${allProjectDocuments.length} source artifacts`}</h2><span>Inspectable Excel, PDF, CSV, JSON, and SQL catalog fixtures. tanjx does not open an external file or database.</span></div><span>{project.counts.documents} DECLARED DOCUMENTS</span></header><div>{visibleProjectDocuments.map((document) => <button data-action-id={`data.document.${document.id}`} type="button" key={document.id} onClick={() => onEvidence(projectDocumentReceipt(project, document))}><i>{document.kind === "Excel workbook" ? "XLSX" : document.kind === "SQL table" ? "SQL" : document.kind.toUpperCase()}</i><span><b>{document.name}</b><small>{document.detail}</small></span><em><b>{document.records}</b><small>{document.state}</small></em></button>)}{normalizedQuery && !visibleProjectDocuments.length && <p className="inline-empty">No file or record artifact matches this query.</p>}{!normalizedQuery && !allProjectDocuments.length && <p className="inline-empty">No source artifact exists yet. Stage a file name or request a governed source above.</p>}</div></section>
     <section className="iot-sources"><header><div><p>IOT AND EDGE SOURCES</p><h2>Source integration requests</h2><span>Choose a project-scoped template. Requests never connect a device, endpoint, credential, broker, or external feed.</span></div><span>{connectorDrafts.length} session drafts</span></header><div className="iot-template-grid">{visibleTemplates.map((template) => <article key={template.id}><div><span>{template.sourceClass}</span><em>{template.catalogState}</em></div><h3>{template.name}</h3><p>{template.protocol}</p><small>{template.targetData.join(" · ")}</small><dl><div><dt>Boundary</dt><dd>{template.targetBoundary}</dd></div><div><dt>Direction</dt><dd>{template.targetDirection}</dd></div><div><dt>Current limit</dt><dd>{template.limitations}</dd></div></dl><button data-action-id={`data.connector.request.${template.id}`} type="button" onClick={() => onRequestConnector(template.id)}>Request source setup</button></article>)}</div>{visibleConnectorDrafts.length > 0 && <div className="iot-draft-list"><header><b>SESSION REQUESTS</b><span>Project {project.code}</span></header>{visibleConnectorDrafts.map((connector) => <article key={connector.id}><div><span>{connector.state}</span><b>{connector.name}</b><small>{connector.protocol}</small></div><dl><div><dt>Policy</dt><dd>{connector.policyReviewState}</dd></div><div><dt>Fixture sample</dt><dd>{connector.sampleState}</dd></div><div><dt>Endpoint</dt><dd>{connector.endpointState}</dd></div><div><dt>Credentials</dt><dd>{connector.credentialState}</dd></div><div><dt>Network</dt><dd>{connector.networkState}</dd></div></dl><button data-action-id={`data.connector.trace.${connector.id}`} type="button" onClick={() => onEvidence(connectorReceiptFor(project, connector))}>Trace request</button><button data-action-id={`data.connector.review.${connector.id}`} type="button" onClick={() => onReviewConnector(connector.id)}>{connector.policyReviewState === "Policy review queued" ? "Policy review queued" : "Send to policy review"}</button><button data-action-id={`data.connector.test.${connector.id}`} type="button" onClick={() => onTestConnector(connector.id)}>{connector.sampleState === "Fixed payload replayed" ? "Replay fixed sample" : "Test fixed sample"}</button></article>)}</div>}</section>
   </div>;
-}
-
-function GraphPanel({ project, nodes, traceSteps, selectedNode, onSelect, selected, traceIndex, onEvidence, onSteer, canSteer, onOpenData, query = "", embedded = false }: { project: WorkspaceProject; nodes: ReturnType<typeof graphNodesFor>; traceSteps: readonly TraceStep[]; selectedNode: string; onSelect: (id: string) => void; selected: ReturnType<typeof graphNodesFor>[number] | undefined; traceIndex: number; onEvidence: (target: string | EvidenceReceipt) => void; onSteer: (label: string) => void; canSteer: boolean; onOpenData: () => void; query?: string; embedded?: boolean }) {
-  const activeNodes: readonly string[] = traceIndex >= 0 ? traceSteps[traceIndex]?.nodes ?? [] : [];
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!selected) return <section className="project-empty-state"><span>KNOWLEDGE GRAPH</span><h2>No project graph yet</h2><p>Add a governed dataset or source contract before agents can traverse project entities and relationships.</p><button data-action-id="graph.open-data" type="button" onClick={onOpenData}>Open Sources</button></section>;
-  const selectedReceipt = fixtureEvidenceFor(project, { id: `EV-GRAPH-${selected.id}`, claim: `${selected.kind} graph node`, displayedValue: `${selected.label} · ${selected.detail}`, source: "Project knowledge-graph deterministic fixture", formula: "Selected project-scoped node and its fixture relationship context", inputs: [selected.evidenceRef, selected.id], grain: "Graph node" });
-  return <div className="graph-os">{!embedded && <header className="section-hero"><div><p>GRAPH</p><h2>Project knowledge graph</h2><span>Inspect evidence-linked entities and steer the visible synthetic traversal.</span></div><span className="truth-chip">{nodes.length} NODES · {project.counts.entities} ENTITIES</span></header>}<div className="graph-layout"><section className="project-knowledge-canvas"><div className="graph-grid-lines" />{projectGraphEdges.map((edge,index) => <span className={`graph-edge ge${index+1}`} key={`${edge[0]}-${edge[1]}`}><i />{edge[2]}</span>)}{nodes.map((node) => { const queryMatch = normalizedQuery && `${node.id} ${node.label} ${node.kind} ${node.detail} ${node.evidenceRef}`.toLowerCase().includes(normalizedQuery); return <button data-action-id={`graph.select.${node.id}`} style={{left:`${node.x}%`,top:`${node.y}%`}} className={`project-graph-node kind-${node.kind.toLowerCase()} ${selectedNode === node.id ? "selected" : ""} ${activeNodes.includes(node.id) ? "tracing" : ""} ${queryMatch ? "query-match" : ""}`} type="button" key={node.id} onClick={() => onSelect(node.id)}><small>{node.kind}</small><b>{node.label}</b><span>{node.detail}</span></button>; })}</section><aside className="graph-sidecar"><p>SELECTED NODE</p><h2>{selected.label}</h2><span>{selected.kind} · {selected.detail}</span><button data-action-id={`graph.evidence.${selected.id}`} type="button" onClick={() => onEvidence(selectedReceipt)}><small>EVIDENCE RECEIPT</small><b>{selectedReceipt.id}</b><em>Open fixture manifest</em></button><section><p>STEER TRACE</p>{["Pin as assumption", "Exclude this source", "Make a hard constraint", "Assign specialist", "Request alternative path"].map((action) => <button data-action-id={`graph.steer.${action}`} type="button" disabled={!canSteer} key={action} onClick={() => onSteer(action)}>{action}<span>+</span></button>)}</section></aside></div><section className="trace-playback"><header><p>AGENT TRAVERSAL</p><span>{traceIndex >= 0 ? `Step ${traceIndex+1} of ${traceSteps.length}` : "Start a run from Playground"}</span></header>{traceSteps.map((step,index) => <article className={index < traceIndex ? "done" : index === traceIndex ? "active" : ""} key={step.title}><span>{String(index+1).padStart(2,"0")}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b></div></article>)}</section></div>;
 }
 
 type AgentPanelProps = {

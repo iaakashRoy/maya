@@ -798,7 +798,7 @@ test("project graph includes a multilevel dependency and chokepoint explorer", a
   assert.match(workspace, /<ProjectSupplyChainExplorer project=\{project\}/);
   assert.match(explorer, /supply-network\.view\.graph/);
   assert.match(explorer, /supply-network\.view\.checkpoints/);
-  assert.match(explorer, /setSelectedNodeId/);
+  assert.match(explorer, /onSelectNode/);
   assert.match(explorer, /setSelectedCheckpointId/);
   assert.match(explorer, /Trace evidence/);
   assert.match(explorer, /Open checkpoint evidence/);
@@ -807,9 +807,13 @@ test("project graph includes a multilevel dependency and chokepoint explorer", a
   assert.match(explorer, /supply-network\.focus/);
   assert.match(explorer, /SUPPLIED BY/);
   assert.match(explorer, /SUPPLIES/);
+  assert.match(explorer, /TRACE &amp; STEER/);
+  assert.match(explorer, /AGENT TRAVERSAL/);
+  assert.match(explorer, /supply-network\.steer/);
   assert.match(css, /\.supply-network-graph-view/);
   assert.match(css, /\.dense-network-viewport/);
-  assert.match(css, /\.project-data-workspace > \.graph-os \{ display: none; \}/);
+  assert.doesNotMatch(workspace, /function GraphPanel/);
+  assert.doesNotMatch(workspace, /<GraphPanel/);
   assert.match(css, /\.supply-checkpoint-register/);
   assert.match(css, /\.theme-dark \.supply-network-explorer/);
 });

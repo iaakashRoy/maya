@@ -94,11 +94,12 @@ test("data controls are mutation-aware and filter the graph", async () => {
   assert.match(source, /\[\s*"Demand Sense",\s*"demand"\s*\]/);
 });
 
-test("workflow routing enforces lifecycle gates and opens the project evidence graph", async () => {
-  const [workspace, shell, projectWorkspace] = await Promise.all([
+test("workflow routing enforces lifecycle gates and opens the unified project knowledge graph", async () => {
+  const [workspace, shell, projectWorkspace, projectGraph] = await Promise.all([
     read("../app/DecisionWorkspaces.tsx"),
     read("../app/PlatformShell.tsx"),
     read("../app/ProjectWorkspace.tsx"),
+    read("../app/ProjectSupplyChainExplorer.tsx"),
   ]);
 
   assert.match(workspace, /onOpenApp\("graph"\)/);
@@ -112,8 +113,10 @@ test("workflow routing enforces lifecycle gates and opens the project evidence g
   assert.match(shell, /openProjectTab\(next === "decisions" \? "decisions" : next\)/);
   assert.match(shell, /<DecisionWorkspaces[^>]*onOpenApp=\{\(app\) => app === "graph" \? go\("graph"\) : openMountedProjectApp\(app\)\}/);
   assert.match(projectWorkspace, /\(tab === "data" \|\| tab === "graph"\) && <ProjectDataWorkspace/);
-  assert.match(projectWorkspace, /mode === "sources" \? <DataPanel[\s\S]*?: <GraphPanel/);
-  assert.match(projectWorkspace, /graph\.evidence\.\$\{selected\.id\}[\s\S]*?onEvidence\(selectedReceipt\)/);
+  assert.match(projectWorkspace, /mode === "sources" && <DataPanel/);
+  assert.doesNotMatch(projectWorkspace, /GraphPanel/);
+  assert.match(projectGraph, /supply-network\.evidence\.\$\{selectedNode\.id\}[\s\S]*?onEvidence\(nodeReceipt\(selectedNode\)\)/);
+  assert.match(projectGraph, /supply-network\.steer\.\$\{action\}/);
   assert.match(projectWorkspace, /\{evidence && <EvidenceDrawer receipt=\{evidence\}/);
 });
 

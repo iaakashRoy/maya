@@ -9,12 +9,19 @@ type ExplorerProps = {
   project: WorkspaceProject;
   query?: string;
   onEvidence: (target: string | EvidenceReceipt) => void;
+  selectedNodeId: string;
+  onSelectNode: (nodeId: string) => void;
+  traceSteps: readonly { state: string; agent: string; title: string }[];
+  traceIndex: number;
+  canSteer: boolean;
+  onSteer: (label: string) => void;
 };
 
 type NetworkView = "graph" | "checkpoints";
 type TraceDirection = "both" | "upstream" | "downstream";
 
 const riskLabel = (score: number) => score >= 82 ? "Critical" : score >= 68 ? "High" : score >= 52 ? "Moderate" : "Low";
+const steeringActions = ["Pin as assumption", "Exclude this source", "Make a hard constraint", "Assign specialist", "Request alternative path"] as const;
 
 type DenseGraphProps = {
   network: SupplyChainNetwork;
@@ -110,11 +117,10 @@ function DenseSupplyNetworkGraph({ network, nodes, tracedNodeIds, selectedNodeId
   </div>;
 }
 
-export default function ProjectSupplyChainExplorer({ project, query = "", onEvidence }: ExplorerProps) {
+export default function ProjectSupplyChainExplorer({ project, query = "", onEvidence, selectedNodeId, onSelectNode, traceSteps, traceIndex, canSteer, onSteer }: ExplorerProps) {
   const profile = caseStudyProfileFor(project);
   const network = profile?.supplyChain;
   const [view, setView] = useState<NetworkView>("graph");
-  const [selectedNodeId, setSelectedNodeId] = useState(network?.nodes[0]?.id ?? "");
   const [selectedCheckpointId, setSelectedCheckpointId] = useState(network?.checkpoints[0]?.id ?? "");
   const [stageFilter, setStageFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");
@@ -221,7 +227,7 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
     </div>
 
     {view === "graph" ? <div className="supply-network-graph-view">
-      <DenseSupplyNetworkGraph network={network} nodes={visibleNodes} tracedNodeIds={tracedNodeIds} selectedNodeId={selectedNode?.id ?? ""} onSelect={setSelectedNodeId} />
+      <DenseSupplyNetworkGraph network={network} nodes={visibleNodes} tracedNodeIds={tracedNodeIds} selectedNodeId={selectedNode?.id ?? ""} onSelect={onSelectNode} />
       <div className="supply-stage-scroll" aria-label="Scrollable supply chain levels">
         <div className="supply-stage-grid" style={{ "--stage-count": visibleStages.length } as CSSProperties}>
           {visibleStages.map((stage) => {
@@ -231,7 +237,7 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
               <div>{stageNodes.map((node) => {
                 const outgoing = network.edges.find((edge) => edge.from === node.id);
                 const selected = node.id === selectedNode?.id;
-                return <button data-action-id={`supply-network.node.${node.id}`} className={`${selected ? "selected" : ""} ${tracedNodeIds.has(node.id) ? "traced" : ""}`} data-status={node.status} type="button" key={node.id} title={`Select ${node.label}; ${node.throughput}; ${node.annualValue}; risk ${node.riskScore}`} onClick={() => setSelectedNodeId(node.id)}>
+                return <button data-action-id={`supply-network.node.${node.id}`} className={`${selected ? "selected" : ""} ${tracedNodeIds.has(node.id) ? "traced" : ""}`} data-status={node.status} type="button" key={node.id} title={`Select ${node.label}; ${node.throughput}; ${node.annualValue}; risk ${node.riskScore}`} onClick={() => onSelectNode(node.id)}>
                   <span className="supply-node-heading"><i>{node.tier === "Primary" ? "P" : node.tier === "Alternate" ? "A" : "C"}</i><span><b>{node.label}</b><small>{node.country} · {node.role}</small></span><em>{node.riskScore}</em></span>
                   <dl><div><dt>Flow</dt><dd>{node.throughput}</dd></div><div><dt>Util.</dt><dd>{node.utilization}%</dd></div><div><dt>Lead</dt><dd>{node.leadTime}d</dd></div><div><dt>Value</dt><dd>{node.annualValue}</dd></div></dl>
                   {outgoing && <small className="supply-edge-preview">{outgoing.mode} · {outgoing.share}% path share &#8594;</small>}
@@ -244,8 +250,8 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
       {selectedNode && <aside className="supply-node-inspector">
         <header><div><small>SELECTED NETWORK ENTITY</small><h3>{selectedNode.label}</h3><p>{selectedNode.role} · {selectedNode.country}</p></div><strong data-risk={riskLabel(selectedNode.riskScore).toLowerCase()}>{selectedNode.riskScore}<small>{riskLabel(selectedNode.riskScore)}</small></strong></header>
         <dl><div><dt>Tier</dt><dd>{selectedNode.tier}</dd></div><div><dt>Capacity</dt><dd>{selectedNode.capacity}</dd></div><div><dt>Throughput</dt><dd>{selectedNode.throughput}</dd></div><div><dt>Annual value</dt><dd>{selectedNode.annualValue}</dd></div><div><dt>Utilization</dt><dd>{selectedNode.utilization}%</dd></div><div><dt>Lead time</dt><dd>{selectedNode.leadTime} days</dd></div><div><dt>Path concentration</dt><dd>{selectedNode.concentration}%</dd></div><div><dt>Confidence</dt><dd>{selectedNode.confidence}%</dd></div></dl>
-        <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>)}</section>
-        <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedNodeId(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
+        <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => onSelectNode(edge.from)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d</span></button>)}</section>
+        <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => onSelectNode(edge.to)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value}</span></button>)}</section>
         {selectedTable && <section className="supply-table-profile">
           <small>TABLE STATISTICAL PROFILE</small>
           <div className="supply-table-stats"><span><b>{selectedTable.rows}</b>rows</span><span><b>{selectedTable.quality}%</b>quality</span><span><b>{selectedTable.missingPercent}%</b>missing</span><span><b>{selectedTable.driftScore}</b>drift</span></div>
@@ -253,6 +259,10 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
           <div className="supply-table-head"><div>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <b key={column}>{column}</b>)}</div>{selectedTable.sampleRows.slice(0, 3).map((row, rowIndex) => <div key={rowIndex}>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <span key={column}>{row[column]}</span>)}</div>)}</div>
           <a data-action-id={`supply-network.table.open.${selectedTable.id}`} href={`/table?project=${encodeURIComponent(project.id)}&table=${encodeURIComponent(selectedTable.id)}`} target="_blank" rel="noopener noreferrer">Open full table &#8599;</a>
         </section>}
+        <section className="supply-node-steering">
+          <small>TRACE &amp; STEER</small>
+          <div>{steeringActions.map((action) => <button data-action-id={`supply-network.steer.${action}`} type="button" disabled={!canSteer} key={action} title={canSteer ? `${action}: ${selectedNode.label}` : "Start or select a Playground session to steer this trace."} onClick={() => onSteer(`${action} · ${selectedNode.label}`)}>{action}<span>+</span></button>)}</div>
+        </section>
         <footer><span>{selectedNode.freshness}</span><button data-action-id={`supply-network.evidence.${selectedNode.id}`} type="button" onClick={() => onEvidence(nodeReceipt(selectedNode))}>Trace evidence &#8599;</button></footer>
       </aside>}
     </div> : <div className="supply-checkpoint-view">
@@ -276,6 +286,11 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
         <button data-action-id={`supply-network.checkpoint.evidence.${selectedCheckpoint.id}`} type="button" onClick={() => onEvidence(checkpointReceipt(selectedCheckpoint))}>Open checkpoint evidence &#8599;</button>
       </aside>}
     </div>}
+
+    {view === "graph" && <section className="trace-playback supply-network-traversal" aria-label="Agent traversal through the selected supply network">
+      <header><p>AGENT TRAVERSAL</p><span>{traceIndex >= 0 ? `Step ${traceIndex + 1} of ${traceSteps.length}` : "Start a run from Playground"}</span></header>
+      {traceSteps.map((step, index) => <article className={index < traceIndex ? "done" : index === traceIndex ? "active" : ""} key={step.title}><span>{String(index + 1).padStart(2, "0")}</span><div><small>{step.state} · {step.agent}</small><b>{step.title}</b></div></article>)}
+    </section>}
 
     <footer className="supply-signal-strip" aria-label="Recent project signals">
       <b>RECENT SIGNALS</b>{network.signals.filter((signal) => stageFilter === "all" || signal.stageId === stageFilter).slice(0, 8).map((signal) => <button data-action-id={`supply-network.signal.${signal.id}`} data-status={signal.status} title={`Trace ${signal.label}`} type="button" key={signal.id} onClick={() => onEvidence(fixtureEvidenceFor(project, { id: signal.evidenceRef, claim: signal.label, displayedValue: `${signal.value} · ${signal.delta}`, source: `${profile.project} deterministic signal stream`, formula: "Fixed-tick synthetic signal used for interface and decision-workflow demonstration only.", inputs: [signal.id, signal.stageId, profile.shock], variableId: project.variablePack.l0[0] ?? "Project signal", grain: "Project x stage x signal tick", confidence: profile.confidence }))}><span /> <b>{signal.label}</b><em>{signal.value}</em><small>{signal.observedAt}</small></button>)}
