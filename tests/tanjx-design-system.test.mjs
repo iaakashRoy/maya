@@ -48,6 +48,11 @@ test("every project app has a semantic icon and agents have stable differentiate
   assert.match(identity, /data-identity-color=\{identityColorFor\(id\)\}/);
   assert.match(identity, /const sectorVisuals:/);
   assert.match(identity, /const clientVisuals:/);
+  for (const client of ["apple", "coca-cola", "gucci", "tata-motors", "tesla", "byd", "hershey", "tsmc", "airbus", "pfizer"]) {
+    assert.match(identity, new RegExp(`data-client-mark=\\{clientId\\}`));
+    assert.match(identity, new RegExp(`\\"${client}\\": \\{ monogram:`));
+  }
+  assert.match(identity, /role="img" aria-label=\{`\$\{label\} client mark`\}/);
   assert.match(shell, /<SectorMark sectorId=\{group\.id\}/);
   assert.match(shell, /<ClientMark clientId=\{group\.id\}/);
   for (const icon of ["client-add", "project-add", "workspace", "world"]) {

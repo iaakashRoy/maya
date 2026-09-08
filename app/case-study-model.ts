@@ -13,6 +13,90 @@ export type CaseStudyDataset = {
   variables: readonly string[];
 };
 
+export type SupplyChainStage = {
+  id: string;
+  sequence: number;
+  label: string;
+  description: string;
+};
+
+export type SupplyChainNode = {
+  id: string;
+  stageId: string;
+  label: string;
+  assetType: string;
+  geography: string;
+  country: string;
+  tier: "Primary" | "Alternate" | "Contingency";
+  role: string;
+  capacity: string;
+  throughput: string;
+  annualValue: string;
+  utilization: number;
+  leadTime: number;
+  concentration: number;
+  riskScore: number;
+  confidence: number;
+  freshness: string;
+  sourceClass: string;
+  evidenceRef: string;
+  status: "stable" | "watch" | "constrained";
+};
+
+export type SupplyChainEdge = {
+  id: string;
+  from: string;
+  to: string;
+  relationship: string;
+  volume: string;
+  value: string;
+  share: number;
+  leadTime: number;
+  mode: string;
+  riskScore: number;
+  evidenceRef: string;
+};
+
+export type SupplyChainCheckpoint = {
+  id: string;
+  stageId: string;
+  title: string;
+  category: "Capacity" | "Concentration";
+  severity: "critical" | "high" | "moderate" | "low";
+  status: "breached" | "near limit" | "within guardrail";
+  observed: number;
+  target: number;
+  unit: string;
+  trend: string;
+  owner: string;
+  cadence: string;
+  lastObserved: string;
+  trigger: string;
+  downstreamImpact: string;
+  response: string;
+  evidenceRef: string;
+};
+
+export type SupplyChainSignal = {
+  id: string;
+  stageId: string;
+  label: string;
+  value: string;
+  delta: string;
+  status: "stable" | "watch" | "critical";
+  observedAt: string;
+  evidenceRef: string;
+};
+
+export type SupplyChainNetwork = {
+  unit: string;
+  stages: readonly SupplyChainStage[];
+  nodes: readonly SupplyChainNode[];
+  edges: readonly SupplyChainEdge[];
+  checkpoints: readonly SupplyChainCheckpoint[];
+  signals: readonly SupplyChainSignal[];
+};
+
 export type CaseStudyProfile = {
   projectId: string;
   company: string;
@@ -36,6 +120,7 @@ export type CaseStudyProfile = {
   methods: readonly string[];
   apps: readonly ProjectAppId[];
   datasets: readonly CaseStudyDataset[];
+  supplyChain: SupplyChainNetwork;
   timeline: readonly {
     time: string;
     actor: string;
@@ -2097,6 +2182,301 @@ const seeds: readonly ProjectSeed[] = [
   },
 ] as const;
 
+type SupplyStageBlueprint = {
+  label: string;
+  description: string;
+  primary: string;
+  country: string;
+  alternate: string;
+  alternateCountry: string;
+  role: string;
+  mode: string;
+};
+
+type SupplyChainBlueprint = {
+  unit: string;
+  stages: readonly SupplyStageBlueprint[];
+};
+
+const supplyChainBlueprints: Readonly<Record<string, SupplyChainBlueprint>> = {
+  apple: {
+    unit: "K device-equivalents / day",
+    stages: [
+      { label: "Critical inputs", description: "Battery, magnet, glass, and substrate inputs", primary: "Mineral and specialty-material cluster A", country: "China", alternate: "Qualified material cluster B", alternateCountry: "Australia", role: "Raw and processed inputs", mode: "Rail + ocean" },
+      { label: "Advanced wafers", description: "Leading-edge logic and companion silicon", primary: "Advanced wafer node TW-01", country: "Taiwan", alternate: "Qualified wafer node US-02", alternateCountry: "United States", role: "Front-end fabrication", mode: "Secure air" },
+      { label: "Components", description: "Displays, cameras, memory, and power modules", primary: "Module ecosystem KR-01", country: "South Korea", alternate: "Module ecosystem JP-02", alternateCountry: "Japan", role: "Tier-1 modules", mode: "Air + ocean" },
+      { label: "Final assembly", description: "New-product introduction and ramp", primary: "Assembly campus CN-01", country: "China", alternate: "Assembly campus IN-02", alternateCountry: "India", role: "Final integration", mode: "Truck" },
+      { label: "Export gateway", description: "Launch consolidation and customs release", primary: "East Asia gateway 01", country: "China", alternate: "South Asia gateway 02", alternateCountry: "India", role: "Origin consolidation", mode: "Air + ocean" },
+      { label: "Regional hubs", description: "Priority-market inventory allocation", primary: "Americas launch hub", country: "United States", alternate: "Europe launch hub", alternateCountry: "Netherlands", role: "Regional allocation", mode: "Air + truck" },
+      { label: "Channels", description: "Retail, carrier, and direct fulfillment", primary: "Priority channel pool A", country: "United States", alternate: "Priority channel pool B", alternateCountry: "Germany", role: "Demand fulfillment", mode: "Parcel" },
+      { label: "Customer promise", description: "Launch availability and service protection", primary: "Launch cohort 01", country: "Global", alternate: "Deferred cohort 02", alternateCountry: "Global", role: "Service outcome", mode: "Digital allocation" },
+    ],
+  },
+  "coca-cola": {
+    unit: "K unit-cases / day",
+    stages: [
+      { label: "Water and sweetener", description: "Watershed, sugar, and sweetener availability", primary: "Watershed and sweetener basin A", country: "Mexico", alternate: "Watershed and sweetener basin B", alternateCountry: "Brazil", role: "Agricultural and water inputs", mode: "Pipeline + bulk" },
+      { label: "Concentrate", description: "Formula-controlled concentrate supply", primary: "Concentrate plant US-01", country: "United States", alternate: "Concentrate plant IE-02", alternateCountry: "Ireland", role: "Concentrate production", mode: "Air + ocean" },
+      { label: "Packaging", description: "PET resin, preforms, glass, cans, and closures", primary: "Packaging pool MX-01", country: "Mexico", alternate: "Packaging pool BR-02", alternateCountry: "Brazil", role: "Primary packaging", mode: "Truck + rail" },
+      { label: "Bottling", description: "Carbonation, filling, labeling, and packing", primary: "Bottling territory A", country: "Mexico", alternate: "Bottling territory B", alternateCountry: "Colombia", role: "Manufacturing", mode: "Truck" },
+      { label: "Warehousing", description: "Finished-goods storage and allocation", primary: "Regional DC LATAM-01", country: "Mexico", alternate: "Regional DC LATAM-02", alternateCountry: "Brazil", role: "Inventory positioning", mode: "Truck" },
+      { label: "Route to market", description: "Distributor and direct-store delivery", primary: "Route fleet A", country: "Mexico", alternate: "Distributor pool B", alternateCountry: "Colombia", role: "Last-mile distribution", mode: "Truck" },
+      { label: "Retail cold chain", description: "Outlet stock and cooler availability", primary: "Modern-trade outlets", country: "Mexico", alternate: "Traditional-trade outlets", alternateCountry: "Brazil", role: "Point of sale", mode: "Last mile" },
+      { label: "Consumer demand", description: "Occasion, pack, price, and promotion demand", primary: "Priority occasion pool", country: "LATAM", alternate: "Substitution occasion pool", alternateCountry: "LATAM", role: "Service outcome", mode: "Demand allocation" },
+    ],
+  },
+  gucci: {
+    unit: "K finished pieces / week",
+    stages: [
+      { label: "Origin materials", description: "Leather, silk, cotton, and precious inputs", primary: "Traceable origin cluster IT-01", country: "Italy", alternate: "Traceable origin cluster ES-02", alternateCountry: "Spain", role: "Raw-material origin", mode: "Road" },
+      { label: "Processing", description: "Tanning, dyeing, weaving, and finishing", primary: "Artisan processor pool A", country: "Italy", alternate: "Qualified processor pool B", alternateCountry: "France", role: "Tier-2 processing", mode: "Road" },
+      { label: "Trims and hardware", description: "Buckles, zips, soles, and decorative hardware", primary: "Hardware cluster IT-01", country: "Italy", alternate: "Hardware cluster CH-02", alternateCountry: "Switzerland", role: "Tier-1 components", mode: "Road + air" },
+      { label: "Artisan production", description: "Cutting, stitching, assembly, and finishing", primary: "Atelier network IT-01", country: "Italy", alternate: "Flexible atelier pool IT-02", alternateCountry: "Italy", role: "Final manufacturing", mode: "Road" },
+      { label: "Authenticity gate", description: "Quality, origin, and product-passport checks", primary: "Release center EU-01", country: "Italy", alternate: "Release center EU-02", alternateCountry: "France", role: "Quality and provenance", mode: "Secure road" },
+      { label: "Regional distribution", description: "Boutique and e-commerce allocation", primary: "Luxury DC EU-01", country: "Italy", alternate: "Luxury DC APAC-02", alternateCountry: "Singapore", role: "Allocation", mode: "Air + road" },
+      { label: "Boutiques", description: "Store replenishment and launch assortment", primary: "Priority boutique cohort", country: "Global", alternate: "Digital fulfillment cohort", alternateCountry: "Global", role: "Channel fulfillment", mode: "Parcel + road" },
+      { label: "Client promise", description: "Availability, provenance, and experience", primary: "Signature-line demand", country: "Global", alternate: "Substitution assortment", alternateCountry: "Global", role: "Service outcome", mode: "Demand allocation" },
+    ],
+  },
+  "tata-motors": {
+    unit: "vehicles / week",
+    stages: [
+      { label: "Strategic materials", description: "Steel, aluminum, battery, and electronic materials", primary: "Industrial input cluster IN-01", country: "India", alternate: "Industrial input cluster IN-02", alternateCountry: "India", role: "Raw materials", mode: "Rail + road" },
+      { label: "Electronics", description: "Semiconductors, controllers, and displays", primary: "Electronics pool APAC-01", country: "Malaysia", alternate: "Electronics pool APAC-02", alternateCountry: "Thailand", role: "Tier-2 electronics", mode: "Air + ocean" },
+      { label: "Tier-1 systems", description: "Powertrain, braking, seating, and thermal systems", primary: "Tier-1 corridor West", country: "India", alternate: "Tier-1 corridor South", alternateCountry: "India", role: "Vehicle systems", mode: "Road" },
+      { label: "Vehicle plants", description: "Body, paint, assembly, and end-of-line", primary: "Vehicle plant IN-01", country: "India", alternate: "Vehicle plant IN-02", alternateCountry: "India", role: "Final assembly", mode: "Road + rail" },
+      { label: "Outbound yards", description: "Vehicle release and carrier assignment", primary: "Dispatch yard West", country: "India", alternate: "Dispatch yard North", alternateCountry: "India", role: "Finished-vehicle logistics", mode: "Road + rail" },
+      { label: "Dealer regions", description: "Regional allocation and dealer replenishment", primary: "Dealer region A", country: "India", alternate: "Dealer region B", alternateCountry: "India", role: "Channel inventory", mode: "Road" },
+      { label: "Service network", description: "Parts availability and workshop capacity", primary: "Service-parts hub A", country: "India", alternate: "Service-parts hub B", alternateCountry: "India", role: "Aftermarket service", mode: "Road + parcel" },
+      { label: "Mobility demand", description: "Retail, fleet, and service commitments", primary: "Priority demand pool", country: "India", alternate: "Flexible demand pool", alternateCountry: "India", role: "Customer outcome", mode: "Order allocation" },
+    ],
+  },
+  tesla: {
+    unit: "vehicles / week",
+    stages: [
+      { label: "Battery minerals", description: "Lithium, nickel, graphite, and precursor inputs", primary: "Battery-material corridor A", country: "Australia", alternate: "Battery-material corridor B", alternateCountry: "Canada", role: "Critical minerals", mode: "Rail + ocean" },
+      { label: "Cells", description: "Cell production, yield, and qualified chemistry", primary: "Cell line US-01", country: "United States", alternate: "Cell line APAC-02", alternateCountry: "Japan", role: "Battery cells", mode: "Rail + ocean" },
+      { label: "Power electronics", description: "Inverters, controllers, and compute modules", primary: "Electronics node TW-01", country: "Taiwan", alternate: "Electronics node US-02", alternateCountry: "United States", role: "Tier-1 electronics", mode: "Air" },
+      { label: "Gigafactory", description: "Casting, body, battery, paint, and assembly", primary: "Vehicle factory US-01", country: "United States", alternate: "Vehicle factory DE-02", alternateCountry: "Germany", role: "Final manufacturing", mode: "Road + rail" },
+      { label: "Outbound logistics", description: "Railhead, port, and carrier dispatch", primary: "Outbound corridor US-01", country: "United States", alternate: "Outbound corridor EU-02", alternateCountry: "Germany", role: "Vehicle logistics", mode: "Rail + road" },
+      { label: "Delivery centers", description: "Regional inventory and appointment capacity", primary: "Delivery region Americas", country: "United States", alternate: "Delivery region Europe", alternateCountry: "Netherlands", role: "Regional fulfillment", mode: "Road" },
+      { label: "Energy and service", description: "Charging, service parts, and mobile support", primary: "Service coverage pool A", country: "United States", alternate: "Service coverage pool B", alternateCountry: "Germany", role: "Service network", mode: "Road + parcel" },
+      { label: "Customer orders", description: "Configuration, promise date, and delivery", primary: "Priority order cohort", country: "Global", alternate: "Flexible order cohort", alternateCountry: "Global", role: "Customer outcome", mode: "Order allocation" },
+    ],
+  },
+  byd: {
+    unit: "vehicles and packs / week",
+    stages: [
+      { label: "Mineral inputs", description: "Lithium, phosphate, graphite, and copper", primary: "Integrated material base CN-01", country: "China", alternate: "Qualified material base CL-02", alternateCountry: "Chile", role: "Critical inputs", mode: "Rail + ocean" },
+      { label: "Battery materials", description: "Cathode, anode, electrolyte, and separator", primary: "Battery-material park CN-01", country: "China", alternate: "Battery-material park CN-02", alternateCountry: "China", role: "Processed materials", mode: "Road + rail" },
+      { label: "Blade cells", description: "Cell production, formation, and pack integration", primary: "Blade cell campus A", country: "China", alternate: "Blade cell campus B", alternateCountry: "China", role: "Battery systems", mode: "Road + rail" },
+      { label: "Vehicle systems", description: "Semiconductors, e-drive, chassis, and body", primary: "Integrated systems cluster A", country: "China", alternate: "Qualified systems cluster B", alternateCountry: "Thailand", role: "Tier-1 systems", mode: "Road + ocean" },
+      { label: "Assembly network", description: "Vehicle assembly and regional ramp", primary: "Assembly campus CN-01", country: "China", alternate: "Assembly campus TH-02", alternateCountry: "Thailand", role: "Final manufacturing", mode: "Road" },
+      { label: "Export corridors", description: "Ro-ro capacity, ports, and customs", primary: "Export corridor East Asia", country: "China", alternate: "Export corridor Southeast Asia", alternateCountry: "Thailand", role: "International logistics", mode: "Ro-ro ocean" },
+      { label: "Market distribution", description: "Country allocation, dealers, and delivery", primary: "Distribution region EU", country: "Germany", alternate: "Distribution region LATAM", alternateCountry: "Brazil", role: "Regional fulfillment", mode: "Road + rail" },
+      { label: "Market demand", description: "Model mix, price, and delivery promise", primary: "Priority market cohort", country: "Global", alternate: "Flexible market cohort", alternateCountry: "Global", role: "Customer outcome", mode: "Order allocation" },
+    ],
+  },
+  hershey: {
+    unit: "tonnes / week",
+    stages: [
+      { label: "Cocoa origin", description: "Farm, cooperative, and origin traceability", primary: "Cocoa origin pool CI-01", country: "Cote d'Ivoire", alternate: "Cocoa origin pool EC-02", alternateCountry: "Ecuador", role: "Agricultural origin", mode: "Road" },
+      { label: "Origin processing", description: "Fermentation, drying, grading, and aggregation", primary: "Origin processor West Africa", country: "Ghana", alternate: "Origin processor LATAM", alternateCountry: "Ecuador", role: "Primary processing", mode: "Road" },
+      { label: "Ocean corridors", description: "Export clearance and cocoa movement", primary: "Atlantic cocoa corridor A", country: "Ghana", alternate: "Pacific cocoa corridor B", alternateCountry: "Ecuador", role: "Inbound logistics", mode: "Ocean" },
+      { label: "Ingredients", description: "Grinding, liquor, butter, sugar, and dairy", primary: "Ingredient plant US-01", country: "United States", alternate: "Ingredient plant EU-02", alternateCountry: "Netherlands", role: "Ingredient conversion", mode: "Rail + road" },
+      { label: "Confectionery plants", description: "Mixing, molding, cooling, and packing", primary: "Confectionery plant US-01", country: "United States", alternate: "Confectionery plant US-02", alternateCountry: "United States", role: "Final manufacturing", mode: "Road" },
+      { label: "Seasonal inventory", description: "Build plan and temperature-controlled storage", primary: "Seasonal DC East", country: "United States", alternate: "Seasonal DC Central", alternateCountry: "United States", role: "Inventory positioning", mode: "Refrigerated truck" },
+      { label: "Retail allocation", description: "Customer orders and promotional windows", primary: "Retail cohort A", country: "United States", alternate: "Retail cohort B", alternateCountry: "Canada", role: "Channel fulfillment", mode: "Truck" },
+      { label: "Consumer occasions", description: "Seasonal availability and assortment", primary: "Holiday demand pool", country: "North America", alternate: "Everyday demand pool", alternateCountry: "North America", role: "Service outcome", mode: "Demand allocation" },
+    ],
+  },
+  tsmc: {
+    unit: "K wafer-equivalents / month",
+    stages: [
+      { label: "Fab materials", description: "Wafers, chemicals, gases, and photoresist", primary: "Semiconductor material cluster JP-01", country: "Japan", alternate: "Semiconductor material cluster US-02", alternateCountry: "United States", role: "Critical fab inputs", mode: "Secure ocean + air" },
+      { label: "Equipment", description: "Lithography, deposition, etch, and metrology", primary: "Equipment service pool EU-01", country: "Netherlands", alternate: "Equipment service pool JP-02", alternateCountry: "Japan", role: "Capital equipment", mode: "Air" },
+      { label: "Mask and design", description: "Tape-out, masks, IP, and design enablement", primary: "Design enablement node TW-01", country: "Taiwan", alternate: "Design enablement node US-02", alternateCountry: "United States", role: "Pre-production", mode: "Secure digital" },
+      { label: "Wafer fabrication", description: "Leading and specialty node production", primary: "Wafer fab TW-01", country: "Taiwan", alternate: "Wafer fab US-02", alternateCountry: "United States", role: "Front-end manufacturing", mode: "Controlled campus" },
+      { label: "Advanced packaging", description: "2.5D/3D integration, substrate, and test", primary: "Packaging node TW-01", country: "Taiwan", alternate: "Packaging node JP-02", alternateCountry: "Japan", role: "Back-end integration", mode: "Secure air" },
+      { label: "Qualification", description: "Yield, reliability, and customer release", primary: "Qualification lab TW-01", country: "Taiwan", alternate: "Qualification lab US-02", alternateCountry: "United States", role: "Release gate", mode: "Secure air" },
+      { label: "Customer allocation", description: "Capacity reservations and wafer starts", primary: "AI accelerator cohort", country: "Global", alternate: "Automotive and industrial cohort", alternateCountry: "Global", role: "Demand allocation", mode: "Planning contract" },
+      { label: "Compute deployment", description: "Accelerator availability and ramp", primary: "Hyperscale deployment pool", country: "Global", alternate: "Enterprise deployment pool", alternateCountry: "Global", role: "Customer outcome", mode: "Secure logistics" },
+    ],
+  },
+  airbus: {
+    unit: "shipsets / month",
+    stages: [
+      { label: "Strategic materials", description: "Titanium, aluminum, composites, and specialty alloys", primary: "Aerospace material cluster US-01", country: "United States", alternate: "Aerospace material cluster EU-02", alternateCountry: "France", role: "Certified materials", mode: "Ocean + air" },
+      { label: "Propulsion", description: "Engines, nacelles, and propulsion accessories", primary: "Propulsion program EU-01", country: "France", alternate: "Propulsion program US-02", alternateCountry: "United States", role: "Major systems", mode: "Air + road" },
+      { label: "Aerostructures", description: "Wings, fuselage sections, and empennage", primary: "Aerostructure network EU-01", country: "Germany", alternate: "Aerostructure network UK-02", alternateCountry: "United Kingdom", role: "Major structures", mode: "Sea + air" },
+      { label: "Systems", description: "Avionics, landing gear, cabins, and actuation", primary: "Aircraft systems pool A", country: "France", alternate: "Aircraft systems pool B", alternateCountry: "Spain", role: "Tier-1 systems", mode: "Road + air" },
+      { label: "Final assembly", description: "Station flow, integration, and testing", primary: "Final assembly line EU-01", country: "France", alternate: "Final assembly line US-02", alternateCountry: "United States", role: "Final manufacturing", mode: "Road" },
+      { label: "Certification", description: "Conformity, documentation, and release", primary: "Certification gate EU", country: "France", alternate: "Certification gate US", alternateCountry: "United States", role: "Airworthiness release", mode: "Controlled handoff" },
+      { label: "Delivery centers", description: "Customer acceptance and ferry readiness", primary: "Delivery center EU", country: "France", alternate: "Delivery center US", alternateCountry: "United States", role: "Aircraft delivery", mode: "Ferry flight" },
+      { label: "Airline fleet", description: "Entry into service and spares readiness", primary: "Priority airline cohort", country: "Global", alternate: "Flexible airline cohort", alternateCountry: "Global", role: "Customer outcome", mode: "Fleet allocation" },
+    ],
+  },
+  pfizer: {
+    unit: "K treatment-equivalents / week",
+    stages: [
+      { label: "Starting materials", description: "Regulated chemical and biological inputs", primary: "Qualified input cluster EU-01", country: "Ireland", alternate: "Qualified input cluster US-02", alternateCountry: "United States", role: "Critical raw materials", mode: "Controlled air + ocean" },
+      { label: "API and drug substance", description: "Active ingredient and bulk substance production", primary: "Drug-substance site EU-01", country: "Ireland", alternate: "Drug-substance site US-02", alternateCountry: "United States", role: "Primary manufacturing", mode: "Validated cold chain" },
+      { label: "Drug product", description: "Formulation, fill-finish, and packaging", primary: "Drug-product site BE-01", country: "Belgium", alternate: "Drug-product site US-02", alternateCountry: "United States", role: "Final manufacturing", mode: "Validated cold chain" },
+      { label: "Quality release", description: "Testing, batch disposition, and market release", primary: "Release laboratory EU-01", country: "Belgium", alternate: "Release laboratory US-02", alternateCountry: "United States", role: "Quality gate", mode: "Controlled handoff" },
+      { label: "Cold-chain hubs", description: "Temperature-controlled storage and lane release", primary: "Cold-chain hub EU", country: "Belgium", alternate: "Cold-chain hub US", alternateCountry: "United States", role: "Regional logistics", mode: "Validated air + road" },
+      { label: "Country allocation", description: "Regulatory, inventory, and demand allocation", primary: "Priority country cohort", country: "Global", alternate: "Contingency country cohort", alternateCountry: "Global", role: "Market allocation", mode: "Planning contract" },
+      { label: "Care delivery", description: "Wholesaler, pharmacy, hospital, and clinic supply", primary: "Care network A", country: "Global", alternate: "Care network B", alternateCountry: "Global", role: "Channel fulfillment", mode: "Cold-chain last mile" },
+      { label: "Patient access", description: "On-time treatment and continuity", primary: "Priority patient cohort", country: "Global", alternate: "Continuity cohort", alternateCountry: "Global", role: "Patient outcome", mode: "Demand allocation" },
+    ],
+  },
+};
+
+const severityFor = (score: number): SupplyChainCheckpoint["severity"] =>
+  score >= 82 ? "critical" : score >= 68 ? "high" : score >= 52 ? "moderate" : "low";
+
+const nodeStatusFor = (score: number): SupplyChainNode["status"] =>
+  score >= 76 ? "constrained" : score >= 55 ? "watch" : "stable";
+
+const networkFor = (seed: ProjectSeed, projectIndex: number): SupplyChainNetwork => {
+  const blueprint = supplyChainBlueprints[seed.clientId];
+  const stages = blueprint.stages.map((stage, stageIndex) => ({
+    id: `${seed.code}-ST-${String(stageIndex + 1).padStart(2, "0")}`,
+    sequence: stageIndex + 1,
+    label: stage.label,
+    description: stage.description,
+  }));
+  const nodes = blueprint.stages.flatMap((stage, stageIndex) => {
+    const base = 72 + projectIndex * 9 + stageIndex * 13;
+    const primaryRisk = 38 + ((projectIndex * 17 + stageIndex * 11) % 58);
+    const alternateRisk = Math.max(22, primaryRisk - 18 + (stageIndex % 3) * 3);
+    return ([
+      { tier: "Primary", label: stage.primary, country: stage.country, risk: primaryRisk, factor: 1 },
+      { tier: "Alternate", label: stage.alternate, country: stage.alternateCountry, risk: alternateRisk, factor: 0.42 },
+      { tier: "Contingency", label: `${stage.label} contingency reserve`, country: stage.alternateCountry, risk: Math.max(25, primaryRisk - 9), factor: 0.2 },
+    ] as const).map((variant, variantIndex) => ({
+      id: `${seed.code}-N-${String(stageIndex + 1).padStart(2, "0")}-${variantIndex + 1}`,
+      stageId: stages[stageIndex].id,
+      label: variant.label,
+      assetType: stage.label,
+      geography: variant.country === "Global" ? "Global" : variant.country,
+      country: variant.country,
+      tier: variant.tier,
+      role: stage.role,
+      capacity: `${Math.round(base * (variant.factor + 0.28)).toLocaleString("en-US")} ${blueprint.unit}`,
+      throughput: `${Math.round(base * variant.factor).toLocaleString("en-US")} ${blueprint.unit}`,
+      annualValue: `$${Math.round((base * (projectIndex + 3) * variant.factor) / 3)}M`,
+      utilization: Math.min(98, 66 + ((projectIndex * 7 + stageIndex * 5 + variantIndex * 9) % 33)),
+      leadTime: 4 + ((projectIndex * 5 + stageIndex * 7 + variantIndex * 11) % 47),
+      concentration: Math.min(96, 41 + ((projectIndex * 11 + stageIndex * 9 + variantIndex * 7) % 55)),
+      riskScore: variant.risk,
+      confidence: 78 + ((projectIndex * 3 + stageIndex * 2 + variantIndex) % 20),
+      freshness: `${3 + ((projectIndex + stageIndex + variantIndex) % 47)} sec modeled age`,
+      sourceClass: variant.tier === "Primary" ? "Synthetic operational twin" : "Synthetic qualification register",
+      evidenceRef: `${seed.code}-EV-NET-${String(stageIndex + 1).padStart(2, "0")}-${variantIndex + 1}`,
+      status: nodeStatusFor(variant.risk),
+    } satisfies SupplyChainNode));
+  });
+  const primaryNodes = nodes.filter((node) => node.tier === "Primary");
+  const alternateNodes = nodes.filter((node) => node.tier === "Alternate");
+  const contingencyNodes = nodes.filter((node) => node.tier === "Contingency");
+  const edges: SupplyChainEdge[] = [];
+  for (let stageIndex = 0; stageIndex < stages.length - 1; stageIndex += 1) {
+    for (const tierNodes of [primaryNodes, alternateNodes, contingencyNodes]) {
+      const from = tierNodes[stageIndex];
+      const to = tierNodes[stageIndex + 1];
+      const share = from.tier === "Primary" ? 58 + ((projectIndex * 5 + stageIndex * 7) % 35) : 12 + ((projectIndex * 3 + stageIndex * 5) % 24);
+      edges.push({
+        id: `${seed.code}-E-${String(edges.length + 1).padStart(2, "0")}`,
+        from: from.id,
+        to: to.id,
+        relationship: stageIndex === stages.length - 2 ? "fulfills" : "supplies",
+        volume: from.throughput,
+        value: from.annualValue,
+        share,
+        leadTime: from.leadTime,
+        mode: blueprint.stages[stageIndex].mode,
+        riskScore: Math.max(from.riskScore, to.riskScore),
+        evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(2, "0")}`,
+      });
+    }
+    const alternate = alternateNodes[stageIndex];
+    const primaryNext = primaryNodes[stageIndex + 1];
+    edges.push({
+      id: `${seed.code}-E-${String(edges.length + 1).padStart(2, "0")}`,
+      from: alternate.id,
+      to: primaryNext.id,
+      relationship: "qualified fallback",
+      volume: alternate.throughput,
+      value: alternate.annualValue,
+      share: 8 + ((projectIndex + stageIndex * 3) % 17),
+      leadTime: alternate.leadTime + 3,
+      mode: blueprint.stages[stageIndex].mode,
+      riskScore: Math.max(alternate.riskScore, primaryNext.riskScore),
+      evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(2, "0")}`,
+    });
+    const contingency = contingencyNodes[stageIndex];
+    const alternateNext = alternateNodes[stageIndex + 1];
+    edges.push({
+      id: `${seed.code}-E-${String(edges.length + 1).padStart(2, "0")}`,
+      from: contingency.id,
+      to: alternateNext.id,
+      relationship: "emergency substitution",
+      volume: contingency.throughput,
+      value: contingency.annualValue,
+      share: 3 + ((projectIndex + stageIndex * 2) % 11),
+      leadTime: contingency.leadTime + 7,
+      mode: blueprint.stages[stageIndex].mode,
+      riskScore: Math.max(contingency.riskScore, alternateNext.riskScore),
+      evidenceRef: `${seed.code}-EV-EDGE-${String(edges.length + 1).padStart(2, "0")}`,
+    });
+  }
+  const checkpoints = stages.flatMap((stage, stageIndex) => {
+    const primary = primaryNodes[stageIndex];
+    const nextStage = stages[Math.min(stageIndex + 1, stages.length - 1)];
+    const capacityScore = Math.min(97, Math.round(primary.utilization * 0.72 + primary.riskScore * 0.28));
+    const concentrationScore = primary.concentration;
+    return ([
+      { category: "Capacity", score: capacityScore, observed: primary.utilization, target: 85, unit: "% utilization", title: `${stage.label} capacity guardrail` },
+      { category: "Concentration", score: concentrationScore, observed: primary.concentration, target: 65, unit: "% on primary path", title: `${stage.label} dependency guardrail` },
+    ] as const).map((checkpoint, checkpointIndex) => ({
+      id: `${seed.code}-CP-${String(stageIndex + 1).padStart(2, "0")}-${checkpointIndex + 1}`,
+      stageId: stage.id,
+      title: checkpoint.title,
+      category: checkpoint.category,
+      severity: severityFor(checkpoint.score),
+      status: checkpoint.observed > checkpoint.target + 10 ? "breached" : checkpoint.observed > checkpoint.target - 7 ? "near limit" : "within guardrail",
+      observed: checkpoint.observed,
+      target: checkpoint.target,
+      unit: checkpoint.unit,
+      trend: checkpointIndex === 0 ? `${stageIndex % 2 ? "+" : "-"}${2 + ((projectIndex + stageIndex) % 9)} pts / 24h` : `${stageIndex % 3 ? "+" : "-"}${1 + ((projectIndex + stageIndex * 2) % 7)} pts / 7d`,
+      owner: checkpointIndex === 0 ? "Manufacturing Planner" : "Supplier Cartographer",
+      cadence: checkpointIndex === 0 ? "5-second simulation tick" : "15-minute graph refresh",
+      lastObserved: `14:${String(2 + stageIndex * 3 + checkpointIndex).padStart(2, "0")}:${String(8 + projectIndex).padStart(2, "0")} IST`,
+      trigger: checkpointIndex === 0 ? `Escalate above ${checkpoint.target}% sustained utilization.` : `Escalate above ${checkpoint.target}% single-path dependency.`,
+      downstreamImpact: `${nextStage.label}: ${seed.resilience.p95}; ${seed.outcome}`,
+      response: checkpoint.observed <= checkpoint.target - 7 ? "Monitor and preserve the qualified fallback." : seed.response,
+      evidenceRef: `${seed.code}-EV-CP-${String(stageIndex + 1).padStart(2, "0")}-${checkpointIndex + 1}`,
+    } satisfies SupplyChainCheckpoint));
+  });
+  const signals = stages.flatMap((stage, stageIndex) => {
+    const primary = primaryNodes[stageIndex];
+    return ([
+      { label: `${stage.label} flow`, value: primary.throughput, delta: `${stageIndex % 2 ? "+" : "-"}${1 + ((projectIndex + stageIndex) % 8)}.2% vs plan`, status: primary.utilization > 90 ? "critical" : primary.utilization > 82 ? "watch" : "stable" },
+      { label: `${stage.label} lead time`, value: `${primary.leadTime} days`, delta: `P95 ${primary.leadTime + 6 + (stageIndex % 5)} days`, status: primary.leadTime > 35 ? "critical" : primary.leadTime > 22 ? "watch" : "stable" },
+    ] as const).map((signal, signalIndex) => ({
+      id: `${seed.code}-SIG-${String(stageIndex + 1).padStart(2, "0")}-${signalIndex + 1}`,
+      stageId: stage.id,
+      label: signal.label,
+      value: signal.value,
+      delta: signal.delta,
+      status: signal.status,
+      observedAt: `14:${String(2 + stageIndex * 2).padStart(2, "0")}:${String(12 + signalIndex * 9).padStart(2, "0")} IST`,
+      evidenceRef: `${seed.code}-EV-SIG-${String(stageIndex + 1).padStart(2, "0")}-${signalIndex + 1}`,
+    } satisfies SupplyChainSignal));
+  });
+  return { unit: blueprint.unit, stages, nodes, edges, checkpoints, signals };
+};
+
 const timelineFor = (seed: ProjectSeed): CaseStudyProfile["timeline"] => [
   {
     time: "14:02:08",
@@ -2138,7 +2518,7 @@ const timelineFor = (seed: ProjectSeed): CaseStudyProfile["timeline"] => [
 ];
 
 export const caseStudyProfiles: readonly CaseStudyProfile[] = seeds.map(
-  (seed) => ({
+  (seed, projectIndex) => ({
     projectId: seed.id,
     company: seed.client,
     project: seed.name,
@@ -2161,6 +2541,7 @@ export const caseStudyProfiles: readonly CaseStudyProfile[] = seeds.map(
     methods: seed.methodCodes,
     apps: seed.mountedAppIds,
     datasets: seed.datasets,
+    supplyChain: networkFor(seed, projectIndex),
     timeline: timelineFor(seed),
   }),
 );

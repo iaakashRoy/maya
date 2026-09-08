@@ -787,3 +787,22 @@ test("dialogs trap focus, close with Escape, restore focus, and isolate their ba
   assert.match(shell, /useDialogLifecycle<HTMLElement>\(Boolean\(outcome\)/);
   for (const source of [onboarding, workspace, shell]) assert.match(source, /data-modal-root/);
 });
+
+test("project graph includes a multilevel dependency and chokepoint explorer", async () => {
+  const [workspace, explorer, css] = await Promise.all([
+    read("../app/ProjectWorkspace.tsx"),
+    read("../app/ProjectSupplyChainExplorer.tsx"),
+    read("../app/globals.css"),
+  ]);
+
+  assert.match(workspace, /<ProjectSupplyChainExplorer project=\{project\}/);
+  assert.match(explorer, /supply-network\.view\.graph/);
+  assert.match(explorer, /supply-network\.view\.checkpoints/);
+  assert.match(explorer, /setSelectedNodeId/);
+  assert.match(explorer, /setSelectedCheckpointId/);
+  assert.match(explorer, /Trace evidence/);
+  assert.match(explorer, /Open checkpoint evidence/);
+  assert.match(css, /\.supply-network-graph-view/);
+  assert.match(css, /\.supply-checkpoint-register/);
+  assert.match(css, /\.theme-dark \.supply-network-explorer/);
+});

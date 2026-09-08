@@ -55,27 +55,27 @@ const sectorVisuals: Record<string, { symbol: string; color: string }> = {
   "retail-commerce": { symbol: "▤", color: "#b34c88" },
 };
 
-const clientVisuals: Record<string, { monogram: string; color: string }> = {
-  "apple": { monogram: "AP", color: "#111827" },
-  "coca-cola": { monogram: "CC", color: "#e41e2b" },
-  "gucci": { monogram: "GG", color: "#0f5132" },
-  "tata-motors": { monogram: "TM", color: "#1e5aa8" },
-  "tesla": { monogram: "TS", color: "#cc0000" },
-  "byd": { monogram: "BY", color: "#d71920" },
-  "hershey": { monogram: "HS", color: "#4b1f2a" },
-  "tsmc": { monogram: "TC", color: "#d81e05" },
-  "airbus": { monogram: "AB", color: "#005b9f" },
-  "pfizer": { monogram: "PF", color: "#0067b1" },
-  "apex-mobility": { monogram: "AM", color: "#6548c8" },
-  "helixora": { monogram: "HX", color: "#c13f60" },
-  "orion-silicon": { monogram: "OS", color: "#187b86" },
-  "verdant-foods": { monogram: "VF", color: "#3f8738" },
-  "stratos-aero": { monogram: "SA", color: "#2e63a5" },
-  "solara-grid": { monogram: "SG", color: "#b66c05" },
-  "terrametals": { monogram: "TM", color: "#99572d" },
-  "blueharbor": { monogram: "BH", color: "#16658f" },
-  "titanworks": { monogram: "TW", color: "#596879" },
-  "meridian-commerce": { monogram: "MC", color: "#a43e7b" },
+const clientVisuals: Record<string, { monogram: string; color: string; shape: string }> = {
+  "apple": { monogram: "A", color: "#111827", shape: "apple" },
+  "coca-cola": { monogram: "CC", color: "#e41e2b", shape: "coca-cola" },
+  "gucci": { monogram: "GG", color: "#0f5132", shape: "gucci" },
+  "tata-motors": { monogram: "T", color: "#1e5aa8", shape: "tata" },
+  "tesla": { monogram: "T", color: "#cc0000", shape: "tesla" },
+  "byd": { monogram: "BYD", color: "#d71920", shape: "byd" },
+  "hershey": { monogram: "H", color: "#4b1f2a", shape: "hershey" },
+  "tsmc": { monogram: "TC", color: "#d81e05", shape: "tsmc" },
+  "airbus": { monogram: "A", color: "#005b9f", shape: "airbus" },
+  "pfizer": { monogram: "P", color: "#0067b1", shape: "pfizer" },
+  "apex-mobility": { monogram: "AM", color: "#6548c8", shape: "generic" },
+  "helixora": { monogram: "HX", color: "#c13f60", shape: "generic" },
+  "orion-silicon": { monogram: "OS", color: "#187b86", shape: "generic" },
+  "verdant-foods": { monogram: "VF", color: "#3f8738", shape: "generic" },
+  "stratos-aero": { monogram: "SA", color: "#2e63a5", shape: "generic" },
+  "solara-grid": { monogram: "SG", color: "#b66c05", shape: "generic" },
+  "terrametals": { monogram: "TM", color: "#99572d", shape: "generic" },
+  "blueharbor": { monogram: "BH", color: "#16658f", shape: "generic" },
+  "titanworks": { monogram: "TW", color: "#596879", shape: "generic" },
+  "meridian-commerce": { monogram: "MC", color: "#a43e7b", shape: "generic" },
 };
 
 function initialsFor(name: string) {
@@ -115,8 +115,8 @@ export function SectorMark({ sectorId, label }: { sectorId: string; label: strin
 }
 
 export function ClientMark({ clientId, label }: { clientId: string; label: string }) {
-  const visual = clientVisuals[clientId] ?? { monogram: initialsFor(label), color: clientColorFor(clientId) };
-  return <span className="path-entity-mark client-mark" style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} concept brand`} aria-hidden="true" data-client-mark={clientId}>{visual.monogram}</span>;
+  const visual = clientVisuals[clientId] ?? { monogram: initialsFor(label), color: clientColorFor(clientId), shape: "generic" };
+  return <span className={`path-entity-mark client-mark client-mark-${visual.shape}`} style={{ "--entity-accent": visual.color } as CSSProperties} title={`${label} client`} role="img" aria-label={`${label} client mark`} data-client-mark={clientId}><b>{visual.monogram}</b><i aria-hidden="true" /></span>;
 }
 
 export function AppGlyph({ appId, label, className = "" }: { appId: AppGlyphId; label?: string; className?: string }) {

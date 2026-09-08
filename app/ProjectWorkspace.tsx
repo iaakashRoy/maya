@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type Dispatch, type FormEvent } from "react";
 import ProjectAppStudio from "./ProjectAppStudios";
+import ProjectSupplyChainExplorer from "./ProjectSupplyChainExplorer";
 import { useDialogLifecycle } from "./useDialogLifecycle";
 import { AppGlyph } from "./VisualIdentity";
 import {
@@ -800,6 +801,7 @@ function ProjectDataWorkspace({ mode, onMode, query, onQuery, project, uploadSta
   const hitCount = datasetHits.length + previewHits.length + documentHits.length + connectorTemplateHits.length + connectorHits.length + graphHits.length + metricHits.length + variableHits.length;
 
   return <div className="project-data-workspace">
+    {mode === "graph" && <ProjectSupplyChainExplorer project={project} query={query} onEvidence={onEvidence} />}
     <div className="data-graph-commandbar" aria-label="Data and graph tools">
       <nav aria-label="Data and graph views">
         <button data-action-id="data-graph.mode.sources" className={mode === "sources" ? "active" : ""} type="button" aria-pressed={mode === "sources"} onClick={() => onMode("sources")}>Sources <span>{datasetsFor(project).length + sessionDatasets.length}</span></button>

@@ -9,6 +9,12 @@ export const metadata: Metadata = {
 };
 
 const appName = (id: string) => projectApps.find((app) => app.id === id)?.name ?? id;
+const portfolioDepth = caseStudyProfiles.reduce((total, profile) => ({
+  nodes: total.nodes + profile.supplyChain.nodes.length,
+  dependencies: total.dependencies + profile.supplyChain.edges.length,
+  checkpoints: total.checkpoints + profile.supplyChain.checkpoints.length,
+  signals: total.signals + profile.supplyChain.signals.length,
+}), { nodes: 0, dependencies: 0, checkpoints: 0, signals: 0 });
 
 export default function CaseStudiesPage() {
   return <main className="case-study-deck">
@@ -20,7 +26,7 @@ export default function CaseStudiesPage() {
     <section className="case-study-hero">
       <p>CASE STUDY LIBRARY · 10 CLIENT SIMULATIONS</p>
       <h1>See a disruption become<br />a defensible decision.</h1>
-      <div><p>Each case starts with a product promise, injects a compound crisis, traces its impact through project data, and produces a human-governed resilient response.</p><dl><div><dt>10</dt><dd>companies</dd></div><div><dt>60</dt><dd>data products</dd></div><div><dt>2,000</dt><dd>seeded draws per case</dd></div><div><dt>100%</dt><dd>metric provenance</dd></div></dl></div>
+      <div><p>Each case starts with a product promise, injects a compound crisis, traces its impact through project data, and produces a human-governed resilient response.</p><dl><div><dt>10</dt><dd>companies</dd></div><div><dt>{portfolioDepth.nodes}</dt><dd>operating nodes</dd></div><div><dt>{portfolioDepth.dependencies}</dt><dd>dependencies</dd></div><div><dt>{portfolioDepth.checkpoints + portfolioDepth.signals}</dt><dd>checks + signals</dd></div></dl></div>
       <aside><b>Simulation boundary</b><span>{simulationDisclaimer}</span></aside>
     </section>
 
@@ -68,6 +74,12 @@ export default function CaseStudiesPage() {
         <section className="case-study__data">
           <header><div><small>PROJECT DATA</small><h3>Six governed data products</h3></div><a href={`/?view=company&project=${profile.projectId}&projectTab=data`}>Inspect data and graph →</a></header>
           <div>{profile.datasets.map((item, dataIndex) => <article key={item.name}><span>{String(dataIndex + 1).padStart(2, "0")}</span><b>{item.name}</b><p>{item.source}</p><small>{item.grain}</small><footer><em>{item.rows} rows</em><em>{item.freshness}</em><strong>{item.quality}% quality</strong></footer></article>)}</div>
+        </section>
+
+        <section className="case-study__network">
+          <header><div><small>MULTILEVEL SUPPLY NETWORK</small><h3>{profile.supplyChain.stages.length} levels from origin to outcome</h3></div><dl><div><dt>{profile.supplyChain.nodes.length}</dt><dd>nodes</dd></div><div><dt>{profile.supplyChain.edges.length}</dt><dd>dependencies</dd></div><div><dt>{profile.supplyChain.checkpoints.length}</dt><dd>chokepoints</dd></div><div><dt>{profile.supplyChain.signals.length}</dt><dd>signals</dd></div></dl><a href={`/?view=company&project=${profile.projectId}&projectTab=data`}>Open Graph + Chokepoints &#8594;</a></header>
+          <div className="case-study__stage-path">{profile.supplyChain.stages.map((stage) => <article key={stage.id}><span>{String(stage.sequence).padStart(2, "0")}</span><b>{stage.label}</b><small>{stage.description}</small><em>{profile.supplyChain.nodes.filter((node) => node.stageId === stage.id).length} paths</em></article>)}</div>
+          <div className="case-study__checkpoint-summary"><small>HIGHEST-RISK CHECKPOINTS</small>{[...profile.supplyChain.checkpoints].sort((left, right) => right.observed - left.observed).slice(0, 4).map((checkpoint) => <article data-severity={checkpoint.severity} key={checkpoint.id}><span>{checkpoint.severity}</span><b>{checkpoint.title}</b><p>{checkpoint.observed} / {checkpoint.target} {checkpoint.unit} · {checkpoint.trend}</p><small>{checkpoint.downstreamImpact}</small></article>)}</div>
         </section>
 
         <section className="case-study__timeline">
