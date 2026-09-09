@@ -4,10 +4,30 @@ tanjnx is an interactive, front-end-only concept for operating a connected suppl
 chain through client projects, specialist applications, expert agents,
 operations-research methods, a knowledge graph, and evidence receipts.
 
-All organizations, people, values, events, maps, agent activity, calculations,
-and outcomes are deterministic synthetic fixtures. The concept has no live
-business-data backend, model API, mathematical solver, operational connector,
-credential, learning loop, or write-back authority.
+The ten company examples use dated public source material alongside explicitly
+modeled private operating data. They do not imply customer relationships.
+Mission control and Simulation execute browser calculations and local workflow
+rehearsals. The portal has no connected business-data backend, installed client
+agent, LLM API, enterprise solver, IoT broker, production learning loop, or
+write-back authority.
+
+## Agent OS workflow
+
+Open **Mission control** in the workspace navigation, or `/?view=os`.
+Choose a project and use Missions, Connections, Intelligence, Tools and Learning.
+The existing project workspace and dense Playground terminal remain available.
+
+- Run a reproducible paired Monte Carlo/Markov simulation, inspect its weekly
+  flow ledger, edit assumptions, retain local run ancestry and export all paths.
+- Prepare read-only collector/device policies. Validate manual IoT-shaped events
+  for identity, sequence, duplicates, freshness and measurement range.
+- Inspect 23 dated primary sources and 60 additional company-specific planning
+  assumptions. Published facts remain distinct from modeled operating values.
+- Record review notes and outcome feedback, exercise a local shadow-skill gate
+  and roll back the draft. These actions do not authorize production changes.
+
+See [capability audit and production plan](docs/AGENTIC_OS_CAPABILITY_AUDIT.md)
+and [the PowerPoint user guide](public/tanjnx-user-guide.pptx).
 
 ## Product structure
 
