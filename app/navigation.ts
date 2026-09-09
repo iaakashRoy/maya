@@ -5,7 +5,7 @@ import type { ProjectActivityState } from "./project-activity-model";
 /** Internal compatibility scopes. The UI exposes Workspace and Operations World. */
 export const scopeIds: ScopeId[] = ["global", "region", "company"];
 const operationsScopeIds: readonly ScopeId[] = ["global", "region"];
-const workspaceStudioIds: readonly ProjectAppId[] = ["statistics", "minerals", "workforce", "manufacturing", "logistics", "quality"];
+const workspaceStudioIds: readonly ProjectAppId[] = ["simulation", "statistics", "minerals", "workforce", "manufacturing", "logistics", "quality"];
 
 export const viewLabels: Record<ViewId, string> = {
   global: "Operations World",
@@ -22,6 +22,7 @@ export const viewLabels: Record<ViewId, string> = {
   agents: "Playground",
   graph: "Data",
   variables: "Variables & Methods",
+  os: "Mission control",
 };
 
 type SearchValue = string | string[] | undefined;
@@ -79,10 +80,10 @@ export function resolveNavigation(searchParams: NavigationSearchParams = {}, pro
     };
   }
 
-  if (view === "variables") {
+  if (view === "variables" || view === "os") {
     const workspaceCaseId = decisionCases.find((item) => item.scope === "company")?.id ?? decisionCases[0].id;
     return {
-      view: "variables" as const,
+      view,
       scope: "company" as const,
       caseId: workspaceCaseId,
       projectId: "",

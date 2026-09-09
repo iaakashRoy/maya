@@ -47,6 +47,34 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
+test("Mission control renders the operating layer and guide download", async () => {
+  const response = await render("/?view=os");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Mission control/);
+  assert.match(html, /Mission client and project/);
+  assert.match(html, /Connections/);
+  assert.match(html, /Intelligence/);
+  assert.match(html, /Learning/);
+  assert.match(html, /Run mission/);
+  assert.match(html, /tanjnx-user-guide\.pptx/);
+  assert.match(html, /No background agent, live feed, or write-back connected/);
+  const guide = await readFile(new URL("../public/tanjnx-user-guide.pptx", import.meta.url));
+  assert.ok(guide.byteLength > 10000);
+  assert.equal(guide.subarray(0, 2).toString(), "PK");
+});
+
+test("Simulation renders as a mounted project tool with actual model controls", async () => {
+  const response = await render("/?view=company&project=apple-launch-continuity&projectTab=apps&projectApp=simulation");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Run comparison/);
+  assert.match(html, /Demand variation/);
+  assert.match(html, /Opening in-transit inventory/);
+  assert.match(html, /Operating-state assumptions and model limits/);
+  assert.match(html, /Weekly Monte Carlo with Markov disruption states/);
+});
+
 test("case-study library explains and deep-links all ten simulations", async () => {
   const response = await render("/case-studies");
   assert.equal(response.status, 200);

@@ -3,7 +3,7 @@ import { caseStudyProjects, caseStudyProfileFor } from "./case-study-model";
 export type WorkspaceTabId = "overview" | "decisions" | "apps" | "data" | "graph" | "agents" | "team" | "governance";
 export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
-export type ProjectAppId = "risk" | "optimizer" | "statistics" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
+export type ProjectAppId = "risk" | "optimizer" | "statistics" | "simulation" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
 export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
 export type CollaboratorAffiliation = "Client" | "tanjnx";
 export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
@@ -223,7 +223,7 @@ export type ProjectAppDefinition = {
   artifact: string;
   methodCodes: readonly string[];
   variableIds: readonly string[];
-  status: "Concept ready" | "Review" | "Future adapter";
+  status: "Concept ready" | "Review" | "Future adapter" | "Browser calculation";
 };
 
 export type ExpertAgent = {
@@ -405,6 +405,7 @@ export const connectorTemplates: readonly ConnectorTemplate[] = [
 ];
 
 export const projectApps: readonly ProjectAppDefinition[] = [
+  { id: "simulation", name: "Simulation", icon: "SM", accent: "#509cb4", archetype: "Monte Carlo + Markov flow lab", outcome: "Stress-test response policies under dependent disruption", artifact: "Reproducible paired-scenario run", methodCodes: ["M-17", "M-20", "M-26"], variableIds: ["L0-001", "L0-071", "L0-202"], status: "Browser calculation" },
   { id: "risk", name: "Risk Radar", icon: "RR", accent: "#ff715b", archetype: "Signal room + causal propagation", outcome: "Know what can stop the project", artifact: "Risk control brief", methodCodes: ["M-04", "M-16", "M-20", "M-23"], variableIds: ["L2-027", "L0-025", "L0-054"], status: "Concept ready" },
   { id: "optimizer", name: "Network Optimizer", icon: "NO", accent: "#d7ff38", archetype: "Formulation editor + run console", outcome: "Choose a feasible response", artifact: "Versioned solution package", methodCodes: ["M-05", "M-06", "M-20", "M-22", "M-24"], variableIds: ["L0-001", "L0-071", "L0-299"], status: "Concept ready" },
   { id: "statistics", name: "Statistical Studio", icon: "ST", accent: "#ec5fa3", archetype: "Distribution lab + state-transition notebook", outcome: "Explain variation and predict the next operating state", artifact: "Versioned statistical model package", methodCodes: ["M-02", "M-03", "M-04", "M-13", "M-16", "M-17", "M-20", "M-26"], variableIds: ["L0-001", "L0-071", "L0-101", "L0-202"], status: "Concept ready" },

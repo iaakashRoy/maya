@@ -2,7 +2,7 @@ export type ScopeId = "global" | "region" | "company";
 export type AppId = "risk" | "optimizer" | "flow" | "demand" | "suppliers";
 export type DataViewId = "agents" | "graph";
 export type WorkflowViewId = "decisions" | "case" | "action";
-export type WorkspaceViewId = "variables";
+export type WorkspaceViewId = "variables" | "os";
 export type ViewId = ScopeId | AppId | DataViewId | WorkflowViewId | WorkspaceViewId;
 export type StatusTone =
   | "healthy"

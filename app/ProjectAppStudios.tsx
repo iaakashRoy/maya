@@ -4,6 +4,7 @@ import { useState } from "react";
 import { fixtureEvidenceFor, projectApps, type EvidenceReceipt, type ProjectAppId, type WorkspaceProject } from "./workspace-model";
 import { AppGlyph } from "./VisualIdentity";
 import { statisticalProfilesFor } from "./statistical-model";
+import SimulationStudio from "./SimulationStudio";
 
 type Props = {
   appId: ProjectAppId;
@@ -120,7 +121,8 @@ export default function ProjectAppStudio(props: Props) {
   const app = projectApps.find((item) => item.id === props.appId) ?? projectApps[0];
   return <div className={`project-app-studio app-theme-${props.appId}`} data-app-theme={props.appId} style={{ "--studio-accent": app.accent } as React.CSSProperties}>
     <StudioHeader appId={props.appId} project={props.project} />
-    {props.appId === "statistics" ? <StatisticalStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
+    {props.appId === "simulation" ? <SimulationStudio key={props.project.id} projectId={props.project.id} onRun={(run) => props.onOutcome("Simulation calculated", `${run.input.paths} paired paths computed in this browser. P05 service ${run.response.service.p05.toFixed(1)}%. Domain review required; no operational release.`, run.id)} />
+      : props.appId === "statistics" ? <StatisticalStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "minerals" ? <MineralAtlas project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "workforce" ? <WorkforceStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "manufacturing" ? <ManufacturingTwin project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />

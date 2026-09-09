@@ -173,6 +173,7 @@ export type AppStartPlan = {
 };
 
 const appCodes: Record<ProjectAppId, string> = {
+  simulation: "SM",
   risk: "RR", optimizer: "NO", statistics: "ST", flow: "FL", demand: "DS", suppliers: "SG",
   minerals: "MA", workforce: "WS", manufacturing: "MT", logistics: "LR", quality: "QG",
 };

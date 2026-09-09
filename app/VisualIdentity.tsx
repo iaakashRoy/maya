@@ -5,6 +5,7 @@ import type { ProjectAppId } from "./workspace-model";
 type AppGlyphId = ProjectAppId | "playground";
 
 const appSymbols: Record<AppGlyphId, string> = {
+  simulation: "◴",
   statistics: "Σ",
   risk: "⌖",
   optimizer: "⎔",
