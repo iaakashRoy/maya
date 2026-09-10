@@ -50,6 +50,25 @@ test("responsive project chrome separates mounted apps, accountable people, and 
   assert.match(css, /\.work-identity-inspector\s*\{[\s\S]*?top:\s*var\(--topbar-height\);[\s\S]*?width:\s*min\(430px, calc\(100vw - 12px\)\)/);
 });
 
+test("compact destinations leave room for Mission Control and only the selected app expands", async () => {
+  const [shell, css] = await Promise.all([read("../app/PlatformShell.tsx"), read("../app/globals.css")]);
+  const compact = css.slice(css.lastIndexOf("/* Compact destinations and selected-app navigation."));
+  assert.doesNotMatch(shell, /context-current|YOU ARE HERE|currentProjectSurface/);
+  assert.match(shell, /workspace-primary-nav workspace-destinations/);
+  const destinations = shell.slice(shell.indexOf('aria-label="Workspace destinations"'), shell.indexOf('className="rail-quick-actions"'));
+  assert.match(destinations, /nav\.workspace/);
+  assert.match(destinations, /nav\.operations-world/);
+  assert.doesNotMatch(destinations, /<small>|<p>Workspace<\/p>/);
+  assert.ok(shell.indexOf('data-action-id="nav.operations-world"') < shell.indexOf('data-action-id="nav.onboard-client"'));
+  assert.ok(shell.indexOf('data-action-id="nav.new-project"') < shell.indexOf('<p>Mission Control</p>'));
+  assert.match(compact, /workspace-destinations\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(compact, /project-context-stack > \.project-context-bar\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(compact, /context-app-button:not\(\.active\) > b\s*\{\s*display:\s*none/);
+  assert.match(compact, /context-app-button\.active\s*\{[^}]*width:\s*auto/);
+  assert.match(compact, /context-app-button\.active > b\s*\{[^}]*display:\s*block;[^}]*max-width:\s*none/);
+  assert.match(compact, /@media \(min-width: 1041px\)[\s\S]*rail-collapsed[\s\S]*grid-template-columns:\s*1fr/);
+});
+
 test("laptop context rows clip no unbounded child layout and use high contrast controls", async () => {
   const css = await read("../app/globals.css");
   const responsiveContract = css.slice(css.lastIndexOf("Final responsive shell contract"));

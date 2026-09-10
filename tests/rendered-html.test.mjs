@@ -34,6 +34,13 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Coca-Cola/);
   assert.match(html, /Water-to-Shelf Availability/);
   assert.match(html, /Mission Control/);
+  const destinations = html.match(/<section[^>]*class="[^"]*workspace-destinations"[^>]*>[\s\S]*?<\/section>/)?.[0];
+  assert.ok(destinations);
+  assert.match(destinations, /data-action-id="nav\.workspace"/);
+  assert.match(destinations, /data-action-id="nav\.operations-world"/);
+  assert.doesNotMatch(destinations, /<small>/);
+  assert.ok(html.indexOf('data-action-id="nav.operations-world"') < html.indexOf('data-action-id="nav.onboard-client"'));
+  assert.ok(html.indexOf('data-action-id="nav.new-project"') < html.indexOf('Mission Control'));
   assert.doesNotMatch(html, /data-action-id="nav\.case-studies"|href="\/case-studies"/);
   const sidebar = html.slice(html.indexOf('<aside'), html.indexOf('</aside>'));
   assert.doesNotMatch(sidebar, /nav\.variables|Project path/);
@@ -70,6 +77,24 @@ test("Simulation renders as a mounted project tool with actual model controls", 
   assert.match(html, /Opening in-transit inventory/);
   assert.match(html, /Operating-state assumptions and model limits/);
   assert.match(html, /Weekly Monte Carlo with Markov disruption states/);
+});
+
+test("selected mounted applications identify themselves without a duplicate location block", async () => {
+  const apps = [["risk", "Risk Radar"], ["optimizer", "Network Optimizer"], ["manufacturing", "Manufacturing Twin"], ["statistics", "Statistical Studio"], ["simulation", "Simulation"], ["playground", "Playground"]];
+  for (const [id, label] of apps) {
+    const query = ["risk", "optimizer"].includes(id) ? `view=${id}` : id === "playground" ? "view=company&projectTab=agents" : `view=company&projectTab=apps&projectApp=${id}`;
+    const response = await render(`/?scope=company&project=apple-launch-continuity&${query}`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.doesNotMatch(html, /context-current|YOU ARE HERE/);
+    const actionId = id === "playground" ? "context.open-playground" : `context.open-app.${id}`;
+    const selected = [...html.matchAll(/<button\b[^>]*data-action-id="([^"]+)"[^>]*>[\s\S]*?<\/button>/g)].find((match) => match[1] === actionId)?.[0];
+    assert.ok(selected, `${label} remains available in the app bar`);
+    assert.match(selected, /class="[^"]*context-app-button active"/);
+    assert.match(selected, /aria-current="page"/);
+    assert.ok(selected.includes(`<b>${label}</b>`));
+    assert.match(html, /data-action-id="context\.back-to-project"/);
+  }
 });
 
 test("case studies are a standalone document, not an application route", async () => {

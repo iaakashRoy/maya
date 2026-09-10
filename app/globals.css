@@ -7954,3 +7954,69 @@ textarea:focus-visible,
   .global-canvas-shell { height: 560px; }
   .global-node-inspector { height: auto; max-height: 560px; }
 }
+
+/* Compact destinations and selected-app navigation. Keep this contract after
+   the legacy responsive rules so the current app is never reduced to an icon. */
+.workspace-primary-nav.workspace-destinations {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 !important;
+  border: 0;
+  background: transparent !important;
+}
+.workspace-primary-nav.workspace-destinations .scope-nav {
+  min-width: 0;
+  min-height: 44px;
+  padding: 5px 7px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 6px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.workspace-primary-nav.workspace-destinations .scope-nav b {
+  color: inherit;
+  font-size: .875rem !important;
+  line-height: 1.2;
+  white-space: normal;
+}
+.workspace-primary-nav.workspace-destinations .scope-nav:hover,
+.workspace-primary-nav.workspace-destinations .scope-nav.active {
+  background: var(--soft);
+  border-color: #8fa91b;
+}
+.project-context-stack > .project-context-bar {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+}
+.project-context-bar > .context-mounted-apps { grid-column: 1; grid-row: auto; }
+.project-context-bar .context-mounted-apps > button.context-app-button:not(.active) {
+  width: 34px;
+  min-width: 34px;
+  padding-inline: 2px;
+  justify-content: center;
+}
+.project-context-bar .context-mounted-apps > button.context-app-button:not(.active) > b { display: none; }
+.project-context-bar .context-mounted-apps > button.context-app-button.active {
+  width: auto;
+  min-width: 34px;
+  flex: 0 0 auto;
+  gap: 7px;
+  padding-inline: 8px;
+}
+.project-context-bar .context-mounted-apps > button.context-app-button.active > b {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  color: var(--ink);
+  font-size: .875rem !important;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+@media (min-width: 1041px) {
+  .platform-shell.rail-collapsed .workspace-primary-nav.workspace-destinations { grid-template-columns: 1fr; }
+}

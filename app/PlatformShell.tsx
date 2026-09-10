@@ -1077,17 +1077,6 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const currentProjectSurface = (() => {
-    if (view === "company") {
-      if (activeProjectApp) return projectApps.find((app) => app.id === activeProjectApp)?.name ?? "Application";
-      return workspaceTabs.find((item) => item.id === activeProjectTab)?.label
-        ?? (activeProjectTab === "apps" ? "Apps" : activeProjectTab === "graph" ? "Data" : activeProjectTab === "agents" ? "Playground" : "Overview");
-    }
-    return applications.find((app) => app.id === view)?.name
-      ?? workflowViews.find((item) => item.id === view)?.label
-      ?? dataViews.find((item) => item.id === view)?.label
-      ?? viewLabels[view];
-  })();
   const activeMountedAppId = activeProjectApp
     ?? (applications.some((app) => app.id === view) ? view as ProjectAppId : null);
   const projectApplicationOpen = view !== "company" || Boolean(activeProjectApp) || activeProjectTab === "agents";
@@ -1103,18 +1092,16 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       {mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside ref={mobileRailRef} className={`side-rail ${mobileOpen ? "open" : ""}`} inert={drawerMode && !mobileOpen ? true : undefined} aria-hidden={drawerMode && !mobileOpen ? true : undefined} role={drawerMode ? "dialog" : undefined} aria-modal={drawerMode && mobileOpen ? true : undefined} aria-label={drawerMode ? "Project navigation" : undefined} tabIndex={drawerMode ? -1 : undefined}>
         <header className="brand-block"><button data-action-id="nav.brand" className="brand" type="button" onClick={openWorkspaceHome} aria-label="Open tanjnx workspace"><BrandMark /><div><b>tanjnx</b><small>Supply chain workspace</small></div></button><button className="rail-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button></header>
-        <div className="rail-quick-actions" aria-label="Workspace setup and navigation controls">
-          <button data-action-id="nav.onboard-client" type="button" aria-label="Onboard a new client" title="Onboard a new client" onClick={() => startOnboarding("client")}><NavigationIcon name="client-add" /><b>New client</b></button>
-          <button data-action-id="nav.new-project" type="button" aria-label="Create a new project" title="Create a new project" onClick={() => startOnboarding("project")}><NavigationIcon name="project-add" /><b>New project</b></button>
-          <button data-action-id="nav.collapse" type="button" aria-expanded={drawerMode ? mobileOpen : !railCollapsed} aria-controls="tanjnx-primary-navigation" onClick={toggleRailDensity} title={drawerMode ? "Close navigation" : railCollapsed ? "Expand navigation" : "Collapse navigation"} aria-label={drawerMode ? "Close project navigation" : railCollapsed ? "Expand project navigation" : "Collapse project navigation"}><NavigationIcon name={drawerMode ? "close" : railCollapsed ? "expand" : "collapse"} /><b>{drawerMode ? "Close" : railCollapsed ? "Expand" : "Collapse"}</b></button>
-        </div>
-
         <nav id="tanjnx-primary-navigation" aria-label="Main navigation">
-          <section className="nav-section workspace-primary-nav">
-            <p>Workspace</p>
-            <button data-action-id="nav.workspace" className={`scope-nav ${view === "company" && scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
-            <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><NavigationIcon name="world" /><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
+          <section className="nav-section workspace-primary-nav workspace-destinations" aria-label="Workspace destinations">
+            <button data-action-id="nav.workspace" className={`scope-nav ${view === "company" && scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b></div></button>
+            <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><NavigationIcon name="world" /><div><b>Operations World</b></div></button>
           </section>
+          <div className="rail-quick-actions" role="group" aria-label="Workspace setup and navigation controls">
+            <button data-action-id="nav.onboard-client" type="button" aria-label="Onboard a new client" title="Onboard a new client" onClick={() => startOnboarding("client")}><NavigationIcon name="client-add" /><b>New client</b></button>
+            <button data-action-id="nav.new-project" type="button" aria-label="Create a new project" title="Create a new project" onClick={() => startOnboarding("project")}><NavigationIcon name="project-add" /><b>New project</b></button>
+            <button data-action-id="nav.collapse" type="button" aria-expanded={drawerMode ? mobileOpen : !railCollapsed} aria-controls="tanjnx-primary-navigation" onClick={toggleRailDensity} title={drawerMode ? "Close navigation" : railCollapsed ? "Expand navigation" : "Collapse navigation"} aria-label={drawerMode ? "Close project navigation" : railCollapsed ? "Expand project navigation" : "Collapse project navigation"}><NavigationIcon name={drawerMode ? "close" : railCollapsed ? "expand" : "collapse"} /><b>{drawerMode ? "Close" : railCollapsed ? "Expand" : "Collapse"}</b></button>
+          </div>
           <section className="nav-section sidebar-projects">
             <div className="sidebar-section-heading"><p>Mission Control</p><span>{sidebarPathGroups.reduce((count, group) => count + group.projects.length, 0)} shown</span></div>
             <div className="project-path-toggle sidebar-path-toggle" role="group" aria-label="Project hierarchy order">
@@ -1169,12 +1156,11 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
           {canViewActiveProject && <section className="project-context-stack" aria-label="Current project work context">
             <div className="project-context-bar" aria-label="Mounted project applications">
               <div className="mobile-project-path" aria-label={`Current project path: ${projectPath.map((segment) => segment.label).join(" / ")}`} title={projectPath.map((segment) => segment.label).join(" / ")}><span>{projectPath.slice(0, -1).map((segment) => segment.label).join(" / ")}</span><b>{projectPath[projectPath.length - 1]?.label ?? activeProject.name}</b></div>
-              <div className={`context-current ${projectApplicationOpen ? "application-context" : ""}`} aria-current="page"><span>{projectApplicationOpen ? "APPLICATION" : "YOU ARE HERE"}</span><b>{currentProjectSurface}</b><small>{activeProject.code}</small></div>
               <div className="context-mounted-apps" aria-label="Mounted project applications">
                 {projectApplicationOpen && <button data-action-id="context.back-to-project" className="context-back-button" type="button" onClick={returnFromProjectApp}><span aria-hidden="true">←</span><b>Back to project</b></button>}
                 <button data-action-id="context.open-apps" className={`context-group-home ${view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "active" : ""}`} type="button" aria-current={view === "company" && activeProjectTab === "apps" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("apps")}><b>Apps</b><small>{effectiveMountedApps.length + 1}</small></button>
-                <button data-action-id="context.open-playground" className={`context-playground-app ${view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "active" : ""}`} style={{ "--context-app-accent": "#7d5cf4" } as React.CSSProperties} type="button" title="Open Playground" aria-label="Open mounted application Playground" aria-current={view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("agents")}><AppGlyph appId="playground" /><b>Playground</b></button>
-                {visibleMountedApps.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={active ? "active" : ""} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} key={appId} onClick={() => openMountedProjectApp(appId)}><AppGlyph appId={appId} /><b>{app.name}</b></button>; })}
+                <button data-action-id="context.open-playground" className={`context-playground-app context-app-button ${view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "active" : ""}`} style={{ "--context-app-accent": "#7d5cf4" } as React.CSSProperties} type="button" title="Open Playground" aria-label="Open mounted application Playground" aria-current={view === "company" && activeProjectTab === "agents" && !activeProjectApp ? "page" : undefined} onClick={() => openProjectTab("agents")}><AppGlyph appId="playground" /><b>Playground</b></button>
+                {visibleMountedApps.map((appId) => { const app = projectApps.find((item) => item.id === appId)!; const active = activeProjectApp === appId || view === appId; return <button data-action-id={`context.open-app.${appId}`} className={`context-app-button ${active ? "active" : ""}`} style={{ "--context-app-accent": app.accent } as React.CSSProperties} type="button" title={`Open ${app.name}`} aria-label={`Open mounted application ${app.name}`} aria-current={active ? "page" : undefined} key={appId} onClick={() => openMountedProjectApp(appId)}><AppGlyph appId={appId} /><b>{app.name}</b></button>; })}
                 {hiddenMountedAppCount > 0 && <button data-action-id="context.open-apps.more" className="context-more" type="button" aria-label={`Open Apps to view ${hiddenMountedAppCount} more mounted applications`} title={`${hiddenMountedAppCount} more mounted apps`} onClick={() => openProjectTab("apps")}>+{hiddenMountedAppCount}</button>}
               </div>
             </div>
