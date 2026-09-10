@@ -1,20 +1,8 @@
-import type { Metadata } from "next";
-import DecisionJourney from "./DecisionJourney";
-import { caseStudies } from "./journey-model";
-
-export const metadata: Metadata = {
-  title: "Decision Journey · tanjnx",
-  description: "A connected, browser-only supply-chain decision rehearsal from governed data to measured outcomes.",
-};
-
-type DecisionJourneyPageProps = {
-  searchParams?: Promise<{ client?: string | string[] }>;
-};
-
-export default async function DecisionJourneyPage({ searchParams }: DecisionJourneyPageProps) {
-  const requested = (await searchParams)?.client;
-  const client = Array.isArray(requested) ? requested[0] : requested;
-  const initialCaseId = caseStudies.some((item) => item.id === client) ? client : "apple";
-
-  return <DecisionJourney initialCaseId={initialCaseId} />;
+import { redirect } from "next/navigation";
+import { workspaceProjects } from "../workspace-model";
+export default async function RetiredJourney({ searchParams }: { searchParams?: Promise<{ client?: string; project?: string }> }) {
+  const params = await searchParams;
+  const clientId = params?.client === "tata" ? "tata-motors" : params?.client;
+  const project = params?.project ? workspaceProjects.find((p) => p.id === params.project) : clientId ? workspaceProjects.find((p) => p.clientId === clientId) : undefined;
+  redirect(project ? `/?view=company&project=${encodeURIComponent(project.id)}&projectTab=decisions` : "/?view=company");
 }

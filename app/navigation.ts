@@ -22,7 +22,6 @@ export const viewLabels: Record<ViewId, string> = {
   agents: "Playground",
   graph: "Data",
   variables: "Variables & Methods",
-  os: "Mission control",
 };
 
 type SearchValue = string | string[] | undefined;
@@ -80,7 +79,7 @@ export function resolveNavigation(searchParams: NavigationSearchParams = {}, pro
     };
   }
 
-  if (view === "variables" || view === "os") {
+  if (view === "variables") {
     const workspaceCaseId = decisionCases.find((item) => item.scope === "company")?.id ?? decisionCases[0].id;
     return {
       view,

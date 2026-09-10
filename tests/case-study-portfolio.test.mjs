@@ -78,7 +78,9 @@ test("global and project relationships, statistical analysis, and full-table que
   assert.match(projectGraph, /Trace relationship/);
   assert.match(projectGraph, /edgeReceipt/);
   assert.match(studios, /StatisticalStudio/);
-  assert.match(studios, /MARKOV STATE MODEL/);
+  const studio = await read("../app/StatisticalStudio.tsx");
+  assert.match(studio, /State transitions/);
+  assert.match(studio, /empiricalTransitions\(rows, column.id\)/);
   assert.match(statistics, /statisticalProfilesFor/);
   assert.match(tablePage, /QUERY TABLE/);
   assert.match(tablePage, /target table is unchanged|source table is unchanged/i);

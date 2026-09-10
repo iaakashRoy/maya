@@ -34,7 +34,7 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Coca-Cola/);
   assert.match(html, /Water-to-Shelf Availability/);
   assert.match(html, /Case studies/);
-  assert.match(html, /Decision journey/);
+  assert.doesNotMatch(html, /data-action-id="nav\.(?:decision-journey|agent-os)"/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
   assert.match(html, /aria-label="Open tanjnx workspace"/);
   assert.match(html, /Supply chain workspace/);
@@ -47,21 +47,12 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
-test("Mission control renders the operating layer and guide download", async () => {
+test("retired OS link resolves to the existing workspace without duplicate navigation", async () => {
   const response = await render("/?view=os");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Mission control/);
-  assert.match(html, /Mission client and project/);
-  assert.match(html, /Connections/);
-  assert.match(html, /Intelligence/);
-  assert.match(html, /Learning/);
-  assert.match(html, /Run mission/);
-  assert.match(html, /tanjnx-user-guide\.pptx/);
-  assert.match(html, /No background agent, live feed, or write-back connected/);
-  const guide = await readFile(new URL("../public/tanjnx-user-guide.pptx", import.meta.url));
-  assert.ok(guide.byteLength > 10000);
-  assert.equal(guide.subarray(0, 2).toString(), "PK");
+  assert.match(html, /<h1>Workspace<\/h1>/);
+  assert.doesNotMatch(html, /Mission control|Mission client and project|Run mission|nav\.decision-journey/);
 });
 
 test("Simulation renders as a mounted project tool with actual model controls", async () => {
@@ -89,27 +80,40 @@ test("case-study library explains and deep-links all ten simulations", async () 
   assert.match(html, /Inspect data and graph/);
   assert.match(html, /Inspect decision graph/);
   assert.match(html, /Run in Playground/);
-  assert.match(html, /Rehearse decision/);
+  assert.match(html, /Review decisions/);
 });
 
-test("decision journey is a native tanjnx route with project-scoped deep links", async () => {
+test("retired journey routes preserve client context using existing project pages", async () => {
   const response = await render("/decision-journey?client=tesla");
+  assert.equal(response.status, 307);
+  assert.match(response.headers.get("location"), /^\/\?view=company&project=tesla-[^&]+&projectTab=decisions$/);
+  const tableResponse = await render("/decision-journey/table?project=tesla&dataset=DS-tesla-local");
+  assert.equal(tableResponse.status, 307);
+  assert.match(tableResponse.headers.get("location"), /^\/\?view=company&project=tesla-[^&]+&projectTab=data$/);
+  const unknown = await render("/decision-journey?client=unknown");
+  assert.equal(unknown.headers.get("location"), "/?view=company");
+});
+
+test("existing Statistics presents sample-based calculations, not a preset fit", async () => {
+  const response = await render("/?view=company&project=apple-launch-continuity&projectTab=apps&projectApp=statistics");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Decision Journey · tanjnx/);
-  assert.match(html, /From disruption to a defensible decision/);
-  assert.match(html, /Tesla[\s\S]*?\/[\s\S]*?Battery scale resilience/);
-  assert.match(html, /Publish local dataset/);
-  assert.match(html, /Human review required/);
-  assert.match(html, /← Workspace/);
-  assert.doesNotMatch(html, /Resilience OS|Maya|Kearney/);
+  assert.match(html, /Run analysis/);
+  assert.match(html, /Descriptive statistics/);
+  assert.match(html, /State transitions/);
+  assert.match(html, /Process performance/);
+  assert.match(html, /96[\s\S]*deterministic sample rows/);
+  assert.doesNotMatch(html, /nav\.decision-journey|nav\.agent-os/);
+});
 
-  const tableResponse = await render("/decision-journey/table?project=tesla&dataset=DS-tesla-local");
-  assert.equal(tableResponse.status, 200);
-  const tableHtml = await tableResponse.text();
-  assert.match(tableHtml, /Versioned table explorer · tanjnx/);
-  assert.match(tableHtml, /Versioned table/);
-  assert.match(tableHtml, /Return to journey/);
+test("native Decisions includes calculated evidence and actual exports", async () => {
+  const response = await render("/?view=company&project=apple-launch-continuity&projectTab=decisions");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Calculated tool evidence/);
+  assert.match(html, /Export snapshot/);
+  assert.match(html, /Review selected result/);
+  assert.doesNotMatch(html, /Create expert review draft|nav\.decision-journey|nav\.agent-os/);
 });
 
 test("Operations World renders authoritative Global and Regional scopes", async () => {

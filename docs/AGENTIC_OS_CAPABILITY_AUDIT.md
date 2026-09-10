@@ -1,5 +1,7 @@
 # tanjnx agentic supply-chain OS: implemented clickflow and production contract
 
+> Historical audit. Superseded on 2026-09-10: Mission control and the separate Decision journey were removed. Use existing project Data, Decisions, Statistics and Simulation. See [current workflow improvements](EXISTING_WORKFLOW_IMPROVEMENTS.md). The old PowerPoint is retained as a historical artifact, not the current navigation guide.
+
 Audit date: 9 September 2026. Source baseline: `fa66e78`, with this update layered on the existing project, graph, tool and Playground surfaces.
 
 ## Conclusion

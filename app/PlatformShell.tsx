@@ -61,7 +61,6 @@ import {
 } from "./platform-model";
 
 const VariablesCatalog = lazy(() => import("./VariablesCatalog"));
-const AgentOS = lazy(() => import("./AgentOS"));
 
 const dataViews = [
   { id: "agents" as const, label: "Playground", icon: "PG", detail: "Project sessions and expert agents" },
@@ -701,7 +700,7 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
       }
       return;
     }
-    if (next === "variables" || next === "os") {
+    if (next === "variables") {
       const url = new URL(window.location.href);
       url.searchParams.set("view", next);
       url.searchParams.set("scope", "company");
@@ -1113,11 +1112,9 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         <nav id="tanjnx-primary-navigation" aria-label="Main navigation">
           <section className="nav-section workspace-primary-nav">
             <p>Workspace</p>
-            <button data-action-id="nav.agent-os" className={`scope-nav ${view === "os" ? "active" : ""}`} type="button" aria-label="Open Mission control" title="Mission control" onClick={() => go("os")}><NavigationIcon name="journey" /><div><b>Mission control</b><small>Agents, connections, tools and learning</small></div><i>›</i></button>
             <button data-action-id="nav.workspace" className={`scope-nav ${view === "company" && scope === "company" && !resolvedProject ? "active" : ""}`} type="button" aria-label="Open clients and projects" title="Clients and projects" onClick={openWorkspaceHome}><NavigationIcon name="workspace" /><div><b>Clients &amp; projects</b><small>Client workspaces and towers</small></div><i>›</i></button>
             <button data-action-id="nav.operations-world" className={`scope-nav ${scope === "global" || scope === "region" ? "active" : ""}`} type="button" aria-label="Open Operations World" title="Operations World" onClick={() => go("global")}><NavigationIcon name="world" /><div><b>Operations World</b><small>Global and regional network</small></div><i>›</i></button>
             <button data-action-id="nav.variables" className={`scope-nav ${view === "variables" ? "active" : ""}`} type="button" aria-label="Open Variables and Methods" title="Variables and Methods" onClick={() => go("variables")}><NavigationIcon name="variables" /><div><b>Variables</b><small>L0, L1, L2, and analytical methods</small></div><i>›</i></button>
-            <button data-action-id="nav.decision-journey" className="scope-nav" type="button" aria-label="Open connected decision journey" title="Decision journey" onClick={() => window.location.assign("/decision-journey")}><NavigationIcon name="journey" /><div><b>Decision journey</b><small>Signal, evidence, options, and outcome</small></div><i>›</i></button>
             <button data-action-id="nav.case-studies" className="scope-nav" type="button" aria-label="Open case study library" title="Case study library" onClick={() => window.location.assign("/case-studies")}><span className="case-study-nav-icon" aria-hidden="true">10</span><div><b>Case studies</b><small>Problems, models, and outcomes</small></div><i>›</i></button>
           </section>
           <section className="nav-section sidebar-projects">
@@ -1206,8 +1203,6 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
         <main className="main-content">
           {resolvedProject && scope === "company" && deniedProjectAccess ? (
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
-          ) : view === "os" ? (
-            <AgentOS projects={accessibleProjects} />
           ) : view === "variables" ? (
             <VariablesCatalog />
           ) : view === "company" && resolvedProject ? (

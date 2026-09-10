@@ -3,7 +3,7 @@ import Link from "next/link";
 import { caseStudyProfiles, simulationDisclaimer } from "../case-study-model";
 import { projectApps, workspaceProjects } from "../workspace-model";
 import { getOsCaseEvidence, osEvidenceFetchedOn } from "../os-case-evidence";
-import "../agent-os.css";
+import "../analysis-workbench.css";
 
 export const metadata: Metadata = {
   title: "tanjnx Case Studies — Resilient Supply-Chain Decisions",
@@ -54,7 +54,7 @@ export default function CaseStudiesPage() {
       return <article className="case-study" id={profile.projectId} key={profile.projectId}>
         <header className="case-study__header">
           <div><span>{String(index + 1).padStart(2, "0")}</span><p>{project.sector} · {project.code}</p><h2>{profile.company}</h2><h3>{profile.project}</h3></div>
-          <div className="case-study__header-actions"><a href={`/?view=company&project=${profile.projectId}&projectTab=overview`}>Open project →</a><a href={`/decision-journey?client=${project.clientId === "tata-motors" ? "tata" : project.clientId}`}>Rehearse decision →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=agents`}>Run in Playground →</a></div>
+          <div className="case-study__header-actions"><a href={`/?view=company&project=${profile.projectId}&projectTab=overview`}>Open project →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=decisions`}>Review decisions →</a><a href={`/?view=company&project=${profile.projectId}&projectTab=agents`}>Run in Playground →</a></div>
         </header>
 
         <section className="case-study__brief">
@@ -63,9 +63,9 @@ export default function CaseStudiesPage() {
           <div><small>DECISION TO MAKE</small><b>{profile.decision}</b><p>{project.outcome}</p></div>
         </section>
 
-        {currentEvidence && <section className="case-os-update"><h3>Evidence-backed operating mission</h3><p>{currentEvidence.scenarioNarrative}</p><a href={`/?view=os&osProject=${profile.projectId}`}>Open this mission and calculate a response ↗</a><p>Public sources checked {osEvidenceFetchedOn}. Operational inputs below are modeled programme slices, not company disclosures.</p><ul>{currentEvidence.publicContext.map((fact) => <li key={fact.sourceId}>{fact.fact} <a href={currentEvidence.sources.find((source) => source.id === fact.sourceId)?.url} target="_blank" rel="noreferrer">Source ({fact.asOf}) ↗</a></li>)}</ul><details><summary>Six additional domain assumptions</summary><ul>{currentEvidence.scenario.operationalInputs.map((item) => <li key={item.label}><b>{item.label}: {item.value} {item.unit}.</b> {item.meaning}</li>)}</ul></details><p><b>How to interpret:</b> {currentEvidence.outcomeInterpretation}</p></section>}
+        {currentEvidence && <section className="case-os-update"><h3>Evidence-backed scenario</h3><p>{currentEvidence.scenarioNarrative}</p><a href={`/?view=company&project=${profile.projectId}&projectTab=apps&projectApp=simulation`}>Open Simulation and calculate a response ↗</a><p>Public sources checked {osEvidenceFetchedOn}. Operational inputs below are modeled programme slices, not company disclosures.</p><ul>{currentEvidence.publicContext.map((fact) => <li key={fact.sourceId}>{fact.fact} <a href={currentEvidence.sources.find((source) => source.id === fact.sourceId)?.url} target="_blank" rel="noreferrer">Source ({fact.asOf}) ↗</a></li>)}</ul><details><summary>Six additional domain assumptions</summary><ul>{currentEvidence.scenario.operationalInputs.map((item) => <li key={item.label}><b>{item.label}: {item.value} {item.unit}.</b> {item.meaning}</li>)}</ul></details><p><b>How to interpret:</b> {currentEvidence.outcomeInterpretation}</p></section>}
         <section className="case-study__result">
-          <div className="case-study__recommendation"><small>ILLUSTRATIVE RESPONSE BRIEF</small><h3>{profile.response}</h3><p>Legacy authored scenario figures below are not calculated outcomes. Use Mission control to compute the current model and examine failed gates. Human review owner: {project.owner}.</p></div>
+          <div className="case-study__recommendation"><small>ILLUSTRATIVE RESPONSE BRIEF</small><h3>{profile.response}</h3><p>Legacy authored scenario figures below are not calculated outcomes. Use Simulation to compute the current model and examine failed gates. Human review owner: {project.owner}.</p></div>
           <dl><div><dt>Baseline</dt><dd>{profile.baseline}</dd></div><div><dt>P50</dt><dd>{profile.p50}</dd></div><div><dt>P90</dt><dd>{profile.p90}</dd></div><div><dt>P95</dt><dd>{profile.p95}</dd></div><div><dt>Worst tested</dt><dd>{profile.worstCase}</dd></div><div><dt>Tail-risk value</dt><dd>{profile.cvar}</dd></div></dl>
         </section>
 

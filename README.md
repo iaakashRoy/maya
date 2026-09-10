@@ -6,28 +6,34 @@ operations-research methods, a knowledge graph, and evidence receipts.
 
 The ten company examples use dated public source material alongside explicitly
 modeled private operating data. They do not imply customer relationships.
-Mission control and Simulation execute browser calculations and local workflow
-rehearsals. The portal has no connected business-data backend, installed client
+Statistics and Simulation execute browser calculations within existing project
+tools. Decisions retains their local evidence and review notes. The portal has no
+connected business-data backend, installed client
 agent, LLM API, enterprise solver, IoT broker, production learning loop, or
 write-back authority.
 
-## Agent OS workflow
+## Existing project workflow
 
-Open **Mission control** in the workspace navigation, or `/?view=os`.
-Choose a project and use Missions, Connections, Intelligence, Tools and Learning.
-The existing project workspace and dense Playground terminal remain available.
+Choose a client project. Use its **Data**, **Decisions**, **Controls**, and
+existing specialist tools; use **Playground** to discuss the work with agents.
+Mission control and the separate Decision journey interface have been removed.
 
-- Run a reproducible paired Monte Carlo/Markov simulation, inspect its weekly
-  flow ledger, edit assumptions, retain local run ancestry and export all paths.
-- Prepare read-only collector/device policies. Validate manual IoT-shaped events
-  for identity, sequence, duplicates, freshness and measurement range.
-- Inspect 23 dated primary sources and 60 additional company-specific planning
-  assumptions. Published facts remain distinct from modeled operating values.
-- Record review notes and outcome feedback, exercise a local shadow-skill gate
-  and roll back the draft. These actions do not authorize production changes.
+- **Data:** filter the materialized table sample, see recalculated statistics,
+  and export the filtered rows as CSV.
+- **Statistics:** calculate descriptive statistics, empirical state transitions,
+  or Pp/Ppk from the same 96 sample rows. Changed selections invalidate results.
+- **Simulation:** compare reproducible Monte Carlo/Markov scenarios, inspect
+  weekly flow balances, edit inputs, compare retained runs, and export paths.
+- **Decisions:** attach an exact Simulation run to an existing decision. Inspect
+  service and budget checks, verify domain constraints, and record a local review
+  or revision request. Changed inputs or a newer run make old evidence stale.
+- **Case studies:** inspect dated public sources and company-specific modeled
+  assumptions, then open the existing tools and Decisions directly.
 
-See [capability audit and production plan](docs/AGENTIC_OS_CAPABILITY_AUDIT.md)
-and [the PowerPoint user guide](public/tanjnx-user-guide.pptx).
+See [the consolidation guide](docs/EXISTING_WORKFLOW_IMPROVEMENTS.md) for current
+behavior. The older [capability audit](docs/AGENTIC_OS_CAPABILITY_AUDIT.md) and
+[PowerPoint](public/tanjnx-user-guide.pptx) are historical references; their
+Mission control / Decision journey navigation is superseded.
 
 ## Product structure
 
@@ -159,19 +165,16 @@ reference and formulation workbench:
 The current interface runs a deterministic response calculator only. It does
 not execute a solver and never labels a generated candidate as optimal.
 
-## Connected decision journey
+## Decision evidence, without a second workflow
 
-The workspace navigation and every case study link to the
-`/decision-journey` route. It connects seven stages:
-validated local data, relationship meaning, empirical statistics, stressed
-alternatives, human review, controlled release, and measured outcomes.
+The existing Decisions inspector holds calculated tool results separately from
+illustrative scenario values. Reviews reference exact run IDs and inputs, require
+project review permission and explicit domain checks, and expire after 24 hours.
+They are browser-local records, not signed approvals or release authority.
+Lineage snapshots and branch comparisons export JSON with attached evidence.
 
-Ten company-inspired cases use different units, constraints, disruption
-assumptions, and supply-chain economics. Calculations are deterministic and
-browser-local. Publishing a dataset creates a project-scoped local version;
-the full-table route supports filtering, recomputed descriptive statistics,
-pagination, and CSV export. No operational backend, solver, approval service,
-or write-back is implied.
+Legacy `/decision-journey` links redirect into the matching project's Decisions;
+legacy journey table links redirect into its Data page. No duplicate page remains.
 
 ## World Network Radar
 
