@@ -559,11 +559,11 @@ function ProjectIntakeSummary({ project, onEvidence }: { project: WorkspaceProje
 function LiveScenarioStrip({ project, onEvidence }: { project: WorkspaceProject; onEvidence: (ref: string | EvidenceReceipt) => void }) {
   const simulation = project.simulation;
   if (!simulation) return null;
-  return <section className="project-live-scenario" aria-label="Active resilience simulation">
-    <div className="project-live-scenario__status"><i /><span><small>LIVE SIMULATION · {simulation.scenarioId}</small><b>{simulation.scenario}</b><em>{simulation.clock} · {simulation.cadence}</em></span></div>
+  return <section className="project-live-scenario" aria-label="Illustrative resilience scenario">
+    <div className="project-live-scenario__status"><i /><span><small>SCENARIO FIXTURE · {simulation.scenarioId}</small><b>{simulation.scenario}</b><em>Modeled clock: {simulation.clock} · {simulation.cadence}</em></span></div>
     <div className="project-live-scenario__distribution">{[["BASELINE", simulation.baseline], ["P50", simulation.p50], ["P90", simulation.p90], ["P95", simulation.p95], ["WORST", simulation.worstCase], ["CONFIDENCE", `${simulation.confidence}%`]].map(([label, value]) => <span key={label}><small>{label}</small><b>{value}</b></span>)}</div>
     <div className="project-live-scenario__actions"><button data-action-id="workspace.trace-live-scenario" type="button" onClick={() => onEvidence(project.metrics[0].evidenceRef)}>Trace scenario</button></div>
-    <p>{simulation.disclaimer}</p>
+    <p>{simulation.disclaimer} These portfolio figures and confidence labels are seeded, not calculated by the Simulation tool. Its regional cohort has separate inputs, service floor and run evidence; do not combine the two scales.</p>
   </section>;
 }
 

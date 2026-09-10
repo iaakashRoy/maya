@@ -48,6 +48,18 @@ data used by the workspace is retained.
    download JSON including attached calculated evidence.
 
 ## Boundaries
+- The Apple audit adds a weekly expedite ceiling shared by all projects. Apple
+  defaults to 1,800 devices/week; other cases without a declared allowance start
+  at zero. The numerical model is now 1.1.0. Earlier-model results cannot be reused
+  for review; export the earlier-model archive in Simulation before rerunning.
+- The graph table inspector now calculates its sample summary from the same 96
+  generated rows as the full table. No distribution fit, stationarity or drift
+  test is claimed. Generated sample values are fixture indices, not reviewed
+  physical measurements or categorical encodings.
+- See [the standalone Apple field guide](apple-project-guide.html),
+  [its Markdown report](APPLE_PROJECT_GUIDE.md), and
+  [its reproducible evidence pack](apple-project-evidence.json). These are not
+  application routes or workflow navigation items.
 - No new LLM, solver, collector, IoT connection, cloud store or external write-back
   was added. Browser-local permissions are UX controls, not server authorization.
 - Statistics describes a materialized generated sample, not the registry's larger

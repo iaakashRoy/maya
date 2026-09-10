@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { osCaseEvidence } from "../app/os-case-evidence.ts";
-import { compactRun, fingerprint, restoreSimulation, runSimulation, validateSimulation } from "../app/simulation-model.ts";
+import { compactRun, fingerprint, restoreSimulation, runSimulation, simulationInputForCase, validateSimulation } from "../app/simulation-model.ts";
 
 const now = "2026-09-09T12:00:00.000Z";
 function inputFor(evidence = osCaseEvidence[0]) {
@@ -94,4 +94,46 @@ test("run lineage is explicit without creating a self-parent", () => {
   const next = runSimulation({ ...inputFor(), demandSurgePct: 22 }, now, first.id);
   assert.equal(next.parentRunId, first.id);
   assert.equal(runSimulation(inputFor(), now, first.id).parentRunId, null);
+});
+
+test("expedite ceilings apply to every project without creating supply or retiming opening pipeline", () => {
+  for (const evidence of osCaseEvidence) {
+    const input = { ...simulationInputForCase(evidence), paths: 32, expedite: true, expediteCapacityPerWeek: 123 };
+    const result = runSimulation(input, now);
+    for (const policy of [result.baseline, result.response]) for (const path of policy.paths) {
+      let stock = input.inventoryUnits, pipeline = input.openingPipelineUnits;
+      for (const week of path.weeks) {
+        assert.ok(week.expedited <= 123 && week.expedited <= week.dispatched);
+        assert.ok(Math.abs(stock + week.arrived - week.served - week.inventory) < 1e-6);
+        assert.ok(Math.abs(pipeline + week.dispatched - week.arrived - week.inTransit) < 1e-6);
+        if (policy === result.baseline) assert.equal(week.expedited, 0);
+        stock = week.inventory; pipeline = week.inTransit;
+      }
+    }
+  }
+});
+
+test("Apple uses its declared lane limit and missing expedite authority defaults to zero", () => {
+  const apple = simulationInputForCase(osCaseEvidence[0]);
+  assert.equal(apple.expediteCapacityPerWeek, 1800);
+  for (const evidence of osCaseEvidence.slice(1)) assert.equal(simulationInputForCase(evidence).expediteCapacityPerWeek, 0);
+  const noFast = runSimulation({ ...apple, paths: 32, expedite: false }, now);
+  const noAuthority = runSimulation({ ...apple, paths: 32, expedite: true, expediteCapacityPerWeek: undefined }, now);
+  assert.deepEqual(noAuthority.response, noFast.response);
+  const capped = runSimulation({ ...apple, paths: 32, expedite: true }, now);
+  for (const path of capped.response.paths) {
+    assert.ok(path.weeks.every(w => w.expedited === 1800));
+    assert.ok(Math.abs(path.interventionCost - noFast.response.paths[path.index].interventionCost - 1800 * 8 * 28) < 1e-6);
+  }
+  assert.equal(capped.budgetPassed, false);
+  assert.throws(() => runSimulation({ ...apple, expediteCapacityPerWeek: -1 }), /expediteCapacity/);
+  assert.throws(() => runSimulation({ ...apple, expediteCapacityPerWeek: Infinity }), /expediteCapacity/);
+});
+
+test("zero-lead supply is not charged for a nonexistent expedite benefit and old models are not reapproved", () => {
+  const input = { ...simulationInputForCase(osCaseEvidence[0]), paths: 32, alternateAllocationPct: 0, expedite: true, regimes: [{ name: "Same week", leadDays: 0, capacityFactor: 1, transition: [1] }] };
+  const run = runSimulation(input, now);
+  assert.deepEqual(run.baseline, run.response);
+  assert.equal(run.response.meanCost, 0);
+  assert.equal(restoreSimulation(JSON.stringify({ ...compactRun(run), version: "supply-flow-monte-carlo@1.0.0" }), input.projectId), null);
 });

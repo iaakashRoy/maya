@@ -2,7 +2,8 @@
 
 import { useRef, useState, type CSSProperties } from "react";
 import { caseStudyProfileFor, type SupplyChainCheckpoint, type SupplyChainEdge, type SupplyChainNetwork, type SupplyChainNode } from "./case-study-model";
-import { statisticalProfileForNode } from "./statistical-model";
+import { statisticalProfileForNode, statisticalRowsFor } from "./statistical-model";
+import { describeColumn } from "./statistical-analysis";
 import { fixtureEvidenceFor, type EvidenceReceipt, type WorkspaceProject } from "./workspace-model";
 
 type ExplorerProps = {
@@ -139,6 +140,8 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
   const selectedEdgeFrom = selectedEdge ? network?.nodes.find((node) => node.id === selectedEdge.from) : undefined;
   const selectedEdgeTo = selectedEdge ? network?.nodes.find((node) => node.id === selectedEdge.to) : undefined;
   const selectedTable = selectedNode ? statisticalProfileForNode(project, selectedNode.id) : undefined;
+  const tableRows = selectedTable ? statisticalRowsFor(selectedTable, 96) : [];
+  const tableSummary = selectedTable?.columns[0] ? describeColumn(tableRows, selectedTable.columns[0].id) : null;
   const selectedCheckpoint = network?.checkpoints.find((checkpoint) => checkpoint.id === selectedCheckpointId) ?? network?.checkpoints[0];
   const normalizedQuery = query.trim().toLowerCase();
   const regions = [...new Set(network?.nodes.map((node) => node.geography) ?? [])];
@@ -283,10 +286,10 @@ export default function ProjectSupplyChainExplorer({ project, query = "", onEvid
         <section><small>SUPPLIED BY ({network.edges.filter((edge) => edge.to === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.to === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.upstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedEdgeId(edge.id)}><b>{network.nodes.find((node) => node.id === edge.from)?.label}</b><span>{edge.relationship} · {edge.share}% · {edge.leadTime}d · inspect path</span></button>)}</section>
         <section><small>SUPPLIES ({network.edges.filter((edge) => edge.from === selectedNode.id).length})</small>{network.edges.filter((edge) => edge.from === selectedNode.id).map((edge) => <button data-action-id={`supply-network.edge.downstream.${edge.id}`} type="button" key={edge.id} onClick={() => setSelectedEdgeId(edge.id)}><b>{network.nodes.find((node) => node.id === edge.to)?.label}</b><span>{edge.mode} · {edge.volume} · {edge.value} · inspect path</span></button>)}</section>
         {selectedTable && <section className="supply-table-profile">
-          <small>TABLE STATISTICAL PROFILE</small>
-          <div className="supply-table-stats"><span><b>{selectedTable.rows}</b>rows</span><span><b>{selectedTable.quality}%</b>quality</span><span><b>{selectedTable.missingPercent}%</b>missing</span><span><b>{selectedTable.driftScore}</b>drift</span></div>
-          <p><b>{selectedTable.bestFit}</b> best fit · {selectedTable.stationarity}</p>
-          <div className="supply-table-head"><div>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <b key={column}>{column}</b>)}</div>{selectedTable.sampleRows.slice(0, 3).map((row, rowIndex) => <div key={rowIndex}>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <span key={column}>{row[column]}</span>)}</div>)}</div>
+          <small>CALCULATED SAMPLE PROFILE</small>
+          <div className="supply-table-stats"><span><b>{tableRows.length}</b>sample rows</span><span><b>{tableSummary?.mean?.toFixed(2) ?? "—"}</b>mean</span><span><b>{tableSummary?.sd?.toFixed(2) ?? "—"}</b>sample SD</span><span><b>{tableSummary?.missing ?? "—"}</b>missing values</span></div>
+          <p>{selectedTable.columns[0]?.id} · {selectedTable.columns[0]?.unit}. {selectedTable.rows} declared registry rows are not loaded. No distribution fit, stationarity test or drift test has run.</p>
+          <div className="supply-table-head"><div>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <b key={column}>{column}</b>)}</div>{tableRows.slice(0, 3).map((row, rowIndex) => <div key={rowIndex}>{["record_id", ...selectedTable.columns.slice(0, 2).map((column) => column.id)].map((column) => <span key={column}>{row[column]}</span>)}</div>)}</div>
           <a data-action-id={`supply-network.table.open.${selectedTable.id}`} href={`/table?project=${encodeURIComponent(project.id)}&table=${encodeURIComponent(selectedTable.id)}`} target="_blank" rel="noopener noreferrer">Open full table &#8599;</a>
         </section>}
         <section className="supply-node-steering">

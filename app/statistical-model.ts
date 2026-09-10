@@ -72,7 +72,7 @@ function numericColumn(project: WorkspaceProject, dataset: CaseStudyDataset, var
     id: variable,
     name: variable,
     type: "number",
-    unit: index % 3 === 0 ? "units" : index % 3 === 1 ? "%" : "hours",
+    unit: "fixture index",
     mean,
     standardDeviation,
     p05: Number(Math.max(0, p50 - standardDeviation * 1.64).toFixed(2)),

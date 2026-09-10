@@ -1,5 +1,7 @@
+import type { OsCaseEvidence } from "./os-case-evidence";
+
 /** Transparent browser engine. Planning experiments, never a production solver. */
-export const SIMULATION_VERSION = "supply-flow-monte-carlo@1.0.0";
+export const SIMULATION_VERSION = "supply-flow-monte-carlo@1.1.0";
 export type Regime = { name: string; leadDays: number; capacityFactor: number; transition: number[] };
 export type SimulationInput = {
   projectId: string; unit: string; horizonWeeks: number; demandPerWeek: number;
@@ -8,13 +10,21 @@ export type SimulationInput = {
   expeditePremiumPerUnit: number; unitMargin: number; regimes: Regime[];
   paths: number; seed: number; demandVariationPct: number; alternateAllocationPct: number;
   expedite: boolean; serviceTargetPct: number; qualificationWeek: number; budget: number; openingPipelineUnits: number;
+  /** Omitted means no authorized expedited capacity, never unlimited capacity. */
+  expediteCapacityPerWeek?: number;
 };
-export type PathWeek = { week: number; state: string; demand: number; dispatched: number; arrived: number; served: number; inventory: number; lostDemand: number; inTransit: number };
+export type PathWeek = { week: number; state: string; demand: number; dispatched: number; expedited: number; arrived: number; served: number; inventory: number; lostDemand: number; inTransit: number };
 export type PathResult = { index: number; service: number; loss: number; interventionCost: number; lostUnits: number; weeks: PathWeek[] };
 export type Distribution = { mean: number; p05: number; p50: number; p95: number; worst: number };
 export type PolicyResult = { service: Distribution; loss: Distribution; cvar95: number; targetProbability: number; meanCost: number; paths: PathResult[]; histogram: { from: number; to: number; count: number }[] };
 export type SimulationRun = { id: string; parentRunId: string | null; version: string; fingerprint: string; projectId: string; createdAt: string; input: SimulationInput; baseline: PolicyResult; response: PolicyResult; protectedLoss: number; targetPassed: boolean; budgetPassed: boolean; disclosure: string };
 export const simulationStorageKey = (projectId: string) => `tanjnx.simulation.v1.${projectId}`;
+
+/** Shared by the UI and reproducible documentation; no inferred physical limits. */
+export function simulationInputForCase(evidence: OsCaseEvidence): SimulationInput {
+  const s = evidence.scenario;
+  return { projectId: evidence.projectId, unit: s.unit, horizonWeeks: s.horizonWeeks, demandPerWeek: s.demandPerWeek, capacityPerWeek: s.capacityPerWeek, qualifiedAlternatePerWeek: s.qualifiedAlternatePerWeek, inventoryUnits: s.inventoryUnits, baseLeadDays: s.baseLeadDays, capacityLossPct: s.capacityLossPct, demandSurgePct: s.demandSurgePct, qualityYieldPct: s.qualityYieldPct, expeditePremiumPerUnit: s.expeditePremiumPerUnit, unitMargin: s.unitMargin, regimes: structuredClone(s.regimes), paths: 512, seed: 20260909, demandVariationPct: 18, alternateAllocationPct: 100, expedite: false, serviceTargetPct: s.serviceFloorPct, qualificationWeek: s.qualificationWeek, budget: s.budget, openingPipelineUnits: s.demandPerWeek * Math.max(1, Math.ceil(s.baseLeadDays / 7)), expediteCapacityPerWeek: s.expediteCapacityPerWeek ?? 0 };
+}
 
 export function fingerprint(value: unknown) {
   let h = 2166136261;
@@ -48,6 +58,8 @@ export function validateSimulation(input: SimulationInput): string[] {
   bounded("baseLeadDays", 0, 365); bounded("capacityLossPct", 0, 100); bounded("demandSurgePct", -75, 200);
   bounded("qualityYieldPct", 0, 100); bounded("demandVariationPct", 0, 75); bounded("alternateAllocationPct", 0, 100); bounded("serviceTargetPct", 1, 100);
   bounded("qualificationWeek", 1, 26, true); bounded("budget", 0, 1e12); bounded("openingPipelineUnits", 0, 1e12);
+  if (input.expediteCapacityPerWeek !== undefined) bounded("expediteCapacityPerWeek", 0, 1e10);
+  if (typeof input.expedite !== "boolean") errors.push("expedite must be a boolean.");
   if (!input.projectId || !input.unit) errors.push("Project and unit are required.");
   if (!Array.isArray(input.regimes) || input.regimes.length < 1 || input.regimes.length > 6) errors.push("Use one to six operating regimes.");
   else for (const regime of input.regimes) {
@@ -74,16 +86,24 @@ function simulatePath(input: SimulationInput, index: number, response: boolean):
     const primary = input.capacityPerWeek * (1 - input.capacityLossPct / 100) * regime.capacityFactor * input.qualityYieldPct / 100;
     const alternate = response && week >= input.qualificationWeek ? input.qualifiedAlternatePerWeek * input.alternateAllocationPct / 100 * input.qualityYieldPct / 100 : 0;
     // Regime leadDays is TOTAL transit, not an increment to baseLeadDays.
-    const leadWeeks = Math.max(0, Math.ceil(regime.leadDays / 7) - (response && input.expedite ? 1 : 0));
-    pipeline.push({ due: week + leadWeeks, units: primary });
-    if (alternate) pipeline.push({ due: week + (response && input.expedite ? 0 : 1), units: alternate });
-    interventionCost += alternate * input.expeditePremiumPerUnit * .6 + (response && input.expedite ? (primary + alternate) * input.expeditePremiumPerUnit : 0);
+    const leadWeeks = Math.max(0, Math.ceil(regime.leadDays / 7));
+    const expediteLimit = response && input.expedite ? input.expediteCapacityPerWeek ?? 0 : 0;
+    // Explicit primary-first policy, not an optimization. Only dispatches whose
+    // lead time can shorten consume capacity. Existing pipeline is not retimed.
+    const primaryFast = leadWeeks > 0 ? Math.min(primary, expediteLimit) : 0;
+    const alternateFast = Math.min(alternate, Math.max(0, expediteLimit - primaryFast));
+    const expedited = primaryFast + alternateFast;
+    pipeline.push({ due: week + leadWeeks, units: primary - primaryFast });
+    if (primaryFast) pipeline.push({ due: week + leadWeeks - 1, units: primaryFast });
+    if (alternate > alternateFast) pipeline.push({ due: week + 1, units: alternate - alternateFast });
+    if (alternateFast) pipeline.push({ due: week, units: alternateFast });
+    interventionCost += alternate * input.expeditePremiumPerUnit * .6 + expedited * input.expeditePremiumPerUnit;
     const arrived = pipeline.filter((shipment) => shipment.due <= week).reduce((sum, shipment) => sum + shipment.units, 0);
     for (let i = pipeline.length - 1; i >= 0; i--) if (pipeline[i].due <= week) pipeline.splice(i, 1);
     inventory += arrived;
     const served = Math.min(inventory, demand);
     inventory -= served; totalDemand += demand; totalServed += served;
-    weeks.push({ week, state: regime.name, demand, dispatched: primary + alternate, arrived, served, inventory, lostDemand: demand - served, inTransit: pipeline.reduce((sum, item) => sum + item.units, 0) });
+    weeks.push({ week, state: regime.name, demand, dispatched: primary + alternate, expedited, arrived, served, inventory, lostDemand: demand - served, inTransit: pipeline.reduce((sum, item) => sum + item.units, 0) });
   }
   const lostUnits = totalDemand - totalServed;
   return { index, service: totalDemand ? totalServed / totalDemand * 100 : 100, loss: lostUnits * input.unitMargin + interventionCost, lostUnits, interventionCost, weeks };

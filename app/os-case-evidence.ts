@@ -45,6 +45,8 @@ export type OsCaseEvidence = {
     demandSurgePct: number;
     qualityYieldPct: number;
     expeditePremiumPerUnit: number;
+    /** Explicit modeled weekly lane ceiling; absent means not yet authorized. */
+    expediteCapacityPerWeek?: number;
     unitMargin: number;
     qualificationWeek: number;
     serviceFloorPct: number;
@@ -108,6 +110,7 @@ export const osCaseEvidence: OsCaseEvidence[] = [
     ], sources: [publicSources.appleMagnets, publicSources.appleMaterials],
     scenario: {
       label: "Magnet qualification meets a Taiwan-route interruption", kind: "hypothetical-stress-test", scope: "One regional launch cohort; not Apple worldwide production", horizonWeeks: 8, demandPerWeek: 10000, capacityPerWeek: 11200, qualifiedAlternatePerWeek: 3500, inventoryUnits: 4800, unit: "devices", currency: "USD", baseLeadDays: 12, capacityLossPct: 32, demandSurgePct: 12, qualityYieldPct: 98.4, expeditePremiumPerUnit: 28, unitMargin: 180, qualificationWeek: 2, serviceFloorPct: 95, budget: 700000,
+      expediteCapacityPerWeek: 1800,
       regimes: regimes(12, 21, 35, [1, 0.78, 0.48], [[0.78, 0.18, 0.04], [0.20, 0.58, 0.22], [0.08, 0.32, 0.60]]),
       operationalInputs: [input("Magnet-ready inventory", 6200, "component sets", "Only eligible magnet sets; not interchangeable with finished devices."), input("Priority configuration share", 68, "%", "Contracted launch mix assumption."), input("Airfreight allocation", 1800, "devices/week", "Reserved lane ceiling, not unlimited expedite."), input("Magnet lot quarantine", 11, "%", "Modeled certificate mismatch removes affected component lots."), input("Assembly overtime ceiling", 8, "%", "Maximum added hours on qualified lines."), input("Launch freeze", 14, "days", "Frozen configuration window before release.")],
     },

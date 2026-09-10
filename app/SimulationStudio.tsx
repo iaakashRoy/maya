@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getOsCaseEvidence } from "./os-case-evidence";
-import { compactRun, fingerprint, restoreSimulation, runSimulation, simulationStorageKey, validateSimulation, type SimulationInput, type SimulationRun } from "./simulation-model";
+import { compactRun, fingerprint, restoreSimulation, runSimulation, simulationStorageKey, simulationInputForCase, SIMULATION_VERSION, validateSimulation, type SimulationInput, type SimulationRun } from "./simulation-model";
 import "./analysis-workbench.css";
 import { decisionsFor, workspaceProjects } from "./workspace-model";
 import { attachDecisionRun, decisionEvidenceKey, restoreDecisionArtifacts, simulationDraftKey } from "./decision-evidence-model";
@@ -11,8 +11,7 @@ import { analysisEvent, writeAnalysisStorage } from "./useAnalysisStorage";
 export function simulationDefaults(projectId: string): SimulationInput | null {
   const evidence = getOsCaseEvidence(projectId);
   if (!evidence) return null;
-  const s = evidence.scenario;
-  return { projectId, unit: s.unit, horizonWeeks: s.horizonWeeks, demandPerWeek: s.demandPerWeek, capacityPerWeek: s.capacityPerWeek, qualifiedAlternatePerWeek: s.qualifiedAlternatePerWeek, inventoryUnits: s.inventoryUnits, baseLeadDays: s.baseLeadDays, capacityLossPct: s.capacityLossPct, demandSurgePct: s.demandSurgePct, qualityYieldPct: s.qualityYieldPct, expeditePremiumPerUnit: s.expeditePremiumPerUnit, unitMargin: s.unitMargin, regimes: structuredClone(s.regimes), paths: 512, seed: 20260909, demandVariationPct: 18, alternateAllocationPct: 100, expedite: false, serviceTargetPct: s.serviceFloorPct, qualificationWeek: s.qualificationWeek, budget: s.budget, openingPipelineUnits: s.demandPerWeek * Math.max(1, Math.ceil(s.baseLeadDays / 7)) };
+  return simulationInputForCase(evidence);
 }
 export const simulationHistoryKey = (projectId: string) => `tanjnx.simulation.history.v1.${projectId}`;
 export function persistSimulationRun(run: SimulationRun) {
@@ -44,6 +43,7 @@ export function SimulationResults({ run }: { run: SimulationRun }) {
       <div><small>Paths meeting service floor</small><strong>{numberLabel(run.response.targetProbability)}%</strong><span>Conditional on your assumptions</span></div>
     </div>
     <div className={`os-notice ${run.targetPassed && run.budgetPassed ? "positive" : "warning"}`}><b>{run.targetPassed && run.budgetPassed ? "Numerical checks pass; domain review remains required" : "Response requires revision"}</b><span>Service floor {run.input.serviceTargetPct}%: {run.targetPassed ? "pass" : "fail"}. Budget {moneyLabel(run.input.budget)}: {run.budgetPassed ? "pass" : "fail"}. No automatic release.</span></div>
+    <p className="os-help">Peak expedited dispatch: {numberLabel(run.response.paths.reduce((maximum, item) => Math.max(maximum, ...item.weeks.map((week) => week.expedited)), 0))} {run.input.unit}/week against a {numberLabel(run.input.expediteCapacityPerWeek ?? 0)} ceiling. Highest intervention cost across sampled paths: {moneyLabel(Math.max(...run.response.paths.map((item) => item.interventionCost)))}. The budget gate checks that maximum, not the mean.</p>
     <div className="os-results-grid">
       <section className="os-panel"><header><h3>Service distribution</h3><small>{run.input.paths} paired paths</small></header><div className="os-histogram" role="img" aria-label={`Service distribution from ${run.input.paths} computed paths; mean ${numberLabel(run.response.service.mean)} percent`}>{run.response.histogram.map((bin) => <div key={bin.from}><i style={{ height: `${Math.max(1, bin.count / maximum * 100)}%` }} title={`${bin.from}–${bin.to}% service: ${bin.count} paths`} /><small>{bin.to}%</small></div>)}</div><p className="os-help">P05 is the lower service tail. P95 loss is the upper loss tail. More samples improve numerical stability, not model validity.</p></section>
       <section className="os-panel"><header><h3>Policy comparison</h3><small>Same random draws</small></header><table className="os-table"><thead><tr><th>Computed measure</th><th>Baseline</th><th>Response</th></tr></thead><tbody>{[["Mean service", `${numberLabel(run.baseline.service.mean)}%`, `${numberLabel(run.response.service.mean)}%`], ["P95 modeled loss", moneyLabel(run.baseline.loss.p95), moneyLabel(run.response.loss.p95)], ["Mean intervention cost", moneyLabel(run.baseline.meanCost), moneyLabel(run.response.meanCost)], ["Worst service tested", `${numberLabel(run.baseline.service.worst)}%`, `${numberLabel(run.response.service.worst)}%`]].map((row) => <tr key={row[0]}>{row.map((cell, i) => i === 0 ? <th scope="row" key={i}>{cell}</th> : <td key={i}>{cell}</td>)}</tr>)}</tbody></table><button type="button" onClick={() => setDetails(!details)} aria-expanded={details}>{details ? "Hide" : "Inspect"} weekly flow ledger</button></section>
@@ -59,6 +59,7 @@ const controls: { key: keyof SimulationInput; label: string; min: number; max: n
   { key: "qualificationWeek", label: "Alternate available from week", min: 1, max: 26 }, { key: "qualityYieldPct", label: "Qualified yield (%)", min: 0, max: 100, step: .1 },
   { key: "serviceTargetPct", label: "P05 service floor (%)", min: 1, max: 100 }, { key: "budget", label: "Intervention ceiling (USD)", min: 0, max: 1e12 },
   { key: "horizonWeeks", label: "Horizon (weeks)", min: 2, max: 26 }, { key: "seed", label: "Repeatable random seed", min: 1, max: 2147483647 },
+  { key: "expediteCapacityPerWeek", label: "Expedite ceiling (units/week)", min: 0, max: 1e10 },
 ];
 export default function SimulationStudio({ projectId, onRun }: { projectId: string; onRun?: (run: SimulationRun) => void }) {
   const defaults = useMemo(() => simulationDefaults(projectId), [projectId]);
@@ -71,6 +72,17 @@ export default function SimulationStudio({ projectId, onRun }: { projectId: stri
   const [notice, setNotice] = useState("");
   const [compareId, setCompareId] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [legacyArchive, setLegacyArchive] = useState<unknown>(null);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setLegacyArchive(null);
+      try {
+        const raw = JSON.parse(localStorage.getItem(simulationStorageKey(projectId)) ?? "null");
+        if (raw?.projectId === projectId && raw.version !== SIMULATION_VERSION) setLegacyArchive({ previousRun: raw, history: JSON.parse(localStorage.getItem(simulationHistoryKey(projectId)) ?? "[]") });
+      } catch { /* Other restoration diagnostics handle unreadable local storage. */ }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [projectId]);
   const project = workspaceProjects.find((item) => item.id === projectId);
   const decisions = project ? decisionsFor(project) : [];
   const editInput = (next: SimulationInput) => { setInput(next); try { writeAnalysisStorage(simulationDraftKey(projectId), { projectId, input: next, fingerprint: fingerprint(next), valid: validateSimulation(next).length === 0 }); } catch { setError("Browser storage is unavailable. Keep this tab open and export your run."); } };
@@ -88,6 +100,8 @@ export default function SimulationStudio({ projectId, onRun }: { projectId: stri
   return <div className="analysis-workbench os-simulation">
     <div className="os-command"><div><b>Simulation</b><span>{evidence.scenario.label}</span></div><button type="button" aria-expanded={showInputs} onClick={() => setShowInputs(!showInputs)}>{showInputs ? "Hide" : "Edit"} assumptions</button><button className="os-primary" type="button" disabled={!hydrated} onClick={execute}>{run ? "Fork & rerun" : "Run comparison"}</button>{run && <button type="button" onClick={() => downloadJson(run, `${run.id}.json`)}>Export run</button>}</div>
     <p className="os-help">Modeled {evidence.scenario.scope.toLowerCase()}. Weekly Monte Carlo with Markov disruption states. Public company facts are context, not private operational measurements.</p>
+    {legacyArchive !== null && <p className="os-notice warning" role="status">An earlier-model result is retained locally but cannot be reused or approved under {SIMULATION_VERSION}. Export it before rerunning. <button type="button" onClick={() => downloadJson(legacyArchive, `${projectId}-earlier-model-archive.json`)}>Export earlier-model archive</button></p>}
+    <p className="os-help">Expediting is capped at {numberLabel(input.expediteCapacityPerWeek ?? 0)} {input.unit}/week, allocated to primary supply first, then alternate supply. Zero means no authorized fast-lane capacity. Only expedited units incur the fast-lane premium. The alternate-source premium is separate (60% of that unit rate). This is not a SKU, lot or carrier-slot optimizer.</p>
     {history.length > 0 && <label>Local run history<select aria-label="Local simulation run history" value={run?.id ?? ""} onChange={(event) => { const item = history.find((saved) => saved.id === event.target.value); if (item) { setRun(item); editInput(structuredClone(item.input)); } }}>{history.map((item) => <option key={item.id} value={item.id}>{item.id} · {new Date(item.createdAt).toLocaleString()} {item.parentRunId ? `(from ${item.parentRunId})` : ""}</option>)}</select></label>}
     {error && <p className="os-notice warning" role="alert">{error}</p>}
     {stale && <p className="os-notice warning" role="status">Inputs changed. The result below belongs to {run?.id}; rerun before using it.</p>}
