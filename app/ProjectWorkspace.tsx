@@ -562,7 +562,7 @@ function LiveScenarioStrip({ project, onEvidence }: { project: WorkspaceProject;
   return <section className="project-live-scenario" aria-label="Active resilience simulation">
     <div className="project-live-scenario__status"><i /><span><small>LIVE SIMULATION · {simulation.scenarioId}</small><b>{simulation.scenario}</b><em>{simulation.clock} · {simulation.cadence}</em></span></div>
     <div className="project-live-scenario__distribution">{[["BASELINE", simulation.baseline], ["P50", simulation.p50], ["P90", simulation.p90], ["P95", simulation.p95], ["WORST", simulation.worstCase], ["CONFIDENCE", `${simulation.confidence}%`]].map(([label, value]) => <span key={label}><small>{label}</small><b>{value}</b></span>)}</div>
-    <div className="project-live-scenario__actions"><button data-action-id="workspace.trace-live-scenario" type="button" onClick={() => onEvidence(project.metrics[0].evidenceRef)}>Trace scenario</button><a data-action-id="workspace.open-case-study" href={`/case-studies#${project.id}`}>Open case study →</a></div>
+    <div className="project-live-scenario__actions"><button data-action-id="workspace.trace-live-scenario" type="button" onClick={() => onEvidence(project.metrics[0].evidenceRef)}>Trace scenario</button></div>
     <p>{simulation.disclaimer}</p>
   </section>;
 }

@@ -33,7 +33,13 @@ test("server-renders Workspace as the project-first root", async () => {
   assert.match(html, /Launch Continuity/);
   assert.match(html, /Coca-Cola/);
   assert.match(html, /Water-to-Shelf Availability/);
-  assert.match(html, /Case studies/);
+  assert.match(html, /Mission Control/);
+  assert.doesNotMatch(html, /data-action-id="nav\.case-studies"|href="\/case-studies"/);
+  const sidebar = html.slice(html.indexOf('<aside'), html.indexOf('</aside>'));
+  assert.doesNotMatch(sidebar, /nav\.variables|Project path/);
+  assert.match(html, /class="topbar-actions"[\s\S]*class="search-trigger"[\s\S]*data-action-id="nav\.variables"/);
+  assert.equal((html.match(/data-action-id="nav\.variables"/g) ?? []).length, 1);
+  assert.match(html, /class="search-trigger"[^>]*aria-label="Search workspace"/);
   assert.doesNotMatch(html, /data-action-id="nav\.(?:decision-journey|agent-os)"/);
   assert.doesNotMatch(html, /Synthetic workspace|Kearney|Maya Workspace/);
   assert.match(html, /aria-label="Open tanjnx workspace"/);
@@ -66,21 +72,9 @@ test("Simulation renders as a mounted project tool with actual model controls", 
   assert.match(html, /Weekly Monte Carlo with Markov disruption states/);
 });
 
-test("case-study library explains and deep-links all ten simulations", async () => {
+test("case studies are a standalone document, not an application route", async () => {
   const response = await render("/case-studies");
-  assert.equal(response.status, 200);
-  const html = await response.text();
-  assert.match(html, /See a disruption become/);
-  assert.match(html, /Public-information-inspired simulation/);
-  for (const company of ["Apple", "Coca-Cola", "Gucci", "Tata Motors", "Tesla", "BYD", "Hershey", "TSMC", "Airbus", "Pfizer"]) {
-    assert.match(html, new RegExp(company));
-  }
-  assert.match(html, /tanjnx-case-studies\.html/);
-  assert.match(html, /Open project/);
-  assert.match(html, /Inspect data and graph/);
-  assert.match(html, /Inspect decision graph/);
-  assert.match(html, /Run in Playground/);
-  assert.match(html, /Review decisions/);
+  assert.equal(response.status, 404);
 });
 
 test("retired journey routes preserve client context using existing project pages", async () => {
@@ -143,7 +137,7 @@ test("Variables and Methods renders the searchable canonical workspace registry"
   const response = await render("/?view=variables&scope=global&project=apple-launch-continuity");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /data-action-id="nav\.variables"[^>]*class="scope-nav active"/);
+  assert.match(html, /data-action-id="nav\.variables"[^>]*class="variables-trigger active"[^>]*aria-pressed="true"/);
   assert.match(html, /Variables &amp; Methods/);
   assert.match(html, /481 L0 atomic variables/);
   assert.match(html, /60 L1 groupings/);

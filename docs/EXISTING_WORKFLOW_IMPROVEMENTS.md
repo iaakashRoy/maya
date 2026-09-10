@@ -2,11 +2,20 @@
 Updated 10 September 2026.
 
 ## One workspace, no parallel workflow
-Mission control and Decision journey have been removed from navigation and their
+The duplicate Mission control page and Decision journey have been removed from navigation and their
 duplicate UI and unused models deleted. Existing project Data, Decisions, Controls,
 specialist tools, and Playground are the product surface. Older journey URLs
 redirect to the corresponding project page; unrecognized clients return to Workspace.
 The original Playground component and terminal layout are unchanged.
+
+The existing project navigator is now labeled **Mission Control**; its client/tower
+grouping and project selection are unchanged. **Variables** sits beside Search in
+the top-right header and opens the same variables and methods registry.
+
+Case studies are no longer an integrated page or workflow link. Share
+[the standalone HTML presentation](tanjnx-case-studies.html) separately: all ten
+cases, styles, slide controls, and Print/PDF are embedded in the file. The project
+data used by the workspace is retained.
 
 ## Using the improved tools
 1. Select a client and project. Open Data and a table's full view.

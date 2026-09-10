@@ -94,6 +94,17 @@ button { touch-action: manipulation; }
 .scope-context > span { color: #7d8580; font: 750 8px/1 var(--font-geist-mono), monospace; }
 .scope-context select { height: 33px; padding: 0 25px 0 2px; background: transparent; border: 0; outline: 0; font-size: 10px; font-weight: 750; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+.topbar-actions .variables-trigger { height:32px; min-width:32px; padding:0 9px; display:inline-flex; align-items:center; justify-content:center; gap:6px; flex-shrink:0; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:4px; font-size:.875rem; font-weight:650; cursor:pointer; }
+.variables-trigger > svg,.variables-trigger .navigation-icon { width:24px; height:24px; flex-shrink:0; }
+.topbar-actions .variables-trigger:hover,.topbar-actions .variables-trigger.active { background:var(--soft); border-color:#7d941a; }
+.topbar-actions .variables-trigger:focus-visible { outline:2px solid #3181a0; outline-offset:2px; }
+.theme-dark .topbar-actions .variables-trigger.active { color:#d7ff38; border-color:#94ac37; }
+@media (max-width: 1100px) {
+  .topbar-actions .variables-trigger { width: 32px; padding: 0; }
+  .variables-trigger > .variables-trigger-label { display: none; }
+  .topbar-actions .search-trigger { width: 32px; min-width: 32px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 0; }
+  .topbar-actions .search-trigger > b, .topbar-actions .search-trigger > kbd { display: none; }
+}
 .search-trigger { min-width: 210px; height: 36px; padding: 0 9px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: #707973; background: #f4f3ee; border: 1px solid var(--line); text-align: left; cursor: pointer; }
 .search-trigger > span { font-size: 17px; }
 .search-trigger b { font-size: 10px; font-weight: 550; }

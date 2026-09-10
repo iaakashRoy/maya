@@ -110,9 +110,6 @@ export default function WorkspaceHome({
           <button data-action-id="workspace.home.operations-world" type="button" onClick={onOpenOperationsWorld}>
             Operations World <span aria-hidden="true">&#8594;</span>
           </button>
-          <a data-action-id="workspace.home.case-studies" href="/case-studies">
-            Case studies <span aria-hidden="true">&#8594;</span>
-          </a>
         </div>
       </header>
 

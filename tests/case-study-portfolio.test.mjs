@@ -119,17 +119,44 @@ test("every case variable follows a selected taxonomy ancestry", async () => {
   assert.deepEqual(invalid, []);
 });
 
-test("embedded and standalone case-study guides expose project-deep links and simulation boundaries", async () => {
-  const [page, deck] = await Promise.all([
-    read("../app/case-studies/page.tsx"),
-    read("../public/tanjnx-case-studies.html"),
-  ]);
-  assert.match(page, /simulationDisclaimer/);
-  assert.match(page, /projectTab=agents/);
-  assert.match(page, /projectTab=decisions/);
-  assert.match(page, /projectTab=data/);
-  assert.match(page, /MULTILEVEL SUPPLY NETWORK/);
-  assert.match(page, /Open Graph \+ Chokepoints/);
+test("standalone case-study guide is shareable without the application", async () => {
+  const deck = await read("../docs/tanjnx-case-studies.html");
+  assert.doesNotMatch(deck, /(?:href|src)=["']\/|fetch\(|<script[^>]*\bsrc=|<link[^>]*\brel=["']stylesheet/);
+  assert.match(deck, /These are not actual client engagements/);
+  assert.match(deck, /not live measurements or verified client outcomes/);
+  assert.match(deck, /<style>/);
+  const script = deck.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script, "slide navigation must be embedded in the shared file");
+  const { Script } = await import("node:vm");
+  assert.doesNotThrow(() => new Script(script));
+  const makeSlide = () => ({ className: "", innerHTML: "", classList: { toggle() {} } });
+  const generatedSlides = [];
+  const controls = Object.fromEntries(["counter", "progress", "prev", "next", "print"].map((id) => [id, { style: {} }]));
+  controls["case-slides"] = { appendChild: (slide) => generatedSlides.push(slide) };
+  let keydown;
+  let printed = false;
+  new Script(script).runInNewContext({
+    document: {
+      getElementById: (id) => controls[id],
+      createElement: makeSlide,
+      querySelectorAll: () => [makeSlide(), makeSlide(), makeSlide(), ...generatedSlides, makeSlide()],
+    },
+    scrollTo() {},
+    window: { print: () => { printed = true; } },
+    addEventListener: (name, callback) => { if (name === "keydown") keydown = callback; },
+  });
+  assert.equal(generatedSlides.length, 10);
+  assert.equal(controls.counter.textContent, "01 / 14");
+  controls.next.onclick();
+  assert.equal(controls.counter.textContent, "02 / 14");
+  controls.prev.onclick();
+  assert.equal(controls.counter.textContent, "01 / 14");
+  keydown({ key: "End", preventDefault() {} });
+  assert.equal(controls.counter.textContent, "14 / 14");
+  keydown({ key: "Home", preventDefault() {} });
+  assert.equal(controls.counter.textContent, "01 / 14");
+  controls.print.onclick();
+  assert.equal(printed, true);
   assert.match(deck, /ArrowRight/);
   assert.match(deck, /window\.print/);
   assert.match(deck, /GRAPH \+ CHOKEPOINTS/);

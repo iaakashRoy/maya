@@ -16,7 +16,10 @@ write-back authority.
 
 Choose a client project. Use its **Data**, **Decisions**, **Controls**, and
 existing specialist tools; use **Playground** to discuss the work with agents.
-Mission control and the separate Decision journey interface have been removed.
+The duplicate Mission control page and separate Decision journey interface have
+been removed. **Mission Control** now labels the existing client/tower/project
+navigator only; it is not a separate page. **Variables** is a header utility next
+to Search and opens the existing searchable variables and methods registry.
 
 - **Data:** filter the materialized table sample, see recalculated statistics,
   and export the filtered rows as CSV.
@@ -27,8 +30,15 @@ Mission control and the separate Decision journey interface have been removed.
 - **Decisions:** attach an exact Simulation run to an existing decision. Inspect
   service and budget checks, verify domain constraints, and record a local review
   or revision request. Changed inputs or a newer run make old evidence stale.
-- **Case studies:** inspect dated public sources and company-specific modeled
-  assumptions, then open the existing tools and Decisions directly.
+
+## Shareable case studies
+
+[Open the standalone case-study presentation](docs/tanjnx-case-studies.html).
+Share this single HTML file and open it directly in a browser: its styles, ten
+cases, and slide controls are embedded, with no app, server, or external assets
+required. Use the arrow keys or Previous/Next buttons; **Print / PDF** prints all
+slides. Case studies are no longer an app page or workflow navigation item. The
+modeled project data remains available in the workspace.
 
 See [the consolidation guide](docs/EXISTING_WORKFLOW_IMPROVEMENTS.md) for current
 behavior. The older [capability audit](docs/AGENTIC_OS_CAPABILITY_AUDIT.md) and
