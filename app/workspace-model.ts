@@ -3,7 +3,7 @@ import { caseStudyProjects, caseStudyProfileFor } from "./case-study-model";
 export type WorkspaceTabId = "overview" | "decisions" | "apps" | "data" | "graph" | "agents" | "team" | "governance";
 export type ProjectHealth = "healthy" | "watch" | "critical";
 export type EvidenceState = "Observed" | "Corroborated" | "Inferred" | "Simulated" | "Proposed";
-export type ProjectAppId = "risk" | "optimizer" | "statistics" | "simulation" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality";
+export type ProjectAppId = "risk" | "optimizer" | "statistics" | "simulation" | "flow" | "demand" | "suppliers" | "minerals" | "workforce" | "manufacturing" | "logistics" | "quality" | "consumer-insights";
 export type WorkspaceOrigin = "Seed fixture" | "Browser-session draft";
 export type CollaboratorAffiliation = "Client" | "tanjnx";
 export type ProjectCapability = "project.view" | "data.view" | "data.stage" | "connectors.request" | "apps.view" | "apps.mount" | "decisions.view" | "decisions.draft" | "decisions.approve" | "agents.run" | "agents.create" | "team.manage";
@@ -223,7 +223,7 @@ export type ProjectAppDefinition = {
   artifact: string;
   methodCodes: readonly string[];
   variableIds: readonly string[];
-  status: "Concept ready" | "Review" | "Future adapter" | "Browser calculation";
+  status: "Concept ready" | "Review" | "Future adapter" | "Browser calculation" | "Synthetic demo";
 };
 
 export type ExpertAgent = {
@@ -417,6 +417,7 @@ export const projectApps: readonly ProjectAppDefinition[] = [
   { id: "manufacturing", name: "Manufacturing Twin", icon: "MT", accent: "#7da2b8", archetype: "Plant flow + constraint Gantt", outcome: "Schedule the constraint, not averages", artifact: "Production plan", methodCodes: ["M-06", "M-07", "M-08", "M-15", "M-17", "M-27"], variableIds: ["L0-071", "L0-074", "L0-079", "L0-088", "L0-097"], status: "Concept ready" },
   { id: "logistics", name: "Logistics Radar", icon: "LR", accent: "#4ee2df", archetype: "Map radar + transfer playback", outcome: "Control every cargo handoff", artifact: "Route and handoff plan", methodCodes: ["M-05", "M-09", "M-10", "M-11", "M-12", "M-17"], variableIds: ["L0-202", "L0-209", "L0-217", "L0-229", "L0-241"], status: "Concept ready" },
   { id: "quality", name: "Quality Genealogy", icon: "QG", accent: "#ffcf70", archetype: "Batch genealogy + release gates", outcome: "Trace every quality consequence", artifact: "Release or containment plan", methodCodes: ["M-15", "M-21", "M-26", "M-30"], variableIds: ["L0-131", "L0-141", "L0-145", "L0-151"], status: "Concept ready" },
+  { id: "consumer-insights", name: "Consumer Insights", icon: "CI", accent: "#217c88", archetype: "Social listening + consumer intelligence", outcome: "Turn consumer evidence into decision inputs", artifact: "Consumer brief + reviewed variable package", methodCodes: ["M-02", "M-03"], variableIds: [], status: "Synthetic demo" },
 ];
 
 export const evidenceReceipts: readonly EvidenceReceipt[] = [

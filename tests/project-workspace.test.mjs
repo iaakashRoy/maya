@@ -40,7 +40,7 @@ test("ten clients and their cross-tower projects are isolated, evidence-aware, a
   assert.equal(new Set(workspaceProjects.map((project) => project.sectorId)).size, 10);
   assert.equal(new Set(workspaceProjects.map((project) => project.clientId)).size, 10);
   assert.ok(workspaceProjects.every((project) => workspaceProjects.filter((candidate) => candidate.clientId === project.clientId).length === 1));
-  assert.equal(projectApps.length, 12);
+  assert.equal(projectApps.length, 13);
   assert.equal(new Set(projectApps.map((app) => app.accent)).size, projectApps.length);
   assert.equal(new Set(projectApps.map((app) => app.archetype)).size, projectApps.length);
 

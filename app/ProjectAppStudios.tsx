@@ -5,12 +5,14 @@ import { fixtureEvidenceFor, projectApps, type EvidenceReceipt, type ProjectAppI
 import { AppGlyph } from "./VisualIdentity";
 import StatisticalStudio from "./StatisticalStudio";
 import SimulationStudio from "./SimulationStudio";
+import ConsumerInsightsStudio from "./ConsumerInsightsStudio";
 
 type Props = {
   appId: ProjectAppId;
   project: WorkspaceProject;
   onEvidence: (receipt: EvidenceReceipt) => void;
   onOutcome: (title: string, detail: string, artifact?: string) => void;
+  onOpenOptimizer?: () => void;
 };
 
 function StudioHeader({ appId, project }: Pick<Props, "appId" | "project">) {
@@ -96,6 +98,7 @@ export default function ProjectAppStudio(props: Props) {
   return <div className={`project-app-studio app-theme-${props.appId}`} data-app-theme={props.appId} style={{ "--studio-accent": app.accent } as React.CSSProperties}>
     <StudioHeader appId={props.appId} project={props.project} />
     {props.appId === "simulation" ? <SimulationStudio key={props.project.id} projectId={props.project.id} onRun={(run) => props.onOutcome("Simulation calculated", `${run.input.paths} paired paths computed in this browser. P05 service ${run.response.service.p05.toFixed(1)}%. Domain review required; no operational release.`, run.id)} />
+      : props.appId === "consumer-insights" ? <ConsumerInsightsStudio key={props.project.id} project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} onOpenOptimizer={props.onOpenOptimizer ?? (() => undefined)} />
       : props.appId === "statistics" ? <StatisticalStudio key={props.project.id} project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "minerals" ? <MineralAtlas project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />
       : props.appId === "workforce" ? <WorkforceStudio project={props.project} onEvidence={props.onEvidence} onOutcome={props.onOutcome} />

@@ -7310,6 +7310,13 @@ textarea:focus-visible,
 .recent-work-list dl div { padding: 4px; }
 .recent-work-continue { min-height: 28px; }
 .app-graph-canvas { min-height: 360px; }
+/* The expanded catalog accommodates all thirteen apps without overlapping nodes. */
+.app-graph-canvas.app-graph-expanded { min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:18px; }
+.app-graph-expanded::before,.app-graph-expanded::after { display:none; }
+.app-graph-expanded .app-graph-core { position:static;grid-column:1 / -1;transform:none;width:100%;height:auto;min-height:64px;border-radius:6px; }
+.app-graph-expanded .app-graph-node { position:static;width:100%;min-height:70px; }
+.app-graph-expanded .app-edge-ledger { position:static;grid-column:1 / -1;width:100%; }
+@media (max-width:850px) { .app-graph-canvas.app-graph-expanded { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px; } }
 .app-catalog-grid { gap: 5px; }
 .app-catalog-grid article { padding: 9px; gap: 7px; }
 .app-catalog-grid dl { gap: 3px; }
