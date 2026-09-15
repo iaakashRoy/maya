@@ -5,6 +5,8 @@ import ApplicationViews from "./ApplicationViews";
 import DataOperations from "./DataOperations";
 import DecisionWorkspaces from "./DecisionWorkspaces";
 import ProjectWorkspace, { AppRunHistory } from "./ProjectWorkspace";
+import SamsungProjectWorkspace from "./SamsungProjectWorkspace";
+import { isSamsungDemo } from "./samsung-demo-model";
 import ScopeDashboard, { regionalOperationsProfiles } from "./ScopeDashboard";
 import WorkspaceHome from "./WorkspaceHome";
 import WorkspaceOnboarding from "./WorkspaceOnboarding";
@@ -1190,6 +1192,14 @@ export default function PlatformShell({ initialView, initialScope, initialCaseId
             <ProjectAccessBoundary decision={deniedProjectAccess} onWorkspace={openWorkspaceHome} onReceipt={() => completeAction("Project access blocked", deniedProjectAccess.reason, deniedProjectAccess.policyRef, "Blocked", "Workspace access control")} />
           ) : view === "variables" ? (
             <VariablesCatalog />
+          ) : resolvedProject && scope === "company" && isSamsungDemo(activeProject) ? (
+            <SamsungProjectWorkspace key={activeProject.id} project={activeProject}
+              tab={view === "company" ? activeProjectTab : workflowViews.some(item => item.id === view) ? "decisions" : view === "graph" ? "data" : "agents"}
+              app={view === "company" ? activeProjectApp : applications.some(item => item.id === view) ? view as ProjectAppId : null}
+              onTab={openProjectTab} onOpenApp={openMountedProjectApp} onProjectChange={handleProjectSetupChange} onAgentsChange={handleAgentRosterChange}
+              canConnect={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "connectors.request", membershipCatalog).allowed}
+              canRun={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "agents.run", membershipCatalog).allowed}
+              canReview={evaluateProjectAccess(activeProject.id, signedInCollaboratorId, "decisions.draft", membershipCatalog).allowed} />
           ) : view === "company" && resolvedProject ? (
             <ProjectWorkspace key={activeProject.id} projects={projectCatalog} collaborators={collaboratorCatalog} memberships={membershipCatalog} activeCollaboratorId={signedInCollaboratorId} initialProjectId={activeProject.id} initialTab={activeProjectTab} initialApp={activeProjectApp} initialSessionId={activeSessionId} initialRunId={activeRunId} activityState={activityState} dispatchActivity={dispatchActivity} onMountedAppsChange={handleMountedAppsChange} onAgentRosterChange={handleAgentRosterChange} onProjectSetupChange={handleProjectSetupChange} onTabChange={(tab) => openProjectTab(tab)} onStudioChange={openMountedProjectApp} onSessionChange={openProjectSession} onRunChange={openProjectRun} onOpenApp={openMountedProjectApp} onOpenCase={() => openCase(activeCase.id)} onOutcome={completeAction} />
           ) : view === "company" ? (

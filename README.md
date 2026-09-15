@@ -33,6 +33,29 @@ to Search and opens the existing searchable variables and methods registry.
 
 ## Shareable case studies
 
+### Samsung: new client to reviewed launch response
+
+Use **Onboard client** to add **Samsung Electronics**, then **Create project**.
+The new Samsung project starts with **Playground only**. Connect the four demo
+sources in **Data**, confirm mappings, activate the demo agents and follow the
+Playground prompts. Each specialist app enters the app bar on its first completed
+agent task. The workflow includes a second disruption, recalculated plans,
+stress tests, three separate role-play sign-offs and ten days of simulated
+execution. Existing clients and their workflows retain their current behavior.
+
+The [standalone Samsung presenter guide](docs/samsung-demo-guide.html) includes
+all onboarding fields, seven exact prompts, expected results and recovery steps.
+A [Markdown copy](docs/SAMSUNG_DEMO_GUIDE.md) is also available. The in-app
+**Demo guide** link opens the same guide. Regenerate both copies and the public
+asset with `node scripts/build-samsung-guide.mjs` after editing the scenario.
+
+This workflow uses fictional data and local deterministic calculations. It does
+not connect Samsung systems or install a worker. New clients, projects and runs
+live in browser memory: navigate within the app and export the record before
+refreshing or closing the tab. Start another new Samsung project to replay.
+
+### Existing case-study presentation
+
 [Open the standalone case-study presentation](docs/tanjnx-case-studies.html).
 Share this single HTML file and open it directly in a browser: its styles, ten
 cases, and slide controls are embedded, with no app, server, or external assets
